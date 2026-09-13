@@ -33,10 +33,17 @@ HAL東京 チーム制作プロジェクト。
 ```text
 
 Misoten-27/
-
-├─ UnityProject/    # Unityプロジェクト
-
-├─ RaspberryPi/     # Raspberry Pi関連
-
+|
+├─ UnityProject_Misoten-27/    # Unityプロジェクト
+├─ RaspberryPi/                # RaspberryPi関連
+├─ SharedData/                 # セーブデータやその他管理データ
+├─ README_Docs/                # READMEの素材
+|
 └─ README.md
 
+```
+
+
+
+## 注意事項
+・GitHbやUnityの設定を編集したい場合、澤田に要望を出してください。
