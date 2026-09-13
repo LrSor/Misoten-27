@@ -157,7 +157,7 @@ jobs:
 
               const status =
                 pr.merged
-                  ? "✅ Pull request merged"
+                  ? "✅ Pull request merged test"
                   : "❌ Pull request closed";
 
 
