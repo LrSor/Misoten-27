@@ -1,0 +1,183 @@
+name: Discord PR Notifications
+
+on:
+  pull_request:
+    types: [opened, closed]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  discord-notification:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send Discord notification
+        uses: actions/github-script@v8
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_CHANNEL_ID: ${{ secrets.DISCORD_CHANNEL_ID }}
+
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const action = context.payload.action;
+
+            const token = process.env.DISCORD_BOT_TOKEN;
+            const channelId = process.env.DISCORD_CHANNEL_ID;
+
+            async function sendDiscord(data) {
+
+              const response = await fetch(
+                `https://discord.com/api/v10/channels/${channelId}/messages`,
+                {
+                  method: "POST",
+
+                  headers: {
+                    "Authorization": `Bot ${token}`,
+                    "Content-Type": "application/json"
+                  },
+
+                  body: JSON.stringify(data)
+                }
+              );
+
+              if (!response.ok) {
+
+                const error = await response.text();
+
+                throw new Error(
+                  `Discord API Error: ${response.status} ${error}`
+                );
+              }
+
+              return await response.json();
+            }
+
+
+            // ==========================
+            // PRが作成された
+            // ==========================
+
+            if (action === "opened") {
+
+              const message = await sendDiscord({
+
+                embeds: [
+                  {
+                    author: {
+                      name: pr.user.login,
+                      icon_url: pr.user.avatar_url
+                    },
+
+                    title:
+                      `[${context.repo.owner}/${context.repo.repo}] ` +
+                      `Pull request opened: #${pr.number} ${pr.title}`,
+
+                    url: pr.html_url,
+
+                    description:
+                      (pr.body || "説明はありません。").slice(0, 4000),
+
+                    color: 5763719
+                  }
+                ],
+
+                allowed_mentions: {
+                  parse: []
+                }
+              });
+
+
+              // DiscordメッセージIDを保存
+              const marker =
+                `<!-- discord-pr-message-id:${message.id} -->`;
+
+              let body = pr.body || "";
+
+              // 古いIDがあった場合は削除
+              body = body.replace(
+                /\n*<!-- discord-pr-message-id:\d+ -->/g,
+                ""
+              );
+
+              body =
+                `${body.trimEnd()}\n\n${marker}`.trimStart();
+
+
+              await github.rest.pulls.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                body: body
+              });
+
+
+              core.info(
+                `Discord message ID: ${message.id}`
+              );
+            }
+
+
+            // ==========================
+            // PRが閉じられた
+            // ==========================
+
+            if (action === "closed") {
+
+              const { data: latestPr } =
+                await github.rest.pulls.get({
+
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: pr.number
+                });
+
+
+              const body = latestPr.body || "";
+
+              const match = body.match(
+                /<!-- discord-pr-message-id:(\d+) -->/
+              );
+
+
+              if (!match) {
+
+                core.setFailed(
+                  "元のDiscordメッセージIDが見つかりません。"
+                );
+
+                return;
+              }
+
+
+              const originalMessageId = match[1];
+
+
+              const status =
+                pr.merged
+                  ? "✅ Pull request merged"
+                  : "❌ Pull request closed";
+
+
+              await sendDiscord({
+
+                content:
+                  `${status}: #${pr.number} ${pr.title}\n${pr.html_url}`,
+
+                message_reference: {
+                  message_id: originalMessageId,
+                  fail_if_not_exists: false
+                },
+
+                allowed_mentions: {
+                  parse: []
+                }
+              });
+
+
+              core.info(
+                `Reply sent: ${originalMessageId}`
+              );
+            }
