@@ -1,0 +1,57 @@
+# ==================================================
+# Unity
+# ==================================================
+/UnityProject/[Ll]ibrary/
+/UnityProject/[Tt]emp/
+/UnityProject/[Oo]bj/
+/UnityProject/[Ll]ogs/
+/UnityProject/[Uu]ser[Ss]ettings/
+/UnityProject/[Mm]emoryCaptures/
+/UnityProject/[Rr]ecordings/
+
+# Unity builds
+/UnityProject/[Bb]uild/
+/UnityProject/[Bb]uilds/
+
+# Visual Studio generated files
+/UnityProject/.vs/
+/UnityProject/*.csproj
+/UnityProject/*.sln
+/UnityProject/*.suo
+/UnityProject/*.user
+
+# Rider
+/UnityProject/.idea/
+
+
+# ==================================================
+# Raspberry Pi / Python
+# ==================================================
+/RaspberryPi/.venv/
+/RaspberryPi/venv/
+
+__pycache__/
+*.pyc
+*.pyo
+
+# Generated logs
+/RaspberryPi/logs/
+
+
+# ==================================================
+# Secrets / local settings
+# ==================================================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+/RaspberryPi/secrets/
+
+
+# ==================================================
+# OS
+# ==================================================
+.DS_Store
+Thumbs.db
