@@ -4,6 +4,10 @@
 
 HAL東京 チーム制作プロジェクト。
 
+!\[](README\_Docs/mxj\_files-star-26586.gif)
+
+!\[ゲームプレイ](README\_Docs/dakernet-rocket-6594.gif)
+
 
 
 \## 開発環境
@@ -14,7 +18,7 @@ HAL東京 チーム制作プロジェクト。
 
 \- Unity Version: 6000.3.14f1
 
-\- Visual Studio 2022 / 2026
+\- Visual Studio 2022 / 2026<-こっち推奨
 
 \- GitHub Desktop
 
