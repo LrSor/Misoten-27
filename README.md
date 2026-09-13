@@ -5,8 +5,8 @@
 HAL東京 チーム制作プロジェクト。
 
 <img src="README_Docs/mxj_files-star-26586.gif" width="300">
-
-![ゲームプレイ](README_Docs/dakernet-rocket-6594.gif)
+<img src="README_Docs/dakernet-rocket-6594.gif" width="300">
+<!-- ![ゲームプレイ](README_Docs/dakernet-rocket-6594.gif) -->
 
 
 
