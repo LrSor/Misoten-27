@@ -1,27 +1,27 @@
 # ==================================================
 # Unity
 # ==================================================
-/UnityProject/[Ll]ibrary/
-/UnityProject/[Tt]emp/
-/UnityProject/[Oo]bj/
-/UnityProject/[Ll]ogs/
-/UnityProject/[Uu]ser[Ss]ettings/
-/UnityProject/[Mm]emoryCaptures/
-/UnityProject/[Rr]ecordings/
+/UnityProject_Misoten-27/[Ll]ibrary/
+/UnityProject_Misoten-27/[Tt]emp/
+/UnityProject_Misoten-27/[Oo]bj/
+/UnityProject_Misoten-27/[Ll]ogs/
+/UnityProject_Misoten-27/[Uu]ser[Ss]ettings/
+/UnityProject_Misoten-27/[Mm]emoryCaptures/
+/UnityProject_Misoten-27/[Rr]ecordings/
 
 # Unity builds
-/UnityProject/[Bb]uild/
-/UnityProject/[Bb]uilds/
+/UnityProject_Misoten-27/[Bb]uild/
+/UnityProject_Misoten-27/[Bb]uilds/
 
 # Visual Studio generated files
-/UnityProject/.vs/
-/UnityProject/*.csproj
-/UnityProject/*.sln
-/UnityProject/*.suo
-/UnityProject/*.user
+/UnityProject_Misoten-27/.vs/
+/UnityProject_Misoten-27/*.csproj
+/UnityProject_Misoten-27/*.sln
+/UnityProject_Misoten-27/*.suo
+/UnityProject_Misoten-27/*.user
 
 # Rider
-/UnityProject/.idea/
+/UnityProject_Misoten-27/.idea/
 
 
 # ==================================================
