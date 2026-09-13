@@ -37,9 +37,9 @@ Misoten-27/
 ├─ UnityProject_Misoten-27/    # Unityプロジェクト
 ├─ RaspberryPi/                # RaspberryPi関連
 ├─ SharedData/                 # セーブデータやその他管理データ
-├─ README_Docs/                # READMEの素材
 |
-└─ README.md
+├─ README.md
+└─ README_Docs/                # READMEの素材
 
 ```
 
