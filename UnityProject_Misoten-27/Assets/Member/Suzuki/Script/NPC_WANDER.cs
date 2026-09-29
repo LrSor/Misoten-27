@@ -7,6 +7,10 @@ public class NPC_WANDER : MonoBehaviour
     [SerializeField]
     private Transform[] m_wayPoints;
 
+    [Header("移動設定")]
+    [SerializeField]
+    private float m_moveSpeed = 2f;
+
     [Header("待機時間")]
     [SerializeField]
     private float m_minWaitTime = 1f;
@@ -24,6 +28,9 @@ public class NPC_WANDER : MonoBehaviour
     void Start()
     {
         m_navMeshAgent = GetComponent<NavMeshAgent>();
+
+        // 移動速度を設定
+        m_navMeshAgent.speed = m_moveSpeed;
 
         MoveToNextWayPoint();
     }
