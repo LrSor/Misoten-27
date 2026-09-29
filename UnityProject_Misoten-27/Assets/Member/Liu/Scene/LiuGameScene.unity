@@ -412,6 +412,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 59b2e49bb118abf4891923717f3823f7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LIU_SCENE_CONTROLLER
+  m_transitionImage: {fileID: 21300000, guid: 8401fb8568292a74cbe677bdbc2b3f3b, type: 3}
+  m_moveDuration: 2
 --- !u!4 &1291284805
 Transform:
   m_ObjectHideFlags: 0
