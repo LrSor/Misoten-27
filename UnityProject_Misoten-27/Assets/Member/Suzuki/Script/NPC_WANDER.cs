@@ -7,9 +7,8 @@ public class NPC_WANDER : MonoBehaviour
     [SerializeField]
     private Transform[] m_wayPoints;
 
-    [Header("移動設定")]
     [SerializeField]
-    private float m_moveSpeed = 2f;
+    private float m_wayPointSearchDistance = 8f;
 
     [Header("待機時間")]
     [SerializeField]
@@ -29,15 +28,12 @@ public class NPC_WANDER : MonoBehaviour
     {
         m_navMeshAgent = GetComponent<NavMeshAgent>();
 
-        // 移動速度を設定
-        m_navMeshAgent.speed = m_moveSpeed;
-
         MoveToNextWayPoint();
     }
 
     void Update()
     {
-        // 待機中の場合
+        // 待機中
         if (m_waitFlag)
         {
             m_waitTimer -= Time.deltaTime;
@@ -46,15 +42,18 @@ public class NPC_WANDER : MonoBehaviour
             {
                 m_waitFlag = false;
 
+                m_navMeshAgent.isStopped = false;
+
                 MoveToNextWayPoint();
             }
 
             return;
         }
 
-        // 目的地に到着したか確認
+        // Waypointに到着したか確認
         if (!m_navMeshAgent.pathPending &&
-            m_navMeshAgent.remainingDistance <= m_navMeshAgent.stoppingDistance)
+            m_navMeshAgent.remainingDistance <=
+            m_navMeshAgent.stoppingDistance)
         {
             StartWaiting();
         }
@@ -62,42 +61,43 @@ public class NPC_WANDER : MonoBehaviour
 
     void MoveToNextWayPoint()
     {
-        // ウェイポイントが設定されていない場合
-        if (m_wayPoints == null || m_wayPoints.Length == 0)
+        if (m_wayPoints == null ||
+            m_wayPoints.Length == 0)
         {
-            Debug.LogWarning("ウェイポイントが設定されていません。");
+            Debug.LogWarning(
+                "ウェイポイントが設定されていません。");
+
             return;
         }
 
-        int nextWayPointIndex;
+        int nextWayPointIndex =
+            FindNextWayPoint();
 
-        // 前回と違うウェイポイントを選択
-        do
+        if (nextWayPointIndex == -1)
         {
-            nextWayPointIndex = Random.Range(0, m_wayPoints.Length);
-        }
-        while (m_wayPoints.Length > 1 &&
-               nextWayPointIndex == m_currentWayPointIndex);
+            Debug.LogWarning(
+                "移動可能なウェイポイントが見つかりません。");
 
-        m_currentWayPointIndex = nextWayPointIndex;
-
-        Transform nextWayPoint = m_wayPoints[m_currentWayPointIndex];
-
-        if (nextWayPoint == null)
-        {
             return;
         }
+
+        m_currentWayPointIndex =
+            nextWayPointIndex;
+
+        Transform nextWayPoint =
+            m_wayPoints[
+                m_currentWayPointIndex];
 
         NavMeshHit navMeshHit;
 
-        // ウェイポイント周辺のNavMeshを取得
         if (NavMesh.SamplePosition(
             nextWayPoint.position,
             out navMeshHit,
             2f,
             NavMesh.AllAreas))
         {
-            m_navMeshAgent.SetDestination(navMeshHit.position);
+            m_navMeshAgent.SetDestination(
+                navMeshHit.position);
         }
         else
         {
@@ -107,12 +107,63 @@ public class NPC_WANDER : MonoBehaviour
         }
     }
 
+    int FindNextWayPoint()
+    {
+        int[] candidateWayPoints =
+            new int[m_wayPoints.Length];
+
+        int candidateCount = 0;
+
+        for (int i = 0; i < m_wayPoints.Length; i++)
+        {
+            if (m_wayPoints[i] == null)
+            {
+                continue;
+            }
+
+            // 現在のWaypointは除外
+            if (i == m_currentWayPointIndex)
+            {
+                continue;
+            }
+
+            float distance =
+                Vector3.Distance(
+                    transform.position,
+                    m_wayPoints[i].position);
+
+            if (distance <= m_wayPointSearchDistance)
+            {
+                candidateWayPoints[candidateCount] =
+                    i;
+
+                candidateCount++;
+            }
+        }
+
+        if (candidateCount == 0)
+        {
+            return -1;
+        }
+
+        // 候補の中からランダムに選択
+        int randomIndex =
+            Random.Range(
+                0,
+                candidateCount);
+
+        return candidateWayPoints[randomIndex];
+    }
+
     void StartWaiting()
     {
         m_waitFlag = true;
 
-        m_waitTimer = Random.Range(
-            m_minWaitTime,
-            m_maxWaitTime);
+        m_waitTimer =
+            Random.Range(
+                m_minWaitTime,
+                m_maxWaitTime);
+
+        m_navMeshAgent.isStopped = true;
     }
 }
