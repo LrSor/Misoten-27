@@ -6,155 +6,164 @@ using UnityEngine.InputSystem;
 public class PlayerController : MonoBehaviour
 {
     [Header("Move")]
-    [SerializeField]
-    private float maxSpeed = 5.0f;
-
-    [SerializeField]
-    private float acceleration = 15.0f;
-
-    [SerializeField]
-    private float deceleration = 20.0f;
+    [SerializeField] private float m_acceleration = 15.0f;
+    [SerializeField] private float m_deceleration = 20.0f;
 
     [Header("Rotation")]
-    [SerializeField]
-    private float rotationSpeed = 720.0f;
+    [SerializeField] private float m_rotationSpeed = 720.0f;
+
+    [Header("Input")]
+    [SerializeField] private float m_inputThreshold = 0.01f;
 
     [Header("Stop")]
-    [SerializeField]
-    private float stopThreshold = 0.001f;
+    [SerializeField] private float m_stopThreshold = 0.001f;
 
     [Header("Camera")]
-    [SerializeField]
-    private Transform movementReference;
+    [SerializeField] private Transform m_movementReference;
 
-    private Rigidbody rb;
-    private PlayerInput playerInput;
-    private InputAction moveAction;
+    private Rigidbody m_rb;
+    private PlayerInput m_playerInput;
+    private InputAction m_moveAction;
 
-    private Vector2 moveInput;
+
+    // =========================================================
+    // Public
+    // =========================================================
+
+    public Vector2 MoveInput
+    {
+        get
+        {
+            if (m_playerInput == null ||
+                !m_playerInput.enabled ||
+                m_moveAction == null)
+            {
+                return Vector2.zero;
+            }
+
+            return m_moveAction.ReadValue<Vector2>();
+        }
+    }
+
+    public bool HasMoveInput
+    {
+        get
+        {
+            Vector2 input = MoveInput;
+
+            return input.sqrMagnitude > m_inputThreshold * m_inputThreshold;
+        }
+    }
+
+
+    // =========================================================
+    // Unity
+    // =========================================================
 
     private void Awake()
     {
-        rb = GetComponent<Rigidbody>();
-        playerInput = GetComponent<PlayerInput>();
+        m_rb = GetComponent<Rigidbody>();
+        m_playerInput = GetComponent<PlayerInput>();
 
-        moveAction = playerInput.actions.FindAction(
-            "Move",
-            true
-        );
+        m_moveAction = m_playerInput.actions.FindAction("Move", true);
     }
 
-    private void Update()
+
+    // =========================================================
+    // Move
+    // =========================================================
+
+    public void Move(float maxSpeed)
     {
-        if (playerInput.enabled)/*作業用*/ moveInput = moveAction.ReadValue<Vector2>();
-    }
+        Vector2 input = MoveInput;
 
-    private void FixedUpdate()
-    {
-        if (!playerInput.enabled) return;   // 作業用
+        Vector3 moveDirection = GetMoveDirection(input);
 
-        Move();
-        Rotate();
-    }
+        Vector3 velocity = m_rb.linearVelocity;
 
-    private void Move()
-    {
-        if (movementReference == null)
-        {
-            return;
-        }
+        Vector3 horizontalVelocity = new Vector3( velocity.x, 0.0f, velocity.z);
 
-        // カメラ基準の方向
-        Vector3 cameraForward = movementReference.forward;
-        Vector3 cameraRight = movementReference.right;
+        Vector3 targetVelocity = moveDirection * maxSpeed;
 
-        // 上下方向を無視
-        cameraForward.y = 0.0f;
-        cameraRight.y = 0.0f;
+        bool hasInput = input.sqrMagnitude > m_inputThreshold * m_inputThreshold;
 
-        cameraForward.Normalize();
-        cameraRight.Normalize();
+        float speedChange = hasInput ? m_acceleration : m_deceleration;
 
-        // カメラ基準の移動方向
-        Vector3 moveDirection =
-            cameraForward * moveInput.y +
-            cameraRight * moveInput.x;
+        horizontalVelocity = Vector3.MoveTowards(
+            horizontalVelocity, targetVelocity, speedChange * Time.fixedDeltaTime);
 
-        moveDirection =
-            Vector3.ClampMagnitude(
-                moveDirection,
-                1.0f
-            );
-
-        Vector3 velocity = rb.linearVelocity;
-
-        Vector3 horizontalVelocity =
-            new Vector3(
-                velocity.x,
-                0.0f,
-                velocity.z
-            );
-
-        Vector3 targetVelocity =
-            moveDirection * maxSpeed;
-
-        float speedChange =
-            moveInput.sqrMagnitude > 0.0f
-                ? acceleration
-                : deceleration;
-
-        horizontalVelocity =
-            Vector3.MoveTowards(
-                horizontalVelocity,
-                targetVelocity,
-                speedChange * Time.fixedDeltaTime
-            );
-
-        if (horizontalVelocity.sqrMagnitude
-            <= stopThreshold * stopThreshold)
-        {
+        if (horizontalVelocity.sqrMagnitude <= m_stopThreshold * m_stopThreshold)
             horizontalVelocity = Vector3.zero;
-        }
 
-        // Y速度は重力用に維持
-        rb.linearVelocity =
-            new Vector3(
-                horizontalVelocity.x,
-                velocity.y,
-                horizontalVelocity.z
-            );
+        SetHorizontalVelocity(horizontalVelocity);
     }
 
-    private void Rotate()
+
+    public void Decelerate()
     {
-        Vector3 velocity = rb.linearVelocity;
+        Vector3 velocity = m_rb.linearVelocity;
 
-        Vector3 horizontalVelocity =
-            new Vector3(
-                velocity.x,
-                0.0f,
-                velocity.z
-            );
+        Vector3 horizontalVelocity = new Vector3(velocity.x, 0.0f, velocity.z);
 
-        if (horizontalVelocity.sqrMagnitude
-            <= stopThreshold * stopThreshold)
-        {
+        horizontalVelocity = Vector3.MoveTowards(
+            horizontalVelocity, Vector3.zero, m_deceleration * Time.fixedDeltaTime);
+
+        if (horizontalVelocity.sqrMagnitude <= m_stopThreshold * m_stopThreshold)
+            horizontalVelocity = Vector3.zero;
+
+        SetHorizontalVelocity(horizontalVelocity);
+    }
+
+
+    // =========================================================
+    // Rotation
+    // =========================================================
+
+    public void Rotate()
+    {
+        Vector3 velocity = m_rb.linearVelocity;
+
+        Vector3 horizontalVelocity = new Vector3(velocity.x, 0.0f, velocity.z);
+
+        if (horizontalVelocity.sqrMagnitude <= m_stopThreshold * m_stopThreshold)
             return;
-        }
 
-        Quaternion targetRotation =
-            Quaternion.LookRotation(
-                horizontalVelocity.normalized,
-                Vector3.up
-            );
+        Quaternion targetRotation = Quaternion.LookRotation(
+            horizontalVelocity.normalized, Vector3.up);
 
-        Quaternion newRotation =
-            Quaternion.RotateTowards(
-                rb.rotation,
-                targetRotation,
-                rotationSpeed * Time.fixedDeltaTime
-            );
+        Quaternion newRotation = Quaternion.RotateTowards(
+            m_rb.rotation, targetRotation, m_rotationSpeed * Time.fixedDeltaTime);
 
-        rb.MoveRotation(newRotation);
+        m_rb.MoveRotation(newRotation);
+    }
+
+
+    // =========================================================
+    // Private
+    // =========================================================
+
+    private Vector3 GetMoveDirection(Vector2 input)
+    {
+        if (m_movementReference == null)
+            return Vector3.zero;
+
+        Vector3 forward = Vector3.ProjectOnPlane(
+            m_movementReference.forward, Vector3.up).normalized;
+
+        Vector3 right = Vector3.ProjectOnPlane(
+            m_movementReference.right, Vector3.up).normalized;
+
+        Vector3 moveDirection = forward * input.y + right * input.x;
+
+        return Vector3.ClampMagnitude(moveDirection, 1.0f);
+    }
+
+
+    private void SetHorizontalVelocity(Vector3 horizontalVelocity)
+    {
+        Vector3 velocity = m_rb.linearVelocity;
+
+        m_rb.linearVelocity = new Vector3(
+            horizontalVelocity.x, velocity.y, horizontalVelocity.z);
     }
 }

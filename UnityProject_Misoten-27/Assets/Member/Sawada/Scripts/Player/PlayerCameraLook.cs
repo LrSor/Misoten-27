@@ -6,40 +6,41 @@ public class PlayerCameraLook : MonoBehaviour
 {
     [Header("Target")]
     [SerializeField]
-    private Transform cameraTarget;
+    private Transform m_cameraTarget;
 
     [Header("Sensitivity")]
     [SerializeField]
-    private float mouseSensitivity = 0.08f;
+    private float m_mouseSensitivity = 0.08f;
 
     [SerializeField]
-    private float gamepadSensitivity = 180.0f;
+    private float m_gamepadSensitivity = 180.0f;
 
     [Header("Vertical Limit")]
     [SerializeField]
-    private float minPitch = -40.0f;
+    private float m_minPitch = -40.0f;
 
     [SerializeField]
-    private float maxPitch = 70.0f;
+    private float m_maxPitch = 70.0f;
 
     [Header("Control Scheme")]
     [SerializeField]
-    private string gamepadSchemeName = "Gamepad";
+    private string m_gamepadSchemeName = "Gamepad";
 
     [SerializeField]
-    private string keyboardMouseSchemeName = "Keyboard&Mouse";
+    private string m_keyboardMouseSchemeName = "Keyboard&Mouse";
 
-    private PlayerInput playerInput;
-    private InputAction lookAction;
+    private PlayerInput m_playerInput;
+    private InputAction m_lookAction;
 
-    private float yaw;
-    private float pitch;
+    private float m_yaw;
+    private float m_pitch;
+
 
     private void Awake()
     {
-        playerInput = GetComponent<PlayerInput>();
+        m_playerInput = GetComponent<PlayerInput>();
 
-        lookAction = playerInput.actions.FindAction(
+        m_lookAction = m_playerInput.actions.FindAction(
             "Look",
             true
         );
@@ -47,81 +48,51 @@ public class PlayerCameraLook : MonoBehaviour
 
     private void Start()
     {
-        Vector3 angles = cameraTarget.eulerAngles;
+        Vector3 angles = m_cameraTarget.eulerAngles;
 
-        yaw = angles.y;
-        pitch = NormalizeAngle(angles.x);
+        m_yaw = angles.y;
+        m_pitch = NormalizeAngle(angles.x);
     }
 
-    private void Update()
+    public void Look()
     {
-        if (!playerInput.enabled) return;   // 作業用
+        if (!m_playerInput.enabled) return;   // 作業用
 
-        Vector2 lookInput =
-            lookAction.ReadValue<Vector2>();
+        Vector2 lookInput = m_lookAction.ReadValue<Vector2>();
 
-        bool usingGamepad =
-            playerInput.currentControlScheme
-            == gamepadSchemeName;
+        bool usingGamepad = m_playerInput.currentControlScheme == m_gamepadSchemeName;
 
         if (usingGamepad)
         {
             // Stickは -1 ～ +1 なので
             // 時間を掛けて「度/秒」にする
-            yaw +=
-                lookInput.x *
-                gamepadSensitivity *
-                Time.deltaTime;
-
-            pitch -=
-                lookInput.y *
-                gamepadSensitivity *
-                Time.deltaTime;
+            m_yaw += lookInput.x * m_gamepadSensitivity * Time.deltaTime;
+            m_pitch -= lookInput.y * m_gamepadSensitivity * Time.deltaTime;
         }
         else
         {
             // Mouse Deltaはフレーム内の移動量なので
             // Time.deltaTimeを掛けない
-            yaw +=
-                lookInput.x *
-                mouseSensitivity;
-
-            pitch -=
-                lookInput.y *
-                mouseSensitivity;
+            m_yaw += lookInput.x * m_mouseSensitivity;
+            m_pitch -= lookInput.y * m_mouseSensitivity;
         }
 
-        pitch =
-            Mathf.Clamp(
-                pitch,
-                minPitch,
-                maxPitch
-            );
+        m_pitch = Mathf.Clamp(m_pitch, m_minPitch, m_maxPitch);
 
-        cameraTarget.rotation =
-            Quaternion.Euler(
-                pitch,
-                yaw,
-                0.0f
-            );
+        m_cameraTarget.rotation = Quaternion.Euler(m_pitch, m_yaw, 0.0f);
 
         HandleCursor();
     }
 
     private void HandleCursor()
     {
-        if (playerInput.currentControlScheme
-            != keyboardMouseSchemeName)
-        {
+        if (m_playerInput.currentControlScheme != m_keyboardMouseSchemeName)
             return;
-        }
 
         if (Keyboard.current != null &&
             Keyboard.current.escapeKey.wasPressedThisFrame)
         {
-            Cursor.lockState =
-                CursorLockMode.None;
-
+            Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
 
             return;
@@ -130,9 +101,7 @@ public class PlayerCameraLook : MonoBehaviour
         if (Mouse.current != null &&
             Mouse.current.leftButton.wasPressedThisFrame)
         {
-            Cursor.lockState =
-                CursorLockMode.Locked;
-
+            Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
         }
     }
@@ -140,9 +109,7 @@ public class PlayerCameraLook : MonoBehaviour
     private float NormalizeAngle(float angle)
     {
         if (angle > 180.0f)
-        {
             angle -= 360.0f;
-        }
 
         return angle;
     }
