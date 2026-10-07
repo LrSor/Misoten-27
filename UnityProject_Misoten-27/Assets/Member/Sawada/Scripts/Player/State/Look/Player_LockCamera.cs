@@ -1,13 +1,13 @@
 using UnityEngine;
 
-public class Player_FreeCamera : BaseState
+public class Player_LockCamera : BaseState
 {
-    [SerializeField]PlayerCameraLook m_controller;
+    PlayerCameraController m_controller;
     StateMachine m_stateMachine;
 
     public override void InitState()
     {
-        //m_controller = GetComponent<PlayerCameraLook>();
+        m_controller = GetComponent<PlayerCameraController>();
         m_stateMachine = GetComponent<StateMachine>();
     }
 
@@ -19,14 +19,11 @@ public class Player_FreeCamera : BaseState
     {
         if (true)
         {
-            //m_stateMachine.ChangeState<Player_LockCamera>();
+            //m_stateMachine.ChangeState<>();
         }
     }
 
     public override void FixedUpdateState()
     {
-        // 視界の回転
-        //m_controller.HandleCursor();
-        m_controller.Look();
     }
 }

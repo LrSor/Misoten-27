@@ -1,39 +1,31 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-[RequireComponent(typeof(PlayerInput))]
 public class PlayerCameraController : MonoBehaviour
 {
     [Header("Target")]
-    [SerializeField]
-    private Transform m_cameraTarget;
+    [SerializeField] Transform m_cameraTarget;
 
     [Header("Sensitivity")]
-    [SerializeField]
-    private float m_mouseSensitivity = 0.08f;
+    [SerializeField] float m_mouseSensitivity = 0.08f;
 
-    [SerializeField]
-    private float m_gamepadSensitivity = 180.0f;
+    [SerializeField] float m_gamepadSensitivity = 180.0f;
 
     [Header("Vertical Limit")]
-    [SerializeField]
-    private float m_minPitch = -40.0f;
+    [SerializeField] float m_minPitch = -40.0f;
 
-    [SerializeField]
-    private float m_maxPitch = 70.0f;
+    [SerializeField] float m_maxPitch = 70.0f;
 
     [Header("Control Scheme")]
-    [SerializeField]
-    private string m_gamepadSchemeName = "Gamepad";
+    [SerializeField] string m_gamepadSchemeName = "Gamepad";
 
-    [SerializeField]
-    private string m_keyboardMouseSchemeName = "Keyboard&Mouse";
+    [SerializeField] string m_keyboardMouseSchemeName = "Keyboard&Mouse";
 
-    private PlayerInput m_playerInput;
-    private InputAction m_lookAction;
+    [SerializeField] PlayerInput m_playerInput;
+    InputAction m_lookAction;
 
-    private float m_yaw;
-    private float m_pitch;
+    float m_yaw;
+    float m_pitch;
 
 
     // =========================================================
@@ -112,7 +104,6 @@ public class PlayerCameraController : MonoBehaviour
         // ---------------------------------------------------------
         // Vertical Limit
         // ---------------------------------------------------------
-
         m_pitch = Mathf.Clamp(
             m_pitch,
             m_minPitch,
@@ -122,7 +113,6 @@ public class PlayerCameraController : MonoBehaviour
         // ---------------------------------------------------------
         // Rotation
         // ---------------------------------------------------------
-
         m_cameraTarget.rotation =
             Quaternion.Euler(
                 m_pitch,
@@ -131,7 +121,6 @@ public class PlayerCameraController : MonoBehaviour
     }
 
 
-    /// <summary>
     /// マウスカーソルのロック状態を管理する。
     ///
     /// Escape
@@ -142,7 +131,6 @@ public class PlayerCameraController : MonoBehaviour
     ///
     /// Keyboard&Mouse使用時のみ処理する。
     /// StateのUpdateから呼び出す。
-    /// </summary>
     public void HandleCursor()
     {
         if (m_playerInput == null ||
@@ -163,7 +151,6 @@ public class PlayerCameraController : MonoBehaviour
         // ---------------------------------------------------------
         // Unlock Cursor
         // ---------------------------------------------------------
-
         if (Keyboard.current != null &&
             Keyboard.current.escapeKey.wasPressedThisFrame)
         {
@@ -179,7 +166,6 @@ public class PlayerCameraController : MonoBehaviour
         // ---------------------------------------------------------
         // Lock Cursor
         // ---------------------------------------------------------
-
         if (Mouse.current != null &&
             Mouse.current.leftButton.wasPressedThisFrame)
         {
@@ -194,16 +180,15 @@ public class PlayerCameraController : MonoBehaviour
     // =========================================================
     // Unity
     // =========================================================
-
     private void Awake()
     {
         m_playerInput =
             GetComponent<PlayerInput>();
 
-        m_lookAction =
-            m_playerInput.actions.FindAction(
-                "Look",
-                true);
+        //m_lookAction =
+        //    m_playerInput.actions.FindAction(
+        //        "Look",
+        //        true);
     }
 
 
@@ -229,11 +214,8 @@ public class PlayerCameraController : MonoBehaviour
     // =========================================================
     // Private
     // =========================================================
-
-    /// <summary>
     /// Unityの0～360度表現を
     /// -180～180度付近の値へ変換する。
-    /// </summary>
     private float NormalizeAngle(float angle)
     {
         if (angle > 180.0f)
