@@ -18,15 +18,24 @@ public class Player_Walk : BaseState
 
     public override void UpdateState()
     {
-        if (!m_controller.HasMoveInput)
-        {
-            m_stateMachine.ChangeState<Player_Idle>();
-        }
     }
 
     public override void FixedUpdateState()
     {
+        // 移動と回転
         m_controller.Move(m_walkSpeed);
         m_controller.Rotate();
+
+        // 入力がない場合はIdleに遷移
+        if (!m_controller.HasMoveInput)
+        {
+            m_stateMachine.ChangeState<Player_Idle>();
+        }
+
+        // タックル状態へ遷移    仮pcテスト用
+        if (m_controller.PressSprint)
+        {
+            m_stateMachine.ChangeState<Player_Sprint>();
+        }
     }
 }

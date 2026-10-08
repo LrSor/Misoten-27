@@ -22,12 +22,12 @@ public class PlayerController : MonoBehaviour
     private Rigidbody m_rb;
     [SerializeField] private PlayerInput m_playerInput;
     private InputAction m_moveAction;
+    private InputAction m_sprintAction;
 
 
     // =========================================================
     // Public
     // =========================================================
-
     public Vector2 MoveInput
     {
         get
@@ -53,6 +53,14 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    public bool PressSprint // pcテスト用
+    {
+        get
+        {
+            return m_sprintAction.IsPressed();
+        }
+    }
+
 
     // =========================================================
     // Unity
@@ -64,6 +72,7 @@ public class PlayerController : MonoBehaviour
         //m_playerInput = GetComponent<PlayerInput>();
 
         m_moveAction = m_playerInput.actions.FindAction("Move", true);
+        m_sprintAction = m_playerInput.actions.FindAction("Sprint", true);
     }
 
 
@@ -87,14 +96,31 @@ public class PlayerController : MonoBehaviour
 
         float speedChange = hasInput ? m_acceleration : m_deceleration;
 
-        Debug.Log($"hasInput: {hasInput}, speedChange: {speedChange}");
         horizontalVelocity = Vector3.MoveTowards(
             horizontalVelocity, targetVelocity, speedChange * Time.fixedDeltaTime);
 
         if (horizontalVelocity.sqrMagnitude <= m_stopThreshold * m_stopThreshold)
-            { horizontalVelocity = Vector3.zero;
-        Debug.Log("Stopping...");
-        }
+            horizontalVelocity = Vector3.zero;
+
+        SetHorizontalVelocity(horizontalVelocity);
+    }
+    public void AutoMove(float maxSpeed, float minSpeed, float time, float timer)
+    {
+        if (m_movementReference == null)
+            return;
+
+        // 視点の方向を取得（上下方向は無視）
+        Vector3 moveDirection = Vector3.ProjectOnPlane(
+            m_movementReference.forward, Vector3.up).normalized;
+
+        // 経過時間から進行率を算出（0.0 ～ 1.0）
+        float t = Mathf.Clamp01(timer / time);
+
+        // maxSpeedからminSpeedへ徐々に減速
+        float currentSpeed = Mathf.Lerp(maxSpeed, minSpeed, t);
+
+        // 移動速度を設定
+        Vector3 horizontalVelocity = moveDirection * currentSpeed;
 
         SetHorizontalVelocity(horizontalVelocity);
     }

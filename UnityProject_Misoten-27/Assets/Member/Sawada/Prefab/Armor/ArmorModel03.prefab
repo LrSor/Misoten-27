@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 4070338820495661413}
   - component: {fileID: 1500327214676437734}
   m_Layer: 0
-  m_Name: ArmorModel
+  m_Name: ArmorModel03
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -66,7 +66,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: bffe46b31e37f6045a814d59ae4d8cb7, type: 2}
+  - {fileID: 2100000, guid: 105a5c7c53c9e9c4b9f11f88b09522de, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

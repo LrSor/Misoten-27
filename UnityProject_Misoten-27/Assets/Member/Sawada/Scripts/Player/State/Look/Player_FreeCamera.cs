@@ -17,16 +17,11 @@ public class Player_FreeCamera : BaseState
 
     public override void UpdateState()
     {
-        if (true)
-        {
-            //m_stateMachine.ChangeState<Player_LockCamera>();
-        }
     }
 
     public override void FixedUpdateState()
     {
         // 視界の回転
-        //m_controller.HandleCursor();
         m_controller.Look();
     }
 }

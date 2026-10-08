@@ -329,6 +329,7 @@ GameObject:
   - component: {fileID: 9165444220983477422}
   - component: {fileID: 1948802285203675209}
   - component: {fileID: 379404387939404725}
+  - component: {fileID: 3107398066599127225}
   m_Layer: 6
   m_Name: Component
   m_TagString: Untagged
@@ -460,6 +461,21 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Player_Walk
   m_walkSpeed: 5
+--- !u!114 &3107398066599127225
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4500519972888530110}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d7bef18e43974f1449345ca434a1d065, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Player_Sprint
+  m_sprintMaxSpeed: 10
+  m_sprintMinSpeed: 5
+  m_sprintTime: 5
 --- !u!1 &4811325795309357665
 GameObject:
   m_ObjectHideFlags: 0
@@ -529,6 +545,10 @@ MonoBehaviour:
       m_Calls: []
     m_ActionId: e11e3b93-d23f-4b59-ba39-7ece0b73ed12
     m_ActionName: 'Player/Look[/Mouse/delta]'
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: 34830f4a-c7b1-4f14-9b1c-8092b7ec40ae
+    m_ActionName: 'Player/Sprint[/Keyboard/leftShift]'
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: Gamepad
   m_DefaultActionMap: Player

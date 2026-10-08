@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 43bc9983406b7b840987089ede354eb7, type: 3}
-  m_Name: BaseArmor
+  m_Name: BaseArmor01
   m_EditorClassIdentifier: Assembly-CSharp::BaseArmorSO
   m_modelPrefab: {fileID: 7080787473152318111, guid: 321c3db12858d68478f9ccac3642c21c, type: 3}
   m_color01: {r: 1, g: 0, b: 0, a: 1}
