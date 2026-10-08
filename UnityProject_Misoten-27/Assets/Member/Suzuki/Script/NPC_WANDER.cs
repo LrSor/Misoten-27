@@ -3,6 +3,14 @@ using UnityEngine.AI;
 
 public class NPC_WANDER : MonoBehaviour
 {
+    enum NPC_ACTION
+    {
+        WALK,
+        WAIT,
+        LOOK_AROUND,
+        REST
+    }
+
     [Header("ウェイポイント")]
     [SerializeField]
     private Transform[] m_wayPoints;
@@ -17,47 +25,226 @@ public class NPC_WANDER : MonoBehaviour
     [SerializeField]
     private float m_maxWaitTime = 4f;
 
+    [Header("周囲を見る")]
+    [SerializeField]
+    private float m_lookAroundTime = 3f;
+
+    [SerializeField]
+    private float m_lookAroundAngle = 90f;
+
+    [Header("長めに休む")]
+    [SerializeField]
+    private float m_minRestTime = 5f;
+
+    [SerializeField]
+    private float m_maxRestTime = 10f;
+
     private NavMeshAgent m_navMeshAgent;
 
-    private float m_waitTimer;
-    private bool m_waitFlag;
+    private NPC_ACTION m_currentAction;
+
+    private float m_actionTimer;
 
     private int m_currentWayPointIndex = -1;
 
+    private float m_lookStartAngle;
+    private float m_lookTargetAngle;
+
     void Start()
     {
-        m_navMeshAgent = GetComponent<NavMeshAgent>();
+        m_navMeshAgent =
+            GetComponent<NavMeshAgent>();
 
-        MoveToNextWayPoint();
+        StartWalk();
     }
 
     void Update()
     {
-        // 待機中
-        if (m_waitFlag)
+        switch (m_currentAction)
         {
-            m_waitTimer -= Time.deltaTime;
+            case NPC_ACTION.WALK:
+                UpdateWalk();
+                break;
 
-            if (m_waitTimer <= 0f)
-            {
-                m_waitFlag = false;
+            case NPC_ACTION.WAIT:
+                UpdateWait();
+                break;
 
-                m_navMeshAgent.isStopped = false;
+            case NPC_ACTION.LOOK_AROUND:
+                UpdateLookAround();
+                break;
 
-                MoveToNextWayPoint();
-            }
+            case NPC_ACTION.REST:
+                UpdateRest();
+                break;
+        }
+    }
 
+    //==================================================
+    // WALK
+    //==================================================
+
+    void StartWalk()
+    {
+        m_currentAction = NPC_ACTION.WALK;
+
+        m_navMeshAgent.isStopped = false;
+
+        MoveToNextWayPoint();
+    }
+
+    void UpdateWalk()
+    {
+        if (m_navMeshAgent.pathPending)
+        {
             return;
         }
 
-        // Waypointに到着したか確認
-        if (!m_navMeshAgent.pathPending &&
-            m_navMeshAgent.remainingDistance <=
+        if (m_navMeshAgent.remainingDistance <=
             m_navMeshAgent.stoppingDistance)
         {
-            StartWaiting();
+            StartNextAction();
         }
     }
+
+    //==================================================
+    // WAIT
+    //==================================================
+
+    void StartWait()
+    {
+        m_currentAction = NPC_ACTION.WAIT;
+
+        m_actionTimer =
+            Random.Range(
+                m_minWaitTime,
+                m_maxWaitTime);
+
+        m_navMeshAgent.isStopped = true;
+    }
+
+    void UpdateWait()
+    {
+        m_actionTimer -= Time.deltaTime;
+
+        if (m_actionTimer <= 0f)
+        {
+            StartNextAction();
+        }
+    }
+
+    //==================================================
+    // LOOK AROUND
+    //==================================================
+
+    void StartLookAround()
+    {
+        m_currentAction =
+            NPC_ACTION.LOOK_AROUND;
+
+        m_actionTimer =
+            m_lookAroundTime;
+
+        m_navMeshAgent.isStopped = true;
+
+        m_lookStartAngle =
+            transform.eulerAngles.y;
+
+        m_lookTargetAngle =
+            m_lookStartAngle +
+            Random.Range(
+                -m_lookAroundAngle,
+                m_lookAroundAngle);
+    }
+
+    void UpdateLookAround()
+    {
+        m_actionTimer -= Time.deltaTime;
+
+        float lookProgress =
+            1f -
+            (m_actionTimer /
+            m_lookAroundTime);
+
+        float currentAngle =
+            Mathf.LerpAngle(
+                m_lookStartAngle,
+                m_lookTargetAngle,
+                lookProgress);
+
+        transform.rotation =
+            Quaternion.Euler(
+                0f,
+                currentAngle,
+                0f);
+
+        if (m_actionTimer <= 0f)
+        {
+            StartNextAction();
+        }
+    }
+
+    //==================================================
+    // REST
+    //==================================================
+
+    void StartRest()
+    {
+        m_currentAction =
+            NPC_ACTION.REST;
+
+        m_actionTimer =
+            Random.Range(
+                m_minRestTime,
+                m_maxRestTime);
+
+        m_navMeshAgent.isStopped = true;
+    }
+
+    void UpdateRest()
+    {
+        m_actionTimer -= Time.deltaTime;
+
+        if (m_actionTimer <= 0f)
+        {
+            StartNextAction();
+        }
+    }
+
+    //==================================================
+    // 次の行動を決める
+    //==================================================
+
+    void StartNextAction()
+    {
+        int actionIndex =
+            Random.Range(
+                0,
+                4);
+
+        switch (actionIndex)
+        {
+            case 0:
+                StartWalk();
+                break;
+
+            case 1:
+                StartWait();
+                break;
+
+            case 2:
+                StartLookAround();
+                break;
+
+            case 3:
+                StartRest();
+                break;
+        }
+    }
+
+    //==================================================
+    // Waypointへ移動
+    //==================================================
 
     void MoveToNextWayPoint()
     {
@@ -107,6 +294,10 @@ public class NPC_WANDER : MonoBehaviour
         }
     }
 
+    //==================================================
+    // 次のWaypointを探す
+    //==================================================
+
     int FindNextWayPoint()
     {
         int[] candidateWayPoints =
@@ -114,7 +305,14 @@ public class NPC_WANDER : MonoBehaviour
 
         int candidateCount = 0;
 
-        for (int i = 0; i < m_wayPoints.Length; i++)
+        float closestDistance =
+            Mathf.Infinity;
+
+        int closestWayPointIndex = -1;
+
+        for (int i = 0;
+            i < m_wayPoints.Length;
+            i++)
         {
             if (m_wayPoints[i] == null)
             {
@@ -132,38 +330,38 @@ public class NPC_WANDER : MonoBehaviour
                     transform.position,
                     m_wayPoints[i].position);
 
+            // 一番近いWaypointを記録
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+
+                closestWayPointIndex = i;
+            }
+
+            // 検索範囲内なら候補に追加
             if (distance <= m_wayPointSearchDistance)
             {
-                candidateWayPoints[candidateCount] =
-                    i;
+                candidateWayPoints[
+                    candidateCount] = i;
 
                 candidateCount++;
             }
         }
 
-        if (candidateCount == 0)
+        // 近くに候補がある場合
+        if (candidateCount > 0)
         {
-            return -1;
+            int randomIndex =
+                Random.Range(
+                    0,
+                    candidateCount);
+
+            return candidateWayPoints[
+                randomIndex];
         }
 
-        // 候補の中からランダムに選択
-        int randomIndex =
-            Random.Range(
-                0,
-                candidateCount);
-
-        return candidateWayPoints[randomIndex];
-    }
-
-    void StartWaiting()
-    {
-        m_waitFlag = true;
-
-        m_waitTimer =
-            Random.Range(
-                m_minWaitTime,
-                m_maxWaitTime);
-
-        m_navMeshAgent.isStopped = true;
+        // 近くに候補がなければ
+        // 一番近いWaypointを使用
+        return closestWayPointIndex;
     }
 }
