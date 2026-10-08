@@ -1,7 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-[RequireComponent(typeof(PlayerInput))]
 public class PlayerCameraLook : MonoBehaviour
 {
     [Header("Target")]
@@ -29,6 +28,7 @@ public class PlayerCameraLook : MonoBehaviour
     [SerializeField]
     private string m_keyboardMouseSchemeName = "Keyboard&Mouse";
 
+    [SerializeField]
     private PlayerInput m_playerInput;
     private InputAction m_lookAction;
 
@@ -38,7 +38,7 @@ public class PlayerCameraLook : MonoBehaviour
 
     private void Awake()
     {
-        m_playerInput = GetComponent<PlayerInput>();
+        //m_playerInput = GetComponent<PlayerInput>();
 
         m_lookAction = m_playerInput.actions.FindAction(
             "Look",

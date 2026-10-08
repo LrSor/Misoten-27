@@ -1,8 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-[RequireComponent(typeof(Rigidbody))]
-[RequireComponent(typeof(PlayerInput))]
 public class PlayerController : MonoBehaviour
 {
     [Header("Move")]
@@ -22,7 +20,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private Transform m_movementReference;
 
     private Rigidbody m_rb;
-    private PlayerInput m_playerInput;
+    [SerializeField] private PlayerInput m_playerInput;
     private InputAction m_moveAction;
 
 
@@ -63,7 +61,7 @@ public class PlayerController : MonoBehaviour
     private void Awake()
     {
         m_rb = GetComponent<Rigidbody>();
-        m_playerInput = GetComponent<PlayerInput>();
+        //m_playerInput = GetComponent<PlayerInput>();
 
         m_moveAction = m_playerInput.actions.FindAction("Move", true);
     }
@@ -89,11 +87,14 @@ public class PlayerController : MonoBehaviour
 
         float speedChange = hasInput ? m_acceleration : m_deceleration;
 
+        Debug.Log($"hasInput: {hasInput}, speedChange: {speedChange}");
         horizontalVelocity = Vector3.MoveTowards(
             horizontalVelocity, targetVelocity, speedChange * Time.fixedDeltaTime);
 
         if (horizontalVelocity.sqrMagnitude <= m_stopThreshold * m_stopThreshold)
-            horizontalVelocity = Vector3.zero;
+            { horizontalVelocity = Vector3.zero;
+        Debug.Log("Stopping...");
+        }
 
         SetHorizontalVelocity(horizontalVelocity);
     }
