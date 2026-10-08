@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
@@ -20,6 +20,11 @@ public class JoyconManager: MonoBehaviour
     public List<Joycon> j; // Array of all connected Joy-Cons
     static JoyconManager instance;
 
+#if UNITY_EDITOR
+    [Header("デバッグ用キーボード操作(チェックでキーボード操作有効)")]
+    [SerializeField] private bool m_isKeyboardPlay = false;
+#endif
+
     public static JoyconManager Instance
     {
         get { return instance; }
@@ -27,6 +32,19 @@ public class JoyconManager: MonoBehaviour
 
     void Awake()
     {
+        //キーボード操作有効の場合、JoyconManagerの停止
+#if UNITY_EDITOR
+        if (m_isKeyboardPlay)
+        {
+            Debug.Log("デバッグ用キーボード操作有効: JoyconManagerを停止");
+            enabled = false;
+            return;
+        }
+        else
+        {
+            Debug.Log("デバッグ用キーボード操作無効: JoyconManagerを実行");
+        }
+#endif
         if (instance != null) Destroy(gameObject);
         instance = this;
 		int i = 0;
@@ -95,9 +113,21 @@ public class JoyconManager: MonoBehaviour
 
     void OnApplicationQuit()
     {
-		for (int i = 0; i < j.Count; ++i)
+#if UNITY_EDITOR
+        if (m_isKeyboardPlay)
+            return;
+#endif
+        for (int i = 0; i < j.Count; ++i)
 		{
 			j[i].Detach ();
 		}
     }
+
+    //デバッグ用
+#if UNITY_EDITOR
+    public bool GetIsKeyboardPlay()
+    {
+        return m_isKeyboardPlay;
+    }
+#endif
 }
