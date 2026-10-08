@@ -1,7 +1,12 @@
+using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.AI;
 
-public class NPC_WANDER : MonoBehaviour
+//==================================================
+// ランダムに歩き回る NPC
+// 近くのウェイポイントへ歩く / 待つ / 見回す / 休む をランダムに繰り返す
+// ウェイポイントは予約制で、他の NPC と同じ場所には向かわない
+//==================================================
+public class NPC_WANDER : NPC_BASE
 {
     enum NPC_ACTION
     {
@@ -9,6 +14,24 @@ public class NPC_WANDER : MonoBehaviour
         WAIT,
         LOOK_AROUND,
         REST
+    }
+
+    // NPC_ACTION の数（StartNextAction の抽選用）
+    const int ACTION_COUNT = 4;
+
+    //==================================================
+    // ウェイポイント予約（全 NPC_WANDER で共有）
+    // key: ウェイポイント / value: 予約している NPC
+    //==================================================
+
+    private static readonly Dictionary<Transform, NPC_WANDER> s_reservations =
+        new Dictionary<Transform, NPC_WANDER>();
+
+    // ドメインリロード無しで再生した場合に前回の予約が残らないようにする
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetReservations()
+    {
+        s_reservations.Clear();
     }
 
     [Header("ウェイポイント")]
@@ -39,26 +62,35 @@ public class NPC_WANDER : MonoBehaviour
     [SerializeField]
     private float m_maxRestTime = 10f;
 
-    private NavMeshAgent m_navMeshAgent;
-
     private NPC_ACTION m_currentAction;
 
     private float m_actionTimer;
 
     private int m_currentWayPointIndex = -1;
 
+    // 自分が予約中のウェイポイント
+    private Transform m_reservedWayPoint;
+
     private float m_lookStartAngle;
     private float m_lookTargetAngle;
 
+    // 候補ウェイポイント（毎回 new しないよう使い回す）
+    private readonly List<int> m_candidateWayPoints =
+        new List<int>();
+
     void Start()
     {
-        m_navMeshAgent =
-            GetComponent<NavMeshAgent>();
-
         StartWalk();
     }
 
-    void Update()
+    protected override void OnDisable()
+    {
+        base.OnDisable();
+
+        ReleaseWayPoint();
+    }
+
+    protected override void OnUpdate()
     {
         switch (m_currentAction)
         {
@@ -86,24 +118,31 @@ public class NPC_WANDER : MonoBehaviour
 
     void StartWalk()
     {
+        // 行き先が決まらなかったら歩かずに待機する
+        // （毎フレーム警告が出続けるのを防ぐ）
+        if (!MoveToNextWayPoint())
+        {
+            StartWait();
+            return;
+        }
+
         m_currentAction = NPC_ACTION.WALK;
-
-        m_navMeshAgent.isStopped = false;
-
-        MoveToNextWayPoint();
     }
 
     void UpdateWalk()
     {
-        if (m_navMeshAgent.pathPending)
+        switch (UpdateMove())
         {
-            return;
-        }
+            case MOVE_STATUS.ARRIVED:
+                // 到着後もそのウェイポイントにいる間は予約を持ち続ける
+                StartNextAction();
+                break;
 
-        if (m_navMeshAgent.remainingDistance <=
-            m_navMeshAgent.stoppingDistance)
-        {
-            StartNextAction();
+            case MOVE_STATUS.FAILED:
+                // たどり着けなかった場所は他の NPC に譲る
+                ReleaseWayPoint();
+                StartNextAction();
+                break;
         }
     }
 
@@ -120,7 +159,7 @@ public class NPC_WANDER : MonoBehaviour
                 m_minWaitTime,
                 m_maxWaitTime);
 
-        m_navMeshAgent.isStopped = true;
+        StopAgent();
     }
 
     void UpdateWait()
@@ -145,7 +184,11 @@ public class NPC_WANDER : MonoBehaviour
         m_actionTimer =
             m_lookAroundTime;
 
-        m_navMeshAgent.isStopped = true;
+        StopAgent();
+
+        // Agent の自動回転と競合しないよう一時的に止める
+        // （次に歩き始めるときに StartMove で元に戻る）
+        m_navMeshAgent.updateRotation = false;
 
         m_lookStartAngle =
             transform.eulerAngles.y;
@@ -161,10 +204,11 @@ public class NPC_WANDER : MonoBehaviour
     {
         m_actionTimer -= Time.deltaTime;
 
+        // m_lookAroundTime が 0 のときの 0 除算を防ぐ
         float lookProgress =
-            1f -
-            (m_actionTimer /
-            m_lookAroundTime);
+            m_lookAroundTime > 0f
+                ? 1f - (m_actionTimer / m_lookAroundTime)
+                : 1f;
 
         float currentAngle =
             Mathf.LerpAngle(
@@ -198,7 +242,7 @@ public class NPC_WANDER : MonoBehaviour
                 m_minRestTime,
                 m_maxRestTime);
 
-        m_navMeshAgent.isStopped = true;
+        StopAgent();
     }
 
     void UpdateRest()
@@ -220,90 +264,129 @@ public class NPC_WANDER : MonoBehaviour
         int actionIndex =
             Random.Range(
                 0,
-                4);
+                ACTION_COUNT);
 
-        switch (actionIndex)
+        switch ((NPC_ACTION)actionIndex)
         {
-            case 0:
+            case NPC_ACTION.WALK:
                 StartWalk();
                 break;
 
-            case 1:
+            case NPC_ACTION.WAIT:
                 StartWait();
                 break;
 
-            case 2:
+            case NPC_ACTION.LOOK_AROUND:
                 StartLookAround();
                 break;
 
-            case 3:
+            case NPC_ACTION.REST:
                 StartRest();
                 break;
         }
     }
 
     //==================================================
-    // Waypointへ移動
+    // ウェイポイントの予約
     //==================================================
 
-    void MoveToNextWayPoint()
+    bool IsReservedByOther(Transform wayPoint)
+    {
+        NPC_WANDER owner;
+
+        if (!s_reservations.TryGetValue(wayPoint, out owner))
+        {
+            return false;
+        }
+
+        // 予約者が破棄済みなら空いている扱い
+        if (owner == null)
+        {
+            s_reservations.Remove(wayPoint);
+            return false;
+        }
+
+        return owner != this;
+    }
+
+    void ReserveWayPoint(Transform wayPoint)
+    {
+        ReleaseWayPoint();
+
+        s_reservations[wayPoint] = this;
+
+        m_reservedWayPoint = wayPoint;
+    }
+
+    void ReleaseWayPoint()
+    {
+        if (m_reservedWayPoint == null)
+        {
+            return;
+        }
+
+        NPC_WANDER owner;
+
+        if (s_reservations.TryGetValue(m_reservedWayPoint, out owner) &&
+            owner == this)
+        {
+            s_reservations.Remove(m_reservedWayPoint);
+        }
+
+        m_reservedWayPoint = null;
+    }
+
+    //==================================================
+    // Waypointへ移動
+    // 目的地を設定できたら true
+    //==================================================
+
+    bool MoveToNextWayPoint()
     {
         if (m_wayPoints == null ||
             m_wayPoints.Length == 0)
         {
             Debug.LogWarning(
-                "ウェイポイントが設定されていません。");
+                "ウェイポイントが設定されていません: " + name);
 
-            return;
+            return false;
         }
 
         int nextWayPointIndex =
             FindNextWayPoint();
 
+        // 空いているウェイポイントが無い
+        // （他の NPC が全部予約中など。少し待てば空くので警告は出さない）
         if (nextWayPointIndex == -1)
         {
-            Debug.LogWarning(
-                "移動可能なウェイポイントが見つかりません。");
-
-            return;
+            return false;
         }
 
+        Transform nextWayPoint =
+            m_wayPoints[nextWayPointIndex];
+
+        if (!StartMove(nextWayPoint.position))
+        {
+            return false;
+        }
+
+        // 新しい行き先を予約（前の場所の予約はここで解除される）
         m_currentWayPointIndex =
             nextWayPointIndex;
 
-        Transform nextWayPoint =
-            m_wayPoints[
-                m_currentWayPointIndex];
+        ReserveWayPoint(nextWayPoint);
 
-        NavMeshHit navMeshHit;
-
-        if (NavMesh.SamplePosition(
-            nextWayPoint.position,
-            out navMeshHit,
-            2f,
-            NavMesh.AllAreas))
-        {
-            m_navMeshAgent.SetDestination(
-                navMeshHit.position);
-        }
-        else
-        {
-            Debug.LogWarning(
-                "ウェイポイントがNavMesh上にありません: "
-                + nextWayPoint.name);
-        }
+        return true;
     }
 
     //==================================================
     // 次のWaypointを探す
+    // 他の NPC が予約中のウェイポイントは選ばない
     //==================================================
 
     int FindNextWayPoint()
     {
-        int[] candidateWayPoints =
-            new int[m_wayPoints.Length];
-
-        int candidateCount = 0;
+        m_candidateWayPoints.Clear();
 
         float closestDistance =
             Mathf.Infinity;
@@ -325,6 +408,12 @@ public class NPC_WANDER : MonoBehaviour
                 continue;
             }
 
+            // 他の NPC が向かっている / 立っている場所は除外
+            if (IsReservedByOther(m_wayPoints[i]))
+            {
+                continue;
+            }
+
             float distance =
                 Vector3.Distance(
                     transform.position,
@@ -341,27 +430,85 @@ public class NPC_WANDER : MonoBehaviour
             // 検索範囲内なら候補に追加
             if (distance <= m_wayPointSearchDistance)
             {
-                candidateWayPoints[
-                    candidateCount] = i;
-
-                candidateCount++;
+                m_candidateWayPoints.Add(i);
             }
         }
 
         // 近くに候補がある場合
-        if (candidateCount > 0)
+        if (m_candidateWayPoints.Count > 0)
         {
             int randomIndex =
                 Random.Range(
                     0,
-                    candidateCount);
+                    m_candidateWayPoints.Count);
 
-            return candidateWayPoints[
+            return m_candidateWayPoints[
                 randomIndex];
         }
 
         // 近くに候補がなければ
         // 一番近いWaypointを使用
         return closestWayPointIndex;
+    }
+
+    //==================================================
+    // Inspector の入力ミス対策
+    //==================================================
+
+    protected override void OnValidate()
+    {
+        base.OnValidate();
+
+        m_wayPointSearchDistance = Mathf.Max(0f, m_wayPointSearchDistance);
+        m_lookAroundTime = Mathf.Max(0f, m_lookAroundTime);
+
+        m_minWaitTime = Mathf.Max(0f, m_minWaitTime);
+        m_maxWaitTime = Mathf.Max(m_minWaitTime, m_maxWaitTime);
+
+        m_minRestTime = Mathf.Max(0f, m_minRestTime);
+        m_maxRestTime = Mathf.Max(m_minRestTime, m_maxRestTime);
+    }
+
+    //==================================================
+    // デバッグ表示（NPC を選択したときだけ）
+    //==================================================
+
+    void OnDrawGizmosSelected()
+    {
+        // ウェイポイント検索範囲
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(
+            transform.position,
+            m_wayPointSearchDistance);
+
+        // 現在の目的地
+        if (m_wayPoints != null &&
+            m_currentWayPointIndex >= 0 &&
+            m_currentWayPointIndex < m_wayPoints.Length &&
+            m_wayPoints[m_currentWayPointIndex] != null)
+        {
+            Gizmos.color = Color.cyan;
+            Gizmos.DrawLine(
+                transform.position,
+                m_wayPoints[m_currentWayPointIndex].position);
+        }
+
+        // 予約中のウェイポイント（再生中のみ）
+        if (Application.isPlaying)
+        {
+            Gizmos.color = Color.red;
+
+            foreach (KeyValuePair<Transform, NPC_WANDER> pair in s_reservations)
+            {
+                if (pair.Key == null)
+                {
+                    continue;
+                }
+
+                Gizmos.DrawWireSphere(
+                    pair.Key.position,
+                    0.5f);
+            }
+        }
     }
 }

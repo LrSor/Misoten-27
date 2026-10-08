@@ -401,8 +401,8 @@ Transform:
   m_GameObject: {fileID: 209382420}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.5, z: 8.2}
-  m_LocalScale: {x: 3, y: 1, z: 3}
+  m_LocalPosition: {x: 0, y: 0.5, z: 7.5}
+  m_LocalScale: {x: 7, y: 1, z: 3}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -640,8 +640,8 @@ Transform:
   m_GameObject: {fileID: 308978608}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 14.61, y: 0.5, z: 8.2}
-  m_LocalScale: {x: 3, y: 1, z: 3}
+  m_LocalPosition: {x: 15, y: 0.5, z: 7.5}
+  m_LocalScale: {x: 7, y: 1, z: 3}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -798,7 +798,7 @@ GameObject:
   - component: {fileID: 456805635}
   - component: {fileID: 456805634}
   m_Layer: 0
-  m_Name: NPC_01
+  m_Name: NPC_Wander
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -893,7 +893,7 @@ Transform:
   m_GameObject: {fileID: 456805629}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -7.9, y: 1, z: 0}
+  m_LocalPosition: {x: -7.7, y: 1, z: 6.98}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 1
   m_Children:
@@ -913,6 +913,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: acdaeaddccc97cc45b9a6a0d3e4b76bb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NPC_WANDER
+  m_navMeshSampleDistance: 2
+  m_maxWalkTime: 15
+  m_minWalkSpeed: 2.6
+  m_maxWalkSpeed: 3.4
+  m_bobHeight: 0.05
+  m_stepsPerMeter: 0.9
   m_wayPoints:
   - {fileID: 783623131}
   - {fileID: 819423432}
@@ -923,7 +929,7 @@ MonoBehaviour:
   - {fileID: 665817813}
   - {fileID: 43014457}
   - {fileID: 1145371738}
-  m_wayPointSearchDistance: 20
+  m_wayPointSearchDistance: 18
   m_minWaitTime: 1
   m_maxWaitTime: 4
   m_lookAroundTime: 3
@@ -1860,8 +1866,8 @@ Transform:
   m_GameObject: {fileID: 969553003}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -15.8, y: 0.5, z: -6.6}
-  m_LocalScale: {x: 3, y: 1, z: 3}
+  m_LocalPosition: {x: -15, y: 0.5, z: -7.5}
+  m_LocalScale: {x: 7, y: 1, z: 3}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -1972,8 +1978,8 @@ Transform:
   m_GameObject: {fileID: 1020583781}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.5, z: -6.6}
-  m_LocalScale: {x: 3, y: 1, z: 3}
+  m_LocalPosition: {x: 0, y: 0.5, z: -7.5}
+  m_LocalScale: {x: 7, y: 1, z: 3}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -2113,43 +2119,15 @@ GameObject:
   - component: {fileID: 1192753325}
   - component: {fileID: 1192753324}
   - component: {fileID: 1192753323}
-  - component: {fileID: 1192753322}
+  - component: {fileID: 1192753329}
+  - component: {fileID: 1192753328}
   m_Layer: 0
-  m_Name: NPC_03
+  m_Name: NPC_Vanish
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1192753322
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1192753321}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: acdaeaddccc97cc45b9a6a0d3e4b76bb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::NPC_WANDER
-  m_wayPoints:
-  - {fileID: 783623131}
-  - {fileID: 819423432}
-  - {fileID: 1781225497}
-  - {fileID: 47434903}
-  - {fileID: 2049471069}
-  - {fileID: 896923810}
-  - {fileID: 665817813}
-  - {fileID: 43014457}
-  - {fileID: 1145371738}
-  m_wayPointSearchDistance: 20
-  m_minWaitTime: 1
-  m_maxWaitTime: 4
-  m_lookAroundTime: 3
-  m_lookAroundAngle: 90
-  m_minRestTime: 3
-  m_maxRestTime: 5
 --- !u!195 &1192753323
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -2269,6 +2247,45 @@ Transform:
   - {fileID: 2131985293}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1192753328
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1192753321}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4ce6de71ccf2fc428d91345bc559ffd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NPC_VANISH
+  m_navMeshSampleDistance: 2
+  m_maxWalkTime: 15
+  m_minWalkSpeed: 2.6
+  m_maxWalkSpeed: 3.4
+  m_bobHeight: 0.05
+  m_stepsPerMeter: 0.9
+  m_destination: {fileID: 1781225497}
+  m_fadeMode: 0
+  m_fadeDuration: 1.5
+  m_fadeStartProgress: 0
+  m_destroyOnVanish: 1
+  m_onVanished:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &1192753329
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1192753321}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 348af27f3e1360846beffe4b056fef57, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NPC_FADER
+  m_shadowOffAlpha: 0.5
 --- !u!1 &1238638910
 GameObject:
   m_ObjectHideFlags: 0
@@ -2954,43 +2971,14 @@ GameObject:
   - component: {fileID: 1897352468}
   - component: {fileID: 1897352467}
   - component: {fileID: 1897352466}
-  - component: {fileID: 1897352465}
+  - component: {fileID: 1897352471}
   m_Layer: 0
-  m_Name: NPC_02
+  m_Name: NPC_Patrol
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1897352465
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1897352464}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: acdaeaddccc97cc45b9a6a0d3e4b76bb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::NPC_WANDER
-  m_wayPoints:
-  - {fileID: 783623131}
-  - {fileID: 819423432}
-  - {fileID: 1781225497}
-  - {fileID: 47434903}
-  - {fileID: 2049471069}
-  - {fileID: 896923810}
-  - {fileID: 665817813}
-  - {fileID: 43014457}
-  - {fileID: 1145371738}
-  m_wayPointSearchDistance: 20
-  m_minWaitTime: 1
-  m_maxWaitTime: 4
-  m_lookAroundTime: 3
-  m_lookAroundAngle: 90
-  m_minRestTime: 2
-  m_maxRestTime: 4
 --- !u!195 &1897352466
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -3110,6 +3098,30 @@ Transform:
   - {fileID: 155001132}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1897352471
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1897352464}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d967aaa99f65892489e0dba4395a5797, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NPC_PATROL
+  m_navMeshSampleDistance: 2
+  m_maxWalkTime: 15
+  m_minWalkSpeed: 2.6
+  m_maxWalkSpeed: 3.4
+  m_bobHeight: 0.05
+  m_stepsPerMeter: 0.9
+  m_wayPoints:
+  - {fileID: 783623131}
+  - {fileID: 1781225497}
+  m_loop: 1
+  m_minWaitTime: 0.5
+  m_maxWaitTime: 1.5
 --- !u!1 &2049471068
 GameObject:
   m_ObjectHideFlags: 0
