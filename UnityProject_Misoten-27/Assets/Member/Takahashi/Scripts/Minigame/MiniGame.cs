@@ -3,11 +3,11 @@ using System;
 using UnityEngine;
 using UnityEngine.UI;
 
-//ƒ~ƒjƒQ[ƒ€Šî’êƒNƒ‰ƒX
+//ãƒŸãƒ‹ã‚²ãƒ¼ãƒ åŸºåº•ã‚¯ãƒ©ã‚¹
 public class MiniGame : MonoBehaviour
 {
     //============================================================
-    // JoyConŠÖ˜A
+    // JoyConé–¢é€£
     //============================================================
     //protected static readonly Joycon.Button[] m_buttons =
     //    Enum.GetValues(typeof(Joycon.Button)) as Joycon.Button[];
@@ -21,7 +21,7 @@ public class MiniGame : MonoBehaviour
 
     protected bool m_isActive = false;
     protected bool m_isFinish = false;
-    protected float m_score = 0;
+    protected int m_score = 0;
 
     [SerializeField] MiniGameObject[] m_objects;
 
@@ -29,7 +29,7 @@ public class MiniGame : MonoBehaviour
     protected virtual void Start()
     {
         ////============================================================
-        //// JoyCon‰Šú‰»
+        //// JoyConåˆæœŸåŒ–
         ////============================================================
         //m_joycons = JoyconManager.Instance.j;
         
@@ -41,12 +41,12 @@ public class MiniGame : MonoBehaviour
     }
     public virtual void Activate()
     {
-        //•Ï”‰Šú‰»
+        //å¤‰æ•°åˆæœŸåŒ–
         m_isActive = true;
         m_isFinish = false;
         m_score = 0;
 
-        //ƒ~ƒjƒQ[ƒ€—pƒIƒuƒWƒFƒNƒg‚Ì‰Šú‰»
+        //ãƒŸãƒ‹ã‚²ãƒ¼ãƒ ç”¨ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã®åˆæœŸåŒ–
         foreach (var obj in m_objects)
         {
             obj.Activate();
@@ -55,10 +55,10 @@ public class MiniGame : MonoBehaviour
 
     public virtual void Deactivate()
     {
-        //ƒ~ƒjƒQ[ƒ€Às’†‚Ìƒtƒ‰ƒO‚ğ‹U‚É•ÏX
+        //ãƒŸãƒ‹ã‚²ãƒ¼ãƒ å®Ÿè¡Œä¸­ã®ãƒ•ãƒ©ã‚°ã‚’å½ã«å¤‰æ›´
         m_isActive = false;
 
-        //ƒ~ƒjƒQ[ƒ€—pƒIƒuƒWƒFƒNƒg‚ÌI—¹ˆ—
+        //ãƒŸãƒ‹ã‚²ãƒ¼ãƒ ç”¨ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã®çµ‚äº†å‡¦ç†
         foreach (var obj in m_objects)
         {
             obj.Deactivate();
@@ -67,7 +67,7 @@ public class MiniGame : MonoBehaviour
 
     public void FinishMiniGame()
     {
-        //ƒ~ƒjƒQ[ƒ€I—¹ƒtƒ‰ƒO
+        //ãƒŸãƒ‹ã‚²ãƒ¼ãƒ çµ‚äº†ãƒ•ãƒ©ã‚°
         m_isFinish = true;
     }
 
@@ -76,28 +76,34 @@ public class MiniGame : MonoBehaviour
         return m_isFinish;
     }
 
-    public float GetScore()
+    public int GetScore()
     {
         return m_score;
     }
 
+    public void SetScore(int score)
+    {
+        m_score = score;
+    }
+
     void Update()
     {
-        //ƒ~ƒjƒQ[ƒ€Às’†ƒtƒ‰ƒO‚ª‚½‚Á‚Ä‚¢‚éê‡Aƒ~ƒjƒQ[ƒ€XVŠÖ”‚ğÀs
+        //ãƒŸãƒ‹ã‚²ãƒ¼ãƒ å®Ÿè¡Œä¸­ãƒ•ãƒ©ã‚°ãŒãŸã£ã¦ã„ã‚‹å ´åˆã€ãƒŸãƒ‹ã‚²ãƒ¼ãƒ æ›´æ–°é–¢æ•°ã‚’å®Ÿè¡Œ
         if (!m_isActive)
         {
             return;
         }
 
         UpdateMiniGame();
+
     }
 
     protected virtual void UpdateMiniGame()
     {
-        // ƒ~ƒjƒQ[ƒ€—p‚ÌƒQ[ƒ€ƒ}ƒl[ƒWƒƒ[“I–ğŠ„
-        // §ŒÀŠÔ‚Ìƒ^ƒCƒ}[‚Æ‚©‚Í‚±‚±‚Å‚¢‚¢‚©‚à
+        // ãƒŸãƒ‹ã‚²ãƒ¼ãƒ ç”¨ã®ã‚²ãƒ¼ãƒ ãƒãƒãƒ¼ã‚¸ãƒ£ãƒ¼çš„å½¹å‰²
+        // åˆ¶é™æ™‚é–“ã®ã‚¿ã‚¤ãƒãƒ¼ã¨ã‹ã¯ã“ã“ã§ã„ã„ã‹ã‚‚
 
-        //ƒ~ƒjƒQ[ƒ€—pƒIƒuƒWƒFƒNƒg‚ÌXV
+        //ãƒŸãƒ‹ã‚²ãƒ¼ãƒ ç”¨ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã®æ›´æ–°
         foreach (var obj in m_objects)
         {
             obj.UpdateObject();
