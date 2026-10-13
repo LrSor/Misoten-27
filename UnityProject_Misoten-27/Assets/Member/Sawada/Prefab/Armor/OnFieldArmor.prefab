@@ -12,6 +12,8 @@ GameObject:
   - component: {fileID: 4376617560228413591}
   - component: {fileID: 6645042395383865309}
   - component: {fileID: 3083380832163861978}
+  - component: {fileID: 6894037300351000982}
+  - component: {fileID: 1129051434278642572}
   m_Layer: 0
   m_Name: OnFieldArmor
   m_TagString: FieldArmor
@@ -82,3 +84,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cb5615499995dec4db90065feed00581, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MoveFieldArmor
+--- !u!114 &6894037300351000982
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 697960221864330439}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d1d5802800d221a42bcd19faf2128cf6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ColliderFieldArmor
+--- !u!114 &1129051434278642572
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 697960221864330439}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ab3d31bfc0a161c4fa9eaaf7dc68e6ed, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PossessionArmor

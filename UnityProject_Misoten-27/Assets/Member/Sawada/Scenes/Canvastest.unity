@@ -586,7 +586,7 @@ GameObject:
   - component: {fileID: 1358883947}
   - component: {fileID: 1358883946}
   - component: {fileID: 1358883945}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: ItemPreviewCamera
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -794,7 +794,7 @@ GameObject:
   - component: {fileID: 1952601910}
   - component: {fileID: 1952601909}
   - component: {fileID: 1952601908}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: 3DItem
   m_TagString: Untagged
   m_Icon: {fileID: 0}
