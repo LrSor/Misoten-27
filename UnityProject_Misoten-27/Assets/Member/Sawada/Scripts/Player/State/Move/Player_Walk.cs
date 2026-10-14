@@ -3,12 +3,12 @@ using UnityEngine;
 public class Player_Walk : BaseState
 {
     [SerializeField] float m_walkSpeed = 5.0f;
-    PlayerController m_controller;
+    PlayerMoveController m_controller;
     StateMachine m_stateMachine;
 
     public override void InitState()
     {
-        m_controller = GetComponent<PlayerController>();
+        m_controller = GetComponent<PlayerMoveController>();
         m_stateMachine = GetComponent<StateMachine>();
     }
 

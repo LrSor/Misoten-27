@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class PlayerCameraLook : MonoBehaviour
+public class PlayerCameraLookController : MonoBehaviour
 {
     [Header("Target")]
     [SerializeField]

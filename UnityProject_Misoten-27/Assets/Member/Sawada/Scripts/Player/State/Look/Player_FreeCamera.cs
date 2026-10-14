@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class Player_FreeCamera : BaseState
 {
-    [SerializeField]PlayerCameraLook m_controller;
+    [SerializeField]PlayerCameraLookController m_controller;
     StateMachine m_stateMachine;
 
     public override void InitState()

@@ -4,12 +4,25 @@ public class ColliderFieldArmor : MonoBehaviour
 {
     private void OnTriggerStay(Collider other)
     {
-        if (other.gameObject.CompareTag("Player"))
+        if (other.gameObject.CompareTag("PlayerSwapCollider"))
         {
             // 接続
-            PlayerInventory playerInventory = other.gameObject.GetComponent<PlayerInventory>();
+            PlayerSwapController playerSwapController = other.gameObject.GetComponent<PlayerSwapController>();
 
-            // 通知
+            // 追加
+            playerSwapController.AddCanSwapArmor(GetComponent<FieldArmorMachine>());
+        }
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if (other.gameObject.CompareTag("PlayerSwapCollider"))
+        {
+            // 接続
+            PlayerSwapController playerSwapController = other.gameObject.GetComponent<PlayerSwapController>();
+
+            // 削除
+            playerSwapController.RemoveCanSwapArmor(GetComponent<FieldArmorMachine>());
         }
     }
 }

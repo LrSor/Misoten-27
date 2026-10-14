@@ -2,12 +2,12 @@ using UnityEngine;
 
 public class Player_LockCamera : BaseState
 {
-    PlayerCameraLook m_controller;
+    PlayerCameraLookController m_controller;
     StateMachine m_stateMachine;
 
     public override void InitState()
     {
-        m_controller = GetComponent<PlayerCameraLook>();
+        m_controller = GetComponent<PlayerCameraLookController>();
         m_stateMachine = GetComponent<StateMachine>();
     }
 

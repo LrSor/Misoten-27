@@ -1,13 +1,14 @@
-using UnityEngine;
+using System.Collections.Generic;
 
 public class Player_Swap : BaseState
 {
-    PlayerController m_controller;
+    PlayerSwapController m_controller;
     StateMachine m_stateMachine;
+
 
     public override void InitState()
     {
-        m_controller = GetComponent<PlayerController>();
+        m_controller = GetComponent<PlayerSwapController>();
         m_stateMachine = GetComponent<StateMachine>();
     }
 
@@ -17,10 +18,10 @@ public class Player_Swap : BaseState
 
     public override void UpdateState()
     {
+        m_controller.Swap();
     }
 
     public override void FixedUpdateState()
     {
-
     }
 }

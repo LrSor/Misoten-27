@@ -737,7 +737,7 @@ Transform:
   m_GameObject: {fileID: 6798334713888263258}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 3, y: 2.8, z: -9}
+  m_LocalPosition: {x: 0, y: 1.8, z: -5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -888,9 +888,12 @@ GameObject:
   m_Component:
   - component: {fileID: 5253947303704505872}
   - component: {fileID: 8962928011917270418}
+  - component: {fileID: 848156323982869442}
+  - component: {fileID: 5519439749824730472}
+  - component: {fileID: 2494335580692881839}
   m_Layer: 6
   m_Name: SwapCollider
-  m_TagString: Untagged
+  m_TagString: PlayerSwapCollider
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -931,6 +934,46 @@ SphereCollider:
   serializedVersion: 3
   m_Radius: 1.3
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &848156323982869442
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7823654659457598821}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e6f72d34ecf6c6b428c0916fbe619d12, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerSwapController
+  m_playerInput: {fileID: 3126517289341570151}
+  m_inventory: {fileID: 9054616098022555476}
+--- !u!114 &5519439749824730472
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7823654659457598821}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 30de53af7cc105e4689bbdcc140db778, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::StateMachine
+  m_stateMachineName: Swap
+  m_currentState: {fileID: 0}
+--- !u!114 &2494335580692881839
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7823654659457598821}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d519084d42930c419bdf171cc4dbf82, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Player_Swap
 --- !u!1 &8483622817308932844
 GameObject:
   m_ObjectHideFlags: 0

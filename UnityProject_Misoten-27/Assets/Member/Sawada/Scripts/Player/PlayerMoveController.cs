@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class PlayerController : MonoBehaviour
+public class PlayerMoveController : MonoBehaviour
 {
     [Header("Move")]
     [SerializeField] private float m_acceleration = 15.0f;

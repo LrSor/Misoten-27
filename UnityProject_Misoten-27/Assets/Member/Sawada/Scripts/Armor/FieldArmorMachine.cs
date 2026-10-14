@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 public class FieldArmorMachine : MonoBehaviour
 {
@@ -19,5 +18,10 @@ public class FieldArmorMachine : MonoBehaviour
     private void Start()
     {
         Initialize(m_armorSO);
+    }
+
+    public BaseArmorSO GetArmorSO()
+    {
+        return m_armorSO;
     }
 }

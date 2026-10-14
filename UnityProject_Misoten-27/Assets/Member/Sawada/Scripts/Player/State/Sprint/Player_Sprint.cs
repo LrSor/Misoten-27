@@ -6,12 +6,12 @@ public class Player_Sprint : BaseState
     [SerializeField] float m_sprintMinSpeed = 5.0f;
     [SerializeField] float m_sprintTime = 5.0f;
     float m_sprintTimer;
-    PlayerController m_controller;
+    PlayerMoveController m_controller;
     StateMachine m_stateMachine;
 
     public override void InitState()
     {
-        m_controller = GetComponent<PlayerController>();
+        m_controller = GetComponent<PlayerMoveController>();
         m_stateMachine = GetComponent<StateMachine>();
 
         m_sprintTimer = 0f;
