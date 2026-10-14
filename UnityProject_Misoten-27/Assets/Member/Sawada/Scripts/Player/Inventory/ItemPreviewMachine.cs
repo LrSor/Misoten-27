@@ -2,14 +2,14 @@ using UnityEngine;
 
 public class ItemPreviewMachine : MonoBehaviour
 {
-    [SerializeField] Transform m_Camera1_1;
-    [SerializeField] Transform m_Camera1_2;
-    [SerializeField] Transform m_Camera2_1;
-    [SerializeField] Transform m_Camera2_2;
-    [SerializeField] Transform m_Camera3_1;
-    [SerializeField] Transform m_Camera3_2;
-    [SerializeField] Transform m_Camera4_1;
-    [SerializeField] Transform m_Camera4_2;
+    [SerializeField] Transform m_camera1_1;
+    [SerializeField] Transform m_camera1_2;
+    [SerializeField] Transform m_camera2_1;
+    [SerializeField] Transform m_camera2_2;
+    [SerializeField] Transform m_camera3_1;
+    [SerializeField] Transform m_camera3_2;
+    [SerializeField] Transform m_camera4_1;
+    [SerializeField] Transform m_camera4_2;
 
     // 指定カメラの前にアーマーを配置する
     public void SetPreviewItem(GameObject armor, int num1, int num2)
@@ -19,16 +19,16 @@ public class ItemPreviewMachine : MonoBehaviour
         switch (num1)
         {
             case 1:
-                parent = (num2 == 1) ? m_Camera1_1 : m_Camera1_2;
+                parent = (num2 == 1) ? m_camera1_1 : m_camera1_2;
                 break;
             case 2:
-                parent = (num2 == 1) ? m_Camera2_1 : m_Camera2_2;
+                parent = (num2 == 1) ? m_camera2_1 : m_camera2_2;
                 break;
             case 3:
-                parent = (num2 == 1) ? m_Camera3_1 : m_Camera3_2;
+                parent = (num2 == 1) ? m_camera3_1 : m_camera3_2;
                 break;
             case 4:
-                parent = (num2 == 1) ? m_Camera4_1 : m_Camera4_2;
+                parent = (num2 == 1) ? m_camera4_1 : m_camera4_2;
                 break;
             default:
                 Debug.LogError("範囲外");
