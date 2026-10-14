@@ -20,7 +20,7 @@ public abstract class NPC_BASE : MonoBehaviour
     {
         MOVING,     // 移動中
         ARRIVED,    // 到着した
-        FAILED      // 経路が無い / 時間切れ
+        FAILED      // 経路が無い / 詰まって進めない
     }
 
     [Header("移動（共通）")]
@@ -28,9 +28,12 @@ public abstract class NPC_BASE : MonoBehaviour
     [SerializeField]
     protected float m_navMeshSampleDistance = 2f;
 
-    [Tooltip("これ以上歩いても到着しない場合は諦める")]
+    [Tooltip("この秒数のあいだ、ほとんど前に進めなかったら「詰まった」とみなして諦める")]
     [SerializeField]
-    protected float m_maxWalkTime = 15f;
+    protected float m_stuckTime = 3f;
+
+    // この距離 (m) 以上動いたら「進んでいる」とみなす
+    const float STUCK_MOVE_DISTANCE = 0.5f;
 
     [Header("歩く速度（NPC ごとにこの範囲でランダム）")]
     [Tooltip("NavMeshAgent の Speed はこの値で上書きされます")]
@@ -49,13 +52,30 @@ public abstract class NPC_BASE : MonoBehaviour
     [SerializeField]
     private float m_stepsPerMeter = 0.9f;
 
+    [Header("曲がり方")]
+    [Tooltip("向きを変える速さ。小さいほど曲がり角でゆっくり大きく曲がる")]
+    [SerializeField]
+    private float m_turnSmoothness = 6f;
+
+    [Header("すれ違い（よけ合い）の優先度")]
+    [Tooltip("NPC ごとにこの範囲でランダム。数字が小さいほど優先され、大きい NPC が道を譲る（0 ～ 99）")]
+    [SerializeField]
+    private int m_minAvoidancePriority = 30;
+
+    [SerializeField]
+    private int m_maxAvoidancePriority = 70;
+
     // 揺れの高さを目標値に近づける速さ
     const float BOB_SMOOTHING = 15f;
+
+    // この速さ (m/s) 未満のときは向きを変えない（止まりかけでクルッと回らないように）
+    const float TURN_MIN_SPEED = 0.1f;
 
     protected NavMeshAgent m_navMeshAgent;
 
     // 移動のタイムアウト用
-    private float m_moveTimer;
+    private float m_stuckTimer;
+    private Vector3 m_lastProgressPosition;
 
     // 上下揺れ用
     private float m_baseOffset;
@@ -72,6 +92,18 @@ public abstract class NPC_BASE : MonoBehaviour
             Random.Range(
                 m_minWalkSpeed,
                 m_maxWalkSpeed);
+
+        // NPC ごとに譲り合いの優先度を変える
+        // （全員同じだと、すれ違うときに押し合いになりやすい）
+        // Random.Range(int, int) は最大値を含まないので +1 する
+        m_navMeshAgent.avoidancePriority =
+            Random.Range(
+                m_minAvoidancePriority,
+                m_maxAvoidancePriority + 1);
+
+        // 向きは UpdateTurn で自分で回す
+        // （NavMeshAgent に任せると曲がり角でカクッと向きが変わる）
+        m_navMeshAgent.updateRotation = false;
 
         m_baseOffset =
             m_navMeshAgent.baseOffset;
@@ -105,6 +137,8 @@ public abstract class NPC_BASE : MonoBehaviour
         {
             return;
         }
+
+        UpdateTurn();
 
         UpdateBob();
     }
@@ -142,9 +176,6 @@ public abstract class NPC_BASE : MonoBehaviour
             return false;
         }
 
-        // 見回しなどで止めた回転制御を戻す
-        m_navMeshAgent.updateRotation = true;
-
         m_navMeshAgent.isStopped = false;
 
         if (!m_navMeshAgent.SetDestination(
@@ -153,20 +184,46 @@ public abstract class NPC_BASE : MonoBehaviour
             return false;
         }
 
-        m_moveTimer = m_maxWalkTime;
+        ResetStuckCheck();
 
         return true;
+    }
+
+    // 詰まり判定をリセット（今の位置から測り直す）
+    void ResetStuckCheck()
+    {
+        m_stuckTimer = 0f;
+
+        m_lastProgressPosition =
+            transform.position;
     }
 
     // 移動中に毎フレーム呼ぶ。到着・失敗を返す
     protected MOVE_STATUS UpdateMove()
     {
-        m_moveTimer -= Time.deltaTime;
+        // 詰まり判定
+        // 「歩き始めてから何秒」ではなく「進めていない時間」で判定するので、
+        // 遠い目的地でも途中で諦めない
+        Vector3 moved =
+            transform.position - m_lastProgressPosition;
 
-        // 他の NPC や障害物で詰まった場合の保険
-        if (m_moveTimer <= 0f)
+        moved.y = 0f;
+
+        if (moved.sqrMagnitude >=
+            STUCK_MOVE_DISTANCE * STUCK_MOVE_DISTANCE)
         {
-            return MOVE_STATUS.FAILED;
+            // 進んでいるのでリセット
+            ResetStuckCheck();
+        }
+        else
+        {
+            m_stuckTimer += Time.deltaTime;
+
+            // 他の NPC や障害物で詰まった場合の保険
+            if (m_stuckTimer >= m_stuckTime)
+            {
+                return MOVE_STATUS.FAILED;
+            }
         }
 
         if (m_navMeshAgent.pathPending)
@@ -203,6 +260,37 @@ public abstract class NPC_BASE : MonoBehaviour
         // 残っている経路と慣性を消して、滑らないようにする
         m_navMeshAgent.ResetPath();
         m_navMeshAgent.velocity = Vector3.zero;
+    }
+
+    //==================================================
+    // 進む方向へゆっくり向きを変える
+    //==================================================
+
+    void UpdateTurn()
+    {
+        // 実際に進んでいる方向（加速度で少しずつ変わるので、経路の折れ線より滑らか）
+        Vector3 moveDirection =
+            m_navMeshAgent.velocity;
+
+        moveDirection.y = 0f;
+
+        // 止まっている・止まりかけのときは回さない
+        // （見回しなど、派生クラスが自分で向きを決めているときも邪魔しない）
+        if (moveDirection.sqrMagnitude <
+            TURN_MIN_SPEED * TURN_MIN_SPEED)
+        {
+            return;
+        }
+
+        Quaternion targetRotation =
+            Quaternion.LookRotation(moveDirection);
+
+        // 向きの差が大きいほど速く、近づくほどゆっくり回る（自然な減速）
+        transform.rotation =
+            Quaternion.Slerp(
+                transform.rotation,
+                targetRotation,
+                1f - Mathf.Exp(-m_turnSmoothness * Time.deltaTime));
     }
 
     //==================================================
@@ -254,12 +342,17 @@ public abstract class NPC_BASE : MonoBehaviour
     protected virtual void OnValidate()
     {
         m_navMeshSampleDistance = Mathf.Max(0.1f, m_navMeshSampleDistance);
-        m_maxWalkTime = Mathf.Max(0.1f, m_maxWalkTime);
+        m_stuckTime = Mathf.Max(0.5f, m_stuckTime);
 
         m_minWalkSpeed = Mathf.Max(0.1f, m_minWalkSpeed);
         m_maxWalkSpeed = Mathf.Max(m_minWalkSpeed, m_maxWalkSpeed);
 
         m_bobHeight = Mathf.Max(0f, m_bobHeight);
         m_stepsPerMeter = Mathf.Max(0f, m_stepsPerMeter);
+
+        m_turnSmoothness = Mathf.Max(0.1f, m_turnSmoothness);
+
+        m_minAvoidancePriority = Mathf.Clamp(m_minAvoidancePriority, 0, 99);
+        m_maxAvoidancePriority = Mathf.Clamp(m_maxAvoidancePriority, m_minAvoidancePriority, 99);
     }
 }

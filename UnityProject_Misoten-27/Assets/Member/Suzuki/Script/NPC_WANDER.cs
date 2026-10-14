@@ -184,11 +184,9 @@ public class NPC_WANDER : NPC_BASE
         m_actionTimer =
             m_lookAroundTime;
 
+        // 止まっている間は NPC_BASE は向きを変えないので、
+        // ここで自由に向きを決めてよい
         StopAgent();
-
-        // Agent の自動回転と競合しないよう一時的に止める
-        // （次に歩き始めるときに StartMove で元に戻る）
-        m_navMeshAgent.updateRotation = false;
 
         m_lookStartAngle =
             transform.eulerAngles.y;

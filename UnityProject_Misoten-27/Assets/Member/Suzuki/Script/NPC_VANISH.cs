@@ -50,6 +50,9 @@ public class NPC_VANISH : NPC_BASE
     [SerializeField]
     private UnityEvent m_onVanished = new UnityEvent();
 
+    // 消えたときにスクリプトから受け取るためのイベント（NPC_SPAWNER が使う）
+    public event System.Action<NPC_VANISH> Vanished;
+
     private NPC_FADER m_fader;
 
     private VANISH_STATE m_currentState;
@@ -65,6 +68,17 @@ public class NPC_VANISH : NPC_BASE
 
         m_fader =
             GetComponent<NPC_FADER>();
+    }
+
+    //==================================================
+    // 目的地をスクリプトから設定する
+    // （プレハブからシーンの Transform は参照できないので、
+    //   NPC_SPAWNER が生成直後に呼ぶ。Start より前に呼ぶこと）
+    //==================================================
+
+    public void SetDestination(Transform destination)
+    {
+        m_destination = destination;
     }
 
     void Start()
@@ -235,6 +249,11 @@ public class NPC_VANISH : NPC_BASE
         m_fader.SetAlpha(0f);
 
         m_onVanished.Invoke();
+
+        if (Vanished != null)
+        {
+            Vanished(this);
+        }
 
         if (m_destroyOnVanish)
         {

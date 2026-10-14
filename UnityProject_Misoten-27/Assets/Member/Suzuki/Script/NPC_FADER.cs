@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.Rendering;
 
 //==================================================
@@ -20,8 +21,29 @@ public class NPC_FADER : MonoBehaviour
     [SerializeField]
     private float m_shadowOffAlpha = 0.5f;
 
+    [Header("当たり判定")]
+    [Tooltip("薄くなったら当たり判定を消す")]
+    [SerializeField]
+    private bool m_disableCollisionOnFade = true;
+
+    [Tooltip("この透明度より薄くなったら当たり判定を消す（0 = 完全に消えるまで残す, 1 = 薄くなり始めたらすぐ消す）")]
+    [Range(0f, 1f)]
+    [SerializeField]
+    private float m_collisionOffAlpha = 0.3f;
+
     private Renderer[] m_renderers;
     private ShadowCastingMode[] m_defaultShadowModes;
+
+    // 当たり判定用
+    private Collider[] m_colliders;
+    private bool[] m_defaultColliderEnabled;
+    private NavMeshAgent m_navMeshAgent;
+    private int m_defaultAvoidancePriority;
+    private ObstacleAvoidanceType m_defaultAvoidanceType;
+    private bool m_isCollisionDisabled;
+
+    // 回避の優先度の最小値（数字が大きいほど優先度が低い = 他の NPC から無視される）
+    const int LOWEST_AVOIDANCE_PRIORITY = 99;
 
     // 透明度を変えるマテリアルと、その元の色
     private readonly List<Material> m_materials = new List<Material>();
@@ -51,6 +73,34 @@ public class NPC_FADER : MonoBehaviour
             m_defaultShadowModes[i] =
                 m_renderers[i].shadowCastingMode;
         }
+
+        // 当たり判定（トリガーは検知用に使うことがあるので対象外）
+        List<Collider> colliders = new List<Collider>();
+
+        foreach (Collider targetCollider in GetComponentsInChildren<Collider>())
+        {
+            if (!targetCollider.isTrigger)
+            {
+                colliders.Add(targetCollider);
+            }
+        }
+
+        m_colliders = colliders.ToArray();
+
+        m_defaultColliderEnabled =
+            new bool[m_colliders.Length];
+
+        for (int i = 0; i < m_colliders.Length; i++)
+        {
+            m_defaultColliderEnabled[i] =
+                m_colliders[i].enabled;
+        }
+
+        // NavMeshAgent の「よけ合い」も当たり判定の一種なので一緒に切り替える
+        // （元の値は、NPC_BASE が優先度をランダムに決めた後の値を使いたいので
+        //   ここではなく、当たり判定を消す直前に覚える）
+        m_navMeshAgent =
+            GetComponent<NavMeshAgent>();
     }
 
     void OnDestroy()
@@ -112,6 +162,67 @@ public class NPC_FADER : MonoBehaviour
                 castShadow
                     ? m_defaultShadowModes[i]
                     : ShadowCastingMode.Off;
+        }
+
+        // 薄くなったら当たり判定を消す
+        bool disableCollision =
+            m_disableCollisionOnFade &&
+            alpha < m_collisionOffAlpha;
+
+        SetCollisionDisabled(disableCollision);
+    }
+
+    //==================================================
+    // 当たり判定の ON / OFF
+    //==================================================
+
+    void SetCollisionDisabled(bool disable)
+    {
+        if (disable == m_isCollisionDisabled)
+        {
+            return;
+        }
+
+        m_isCollisionDisabled = disable;
+
+        // Collider（プレイヤーなどとの物理的な当たり判定）
+        for (int i = 0; i < m_colliders.Length; i++)
+        {
+            if (m_colliders[i] == null)
+            {
+                continue;
+            }
+
+            m_colliders[i].enabled =
+                disable
+                    ? false
+                    : m_defaultColliderEnabled[i];
+        }
+
+        // NavMeshAgent のよけ合い
+        if (m_navMeshAgent != null)
+        {
+            // 消す直前の値を覚えておき、戻すときに使う
+            if (disable)
+            {
+                m_defaultAvoidancePriority =
+                    m_navMeshAgent.avoidancePriority;
+
+                m_defaultAvoidanceType =
+                    m_navMeshAgent.obstacleAvoidanceType;
+            }
+
+            // 他の NPC がこの NPC をよけなくなる
+            m_navMeshAgent.avoidancePriority =
+                disable
+                    ? LOWEST_AVOIDANCE_PRIORITY
+                    : m_defaultAvoidancePriority;
+
+            // この NPC も他をよけずにすり抜ける
+            m_navMeshAgent.obstacleAvoidanceType =
+                disable
+                    ? ObstacleAvoidanceType.NoObstacleAvoidance
+                    : m_defaultAvoidanceType;
         }
     }
 
