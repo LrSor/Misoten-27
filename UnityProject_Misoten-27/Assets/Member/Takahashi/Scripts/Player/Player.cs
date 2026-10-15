@@ -7,6 +7,7 @@ public class Player : MonoBehaviour
 {
     Rigidbody rb;
 
+    [SerializeField] private float m_speed = 0.05f;
     void Start()
     {
         rb= GetComponent<Rigidbody>();
@@ -20,19 +21,19 @@ public class Player : MonoBehaviour
         float z=transform.position.z;
         if(Keyboard.current.wKey.isPressed)
         {
-            transform.position = new Vector3(x,y,z+0.02f);
+            transform.position = new Vector3(x,y,z+ m_speed);
         }
         if (Keyboard.current.sKey.isPressed)
         {
-            transform.position = new Vector3(x, y, z - 0.02f);
+            transform.position = new Vector3(x, y, z - m_speed);
         }
         if (Keyboard.current.aKey.isPressed)
         {
-            transform.position = new Vector3(x - 0.02f, y, z);
+            transform.position = new Vector3(x - m_speed, y, z);
         }
         if (Keyboard.current.dKey.isPressed)
         {
-            transform.position = new Vector3(x + 0.02f, y, z);
+            transform.position = new Vector3(x + m_speed, y, z);
         }
 
 

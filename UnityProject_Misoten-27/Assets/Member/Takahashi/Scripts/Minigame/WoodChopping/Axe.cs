@@ -14,8 +14,6 @@ public class Axe : MiniGameObject
     private List<Joycon> m_joycons;
     private Joycon m_joyconL;
     //private Joycon m_joyconR;
-    private Joycon.Button? m_pressedButtonL;
-    //private Joycon.Button? m_pressedButtonR;
     //============================================================
 
     [SerializeField] MiniGame m_miniGame;

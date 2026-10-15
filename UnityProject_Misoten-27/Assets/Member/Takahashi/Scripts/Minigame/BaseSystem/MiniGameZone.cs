@@ -22,7 +22,7 @@ public class MiniGameZone : MonoBehaviour
 
     [Header("ミニゲーム管理用オブジェクト")]
     [SerializeField] MiniGameSystem m_system;
-    private bool m_isPlaying = false;
+    private bool m_isPlayingFlag = false;
     private GameObject m_playerObject;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -54,7 +54,7 @@ public class MiniGameZone : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if(m_isPlaying)
+        if(m_isPlayingFlag)
         {
             return;
         }
@@ -67,7 +67,7 @@ public class MiniGameZone : MonoBehaviour
             if (m_playerObject && Keyboard.current.zKey.wasPressedThisFrame)
             {
                 m_system.Activate(m_playerObject);
-                m_isPlaying = true;
+                m_isPlayingFlag = true;
             }
             return;
         }
@@ -78,7 +78,7 @@ public class MiniGameZone : MonoBehaviour
         {
             //ミニゲーム起動(引数でプレイヤーオブジェクトを渡す)
             m_system.Activate(m_playerObject);
-            m_isPlaying = true;
+            m_isPlayingFlag = true;
         }
     }
 
@@ -86,7 +86,7 @@ public class MiniGameZone : MonoBehaviour
     //プレイヤー衝突判定
     public void OnCollisionEnter(Collision collision)
     {
-        if(collision.gameObject.tag == "Player" && !m_isPlaying)
+        if(collision.gameObject.tag == "Player" && !m_isPlayingFlag)
         {
             Debug.Log("ミニゲーム開始可能");
 
@@ -101,9 +101,9 @@ public class MiniGameZone : MonoBehaviour
         {
             Debug.Log("ミニゲームゾーンから離脱");
 
-            if(m_isPlaying)
+            if(m_isPlayingFlag)
             {
-                m_isPlaying = false;
+                m_isPlayingFlag = false;
             }
 
             //メンバ変数に紐付けされたプレイヤーオブジェクトを解除

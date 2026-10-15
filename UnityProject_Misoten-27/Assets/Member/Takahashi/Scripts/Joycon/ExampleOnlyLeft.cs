@@ -99,6 +99,10 @@ public class ExampleOnlyLeft : MonoBehaviour
             GUILayout.Label("加速度：" + accel);
             GUILayout.Label("傾き：" + orientation);
             GUILayout.EndVertical();
+            if(m_joyconL.GetButtonDown(Joycon.Button.SHOULDER_1))
+            {
+                GUILayout.Label("L1押下");
+            }
         }
 
         GUILayout.EndHorizontal();

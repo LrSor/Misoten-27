@@ -21,12 +21,13 @@ public class MiniGameSystem : MonoBehaviour
 
     enum STATE_MINIGAME
     {
+        STATE_IDLE,
         STATE_HOWTOPLAY,
         STATE_POSE,
         STATE_COUNT,
         STATE_PLAYING,
         STATE_RESULT,
-        STATE_IDLE
+        STATE_DEACTIVE
     }
 
 
@@ -48,9 +49,10 @@ public class MiniGameSystem : MonoBehaviour
     [SerializeField] private Text m_score;
     private float m_currentNum;
     private int m_scoreNum = 0;
-    private bool m_isActive = false;
+    private bool m_isActiveFlag = false;
     private STATE_MINIGAME m_state;
     private GameObject m_playerObject = null;
+    private bool m_pressedFlag = false;
 
 
     void Start()
@@ -61,33 +63,13 @@ public class MiniGameSystem : MonoBehaviour
         m_count.gameObject.SetActive(false);
         m_score.gameObject.SetActive(false);
         m_currentNum = m_countNum;
-        m_state = STATE_MINIGAME.STATE_IDLE;
-
-        //デバッグ用: キーボード操作が有効の場合、ジョイコンの初期化を停止
-#if UNITY_EDITOR
-        JoyconManager joyconManager = GameObject.FindFirstObjectByType<JoyconManager>();
-        if (joyconManager.GetIsKeyboardPlay())
-        {
-            return;
-        }
-#endif
-
-        //============================================================
-        // JoyCon初期化
-        //============================================================
-        m_joycons = JoyconManager.Instance.j;
-
-        if (m_joycons == null || m_joycons.Count <= 0) return;
-
-        m_joyconL = m_joycons.Find(c => c.isLeft);
-        //m_joyconR = m_joycons.Find(c => !c.isLeft);
-        //============================================================
+        m_state = STATE_MINIGAME.STATE_DEACTIVE;
     }
 
     // Update is called once per frame
     void Update()
     {
-        if (!m_isActive)
+        if (!m_isActiveFlag)
         {
             return;
         }
@@ -100,8 +82,15 @@ public class MiniGameSystem : MonoBehaviour
         {
             switch (m_state)
             {
+                case STATE_MINIGAME.STATE_IDLE:
+                    //ステート更新、操作説明へ変更
+                    m_state = STATE_MINIGAME.STATE_HOWTOPLAY;
+                    //操作説明用イラストの表示
+                    m_howToPlay.gameObject.SetActive(true);
+                    break;
+
                 case STATE_MINIGAME.STATE_HOWTOPLAY:
-                    if (Keyboard.current.zKey.wasPressedThisFrame)
+                    if (Keyboard.current.zKey.wasPressedThisFrame && !m_pressedFlag)
                     {
                         //UI更新
                         m_howToPlay.gameObject.SetActive(false);
@@ -109,11 +98,13 @@ public class MiniGameSystem : MonoBehaviour
 
                         //ステート更新
                         m_state = STATE_MINIGAME.STATE_POSE;
+
+                        m_pressedFlag = true;
                     }
                     break;
 
                 case STATE_MINIGAME.STATE_POSE:
-                    if (Keyboard.current.zKey.wasPressedThisFrame)
+                    if (Keyboard.current.zKey.wasPressedThisFrame && !m_pressedFlag)
                     {
                         //UI更新
                         m_pose.gameObject.SetActive(false);
@@ -121,6 +112,10 @@ public class MiniGameSystem : MonoBehaviour
 
                         //ステート更新
                         m_state = STATE_MINIGAME.STATE_COUNT;
+                    }
+                    else
+                    {
+                        m_pressedFlag = false;
                     }
                     break;
 
@@ -172,8 +167,15 @@ public class MiniGameSystem : MonoBehaviour
 
         switch (m_state)
         {
+            case STATE_MINIGAME.STATE_IDLE:
+                //ステート更新、操作説明へ変更
+                m_state = STATE_MINIGAME.STATE_HOWTOPLAY;
+                //操作説明用イラストの表示
+                m_howToPlay.gameObject.SetActive(true);
+                break;
+
             case STATE_MINIGAME.STATE_HOWTOPLAY:
-                if (m_joyconL.GetButtonDown(Joycon.Button.SHOULDER_1))
+                if (m_joyconL.GetButtonDown(Joycon.Button.SHOULDER_1) && !m_pressedFlag)
                 {
                     //UI更新
                     m_howToPlay.gameObject.SetActive(false);
@@ -181,11 +183,13 @@ public class MiniGameSystem : MonoBehaviour
 
                     //ステート更新
                     m_state = STATE_MINIGAME.STATE_POSE;
+
+                    m_pressedFlag = true;
                 }
                 break;
 
             case STATE_MINIGAME.STATE_POSE:
-                if (m_joyconL.GetButtonDown(Joycon.Button.SHOULDER_1))
+                if (m_joyconL.GetButtonDown(Joycon.Button.SHOULDER_1) && !m_pressedFlag)
                 {
                     //UI更新
                     m_pose.gameObject.SetActive(false);
@@ -193,6 +197,10 @@ public class MiniGameSystem : MonoBehaviour
 
                     //ステート更新
                     m_state = STATE_MINIGAME.STATE_COUNT;
+                }
+                else
+                {
+                    m_pressedFlag = false;
                 }
                 break;
 
@@ -251,20 +259,41 @@ public class MiniGameSystem : MonoBehaviour
         m_playerObject.SetActive(false);
 
         //起動中フラグを真に
-        m_isActive = true;
-        //ステート更新、操作説明へ変更
-        m_state = STATE_MINIGAME.STATE_HOWTOPLAY;
-        //操作説明用イラストの表示
-        m_howToPlay.gameObject.SetActive(true);
+        m_isActiveFlag = true;
+        //ミニゲーム実行ステータスを待機へ変更(同フレーム内でボタン入力が行われた際の対策)
+        m_state = STATE_MINIGAME.STATE_IDLE;
 
         //仮実装
         //カメラをミニゲーム用に切り替え
         m_camera.gameObject.SetActive(false);
         m_miniGameCamera.gameObject.SetActive(true);
+
+        //デバッグ用: キーボード操作が有効の場合、ジョイコンの初期化を停止
+#if UNITY_EDITOR
+        JoyconManager joyconManager = GameObject.FindFirstObjectByType<JoyconManager>();
+        if (joyconManager.GetIsKeyboardPlay())
+        {
+            return;
+        }
+#endif
+
+        //============================================================
+        // JoyCon初期化
+        //============================================================
+        m_joycons = JoyconManager.Instance.j;
+
+        if (m_joycons == null || m_joycons.Count <= 0) return;
+
+        m_joyconL = m_joycons.Find(c => c.isLeft);
+        //m_joyconR = m_joycons.Find(c => !c.isLeft);
+        //============================================================
     }
 
     private void Deactive()
     {
+        //ジョイコンの入力を切る
+        m_joycons = null;
+
         //スコアを譲渡
         m_playerObject.GetComponent<PlayerScore>().SetMiniGameScore(m_minigame, m_scoreNum);
 
@@ -283,7 +312,7 @@ public class MiniGameSystem : MonoBehaviour
 
         //メンバ変数初期化
         m_currentNum = m_countNum;
-        m_state = STATE_MINIGAME.STATE_IDLE;
+        m_state = STATE_MINIGAME.STATE_DEACTIVE;
     }
 
     public float GetScore()
