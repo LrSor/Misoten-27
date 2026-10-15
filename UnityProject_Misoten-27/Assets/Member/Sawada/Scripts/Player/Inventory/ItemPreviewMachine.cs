@@ -4,12 +4,6 @@ public class ItemPreviewMachine : MonoBehaviour
 {
     [SerializeField] Transform m_camera1_1;
     [SerializeField] Transform m_camera1_2;
-    [SerializeField] Transform m_camera2_1;
-    [SerializeField] Transform m_camera2_2;
-    [SerializeField] Transform m_camera3_1;
-    [SerializeField] Transform m_camera3_2;
-    [SerializeField] Transform m_camera4_1;
-    [SerializeField] Transform m_camera4_2;
 
     // 指定カメラの前にアーマーを配置する
     public void SetPreviewItem(GameObject armor, int num1, int num2)
@@ -21,15 +15,6 @@ public class ItemPreviewMachine : MonoBehaviour
             case 1:
                 parent = (num2 == 1) ? m_camera1_1 : m_camera1_2;
                 break;
-            case 2:
-                parent = (num2 == 1) ? m_camera2_1 : m_camera2_2;
-                break;
-            case 3:
-                parent = (num2 == 1) ? m_camera3_1 : m_camera3_2;
-                break;
-            case 4:
-                parent = (num2 == 1) ? m_camera4_1 : m_camera4_2;
-                break;
             default:
                 Debug.LogError("範囲外");
                 return;
@@ -38,6 +23,7 @@ public class ItemPreviewMachine : MonoBehaviour
         // 前のアーマーを削除
         foreach (Transform child in parent)
         {
+            child.gameObject.SetActive(false);
             Destroy(child.gameObject);
         }
 

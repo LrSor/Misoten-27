@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+
 
 public class Player_Swap : BaseState
 {
@@ -6,10 +6,14 @@ public class Player_Swap : BaseState
     StateMachine m_stateMachine;
 
 
-    public override void InitState()
+    private void Awake()
     {
         m_controller = GetComponent<PlayerSwapController>();
         m_stateMachine = GetComponent<StateMachine>();
+    }
+
+    public override void InitState()
+    {
     }
 
     public override void UnInitState()
@@ -18,7 +22,10 @@ public class Player_Swap : BaseState
 
     public override void UpdateState()
     {
-        m_controller.Swap();
+        if (m_controller.Swap())
+        {
+            m_stateMachine.ChangeState<Player_SwapIdle>();
+        }
     }
 
     public override void FixedUpdateState()

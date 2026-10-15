@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 
@@ -8,20 +9,47 @@ using UnityEngine;
  */
 public class PlayerInventoryUI : MonoBehaviour
 {
-    //private PlayerInventory m_playerInventory;
+    private PlayerInventory m_playerInventory;
 
-    [SerializeField] private GameObject m_front1;
-    [SerializeField] private GameObject m_front2;
+    [SerializeField] private List<GameObject> m_frontUIList;
+
+    [SerializeField] private List<Camera> m_itemPreviewCameraList;
 
     private void Start()
     {
-        //m_playerInventory = GetComponent<PlayerInventory>();
+        m_playerInventory = GetComponent<PlayerInventory>();
     }
 
-    public void testKirikae()
+    // 特定のm_frontをON それ以外をOFFにする
+    public void SetFrontUI(int index)
     {
-        bool old = m_front1.activeSelf;
-        m_front1.SetActive(!old);
-        m_front2.SetActive(old);
+        for (int i = 0; i < m_frontUIList.Count; i++)
+        {
+            m_frontUIList[i].SetActive(index == i);
+        }
+    }
+
+    // 全m_frontをOFFにする
+    public void SetAllFrontUIOff()
+    {
+        for (int i = 0; i < m_frontUIList.Count; i++)
+        {
+            m_frontUIList[i].SetActive(false);
+        }
+    }
+
+    // アーマーの表示を更新する
+    public void UpdateArmorDisplay(int index, BaseArmorSO armor)
+    {
+        if (index < 0 || index >= m_frontUIList.Count) return;
+
+        // armorの情報をUIに反映する
+        // 位置調整
+        GameObject itemPreview = Instantiate(armor.m_modelPrefab, m_itemPreviewCameraList[index].transform);
+        itemPreview.transform.localPosition = new Vector3(0, 0, 5);
+
+        // カメラ表示設定
+        ItemPreviewCameraVisibility camVisibility = itemPreview.AddComponent<ItemPreviewCameraVisibility>();
+        camVisibility.SetTargetCamera(m_itemPreviewCameraList[index]);
     }
 }

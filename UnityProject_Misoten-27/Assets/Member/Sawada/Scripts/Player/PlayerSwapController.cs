@@ -11,16 +11,16 @@ public class PlayerSwapController : MonoBehaviour
     [SerializeField] private PlayerInventory m_inventory;
 
     // swap可能一覧
-    private List<FieldArmorMachine> m_canSwapArmor;
+    private List<FieldArmorMachine> m_canSwapArmor = new();
 
     // =========================================================
     // Public
     // =========================================================
-    public bool PressSprint
+    public bool PressSwap
     {
         get
         {
-            return m_swapAction.IsPressed();
+            return m_swapAction.WasPressedThisFrame();
         }
     }
 
@@ -28,13 +28,12 @@ public class PlayerSwapController : MonoBehaviour
     public void AddCanSwapArmor(FieldArmorMachine addArmor)
     {
         // 未登録なら追加
-        if (!m_canSwapArmor.Contains(addArmor))
-            m_canSwapArmor.Add(addArmor);
+        if (!m_canSwapArmor.Contains(addArmor)) m_canSwapArmor.Add(addArmor);
     }
     public void RemoveCanSwapArmor(FieldArmorMachine addArmor)
     {
         // 登録済みなら削除
-        if (m_canSwapArmor.Contains(addArmor)) m_canSwapArmor.Remove(addArmor);
+        m_canSwapArmor.Remove(addArmor);
     }
 
     // =========================================================
@@ -49,16 +48,24 @@ public class PlayerSwapController : MonoBehaviour
     // =========================================================
     // Swap
     // =========================================================
-    public void Swap()
+    public bool Swap()
     {
-        if (PressSprint && 0 < m_canSwapArmor.Count)
+        // 交換ボタンを押したら
+        if (PressSwap && 0 < m_canSwapArmor.Count)
         {
+            // 交換
             BaseArmorSO releaseArmor = m_inventory.SwapArmor(m_canSwapArmor[0].GetArmorSO());
             RemoveCanSwapArmor(m_canSwapArmor[0]);
 
             // オブジェクト化 飛び出す感じ
-            Debug.Log("Swap");
-;        }
+            //if (releaseArmor != null)
+            //{
+            //    Debug.Log("Swap");
+            //}
+
+            return true;
+;       }
+        return false;
     }
 
 

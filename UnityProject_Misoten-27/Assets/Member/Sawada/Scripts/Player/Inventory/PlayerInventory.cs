@@ -1,5 +1,6 @@
-using UnityEngine;
 using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
 using UnityEngine.InputSystem;
 
 
@@ -14,21 +15,26 @@ public class PlayerInventory : MonoBehaviour
     [SerializeField] private List<BaseArmorSO> m_armorSlots;
     int m_currentArmorIndex = 0;    // 現在装備中のアーマーのインデックス
 
+    private PlayerInventoryUI m_playerInventoryUI;
 
+
+    private void Start()
+    {
+        m_playerInventoryUI = GetComponent<PlayerInventoryUI>();
+    }
 
     private void Update()
     {
-        // 他スロットがある場合のみ変更
+        // 他スロットがある場合のみ変更   PlayerInputへ変更直し
         if (m_armorSlots.Count <= 1) return;
         if (Keyboard.current.leftArrowKey.wasPressedThisFrame)
         {
-            ChangeArmor(-1);
-            GetComponent<PlayerInventoryUI>().testKirikae();
+            // nullではない要素が2つ以上ある場合のみ変更
+            if (m_armorSlots.Count(armor => armor != null) >= 2) ArmorLeftShift();
         }
         else if (Keyboard.current.rightArrowKey.wasPressedThisFrame)
         {
-            ChangeArmor(1);
-            GetComponent<PlayerInventoryUI>().testKirikae();
+            if (m_armorSlots.Count(armor => armor != null) >= 2) ArmorRightShift();
         }
     }
 
@@ -41,23 +47,41 @@ public class PlayerInventory : MonoBehaviour
     }
 
     // アーマーを変更
-    public void ChangeArmor(int addIndex)
+    public void ArmorLeftShift()
     {
-        m_currentArmorIndex += addIndex;
+        m_currentArmorIndex -= 1;
         if (m_currentArmorIndex < 0)
             m_currentArmorIndex = m_armorSlots.Count - 1;
-        else if (m_currentArmorIndex == m_armorSlots.Count)
-            m_currentArmorIndex = 0;
+        m_playerInventoryUI.SetFrontUI(m_currentArmorIndex);
     }
+    public void ArmorRightShift()
+    {
+        m_currentArmorIndex += 1;
+        if (m_armorSlots.Count <= m_currentArmorIndex)
+            m_currentArmorIndex = 0;
+        m_playerInventoryUI.SetFrontUI(m_currentArmorIndex);
+    }
+
 
     // アーマーを入れ替える
     public BaseArmorSO SwapArmor(BaseArmorSO newArmor)
     {
         BaseArmorSO oldArmor = GetCurrentArmor();
-        if (oldArmor != null)
-        {
-            m_armorSlots[m_currentArmorIndex] = newArmor;
-        }
+
+        OverrideCurrentArmor(newArmor);
+
+        m_playerInventoryUI.SetFrontUI(m_currentArmorIndex);
+
         return oldArmor;
+    }
+
+    // 現在のアーマーを上書きする
+    public void OverrideCurrentArmor(BaseArmorSO newArmor)
+    {
+        // 上書き
+        m_armorSlots[m_currentArmorIndex] = newArmor;
+
+        // UI更新
+        m_playerInventoryUI.UpdateArmorDisplay(m_currentArmorIndex, newArmor);
     }
 }
