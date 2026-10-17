@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Unity.VisualScripting;
 using UnityEngine;
 
 public class StateMachine : MonoBehaviour
@@ -11,8 +10,9 @@ public class StateMachine : MonoBehaviour
 
     readonly Dictionary<Type, BaseState> m_stateDictionary = new();
     
-    [Header("現在のState")]
-    [SerializeField] BaseState　m_currentState;
+    [Header("State")]
+    [SerializeField] String m_initialState;
+    [SerializeField] BaseState　m_currentState;      // 見るためのSerializeField
 
     void Awake()
     {
@@ -26,8 +26,20 @@ public class StateMachine : MonoBehaviour
 
     void Start()
     {
-        m_currentState = m_stateDictionary.Values.First();
-        m_currentState.InitState();
+        // 初期Stateを設定
+        BaseState initialState = m_stateDictionary
+            .Where(pair => pair.Key.Name == m_initialState)
+            .Select(pair => pair.Value)
+            .FirstOrDefault();
+        if (initialState != null)
+        {
+            m_currentState = initialState;
+        }
+        else
+        {
+            m_currentState = m_stateDictionary.Values.First();
+        }
+        m_currentState?.InitState();
     }
 
     void Update()
@@ -53,7 +65,7 @@ public class StateMachine : MonoBehaviour
 
         m_currentState?.UnInitState();
         m_currentState = nextState;
-        m_currentState.InitState();
+        m_currentState?.InitState();
 
         Debug.Log($"{m_stateMachineName}: {typeof(T).Name}");
     }
