@@ -20,21 +20,21 @@ public class PlayerInventoryUI : MonoBehaviour
         m_playerInventory = GetComponent<PlayerInventory>();
     }
 
-    // 特定のm_frontをON それ以外をOFFにする
+    // 特定のm_frontをOFF それ以外をONにする
     public void SetFrontUI(int index)
     {
         for (int i = 0; i < m_frontUIList.Count; i++)
         {
-            m_frontUIList[i].SetActive(index == i);
+            m_frontUIList[i].SetActive(index != i);
         }
     }
 
-    // 全m_frontをOFFにする
-    public void SetAllFrontUIOff()
+    // 全m_frontをONにする
+    public void SetAllFrontUION()
     {
         for (int i = 0; i < m_frontUIList.Count; i++)
         {
-            m_frontUIList[i].SetActive(false);
+            m_frontUIList[i].SetActive(true);
         }
     }
 
@@ -51,5 +51,17 @@ public class PlayerInventoryUI : MonoBehaviour
         // カメラ表示設定
         ItemPreviewCameraVisibility camVisibility = itemPreview.AddComponent<ItemPreviewCameraVisibility>();
         camVisibility.SetTargetCamera(m_itemPreviewCameraList[index]);
+    }
+
+    // 指定カメラの子オブジェクトを削除する
+    public void ClearItemPreview(int index)
+    {
+        if (index < 0 || index >= m_itemPreviewCameraList.Count) return;
+
+        Camera targetCamera = m_itemPreviewCameraList[index];
+        foreach (Transform child in targetCamera.transform)
+        {
+            Destroy(child.gameObject);
+        }
     }
 }

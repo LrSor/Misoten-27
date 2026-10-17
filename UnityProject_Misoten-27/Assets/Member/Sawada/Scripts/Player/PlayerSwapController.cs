@@ -55,13 +55,8 @@ public class PlayerSwapController : MonoBehaviour
         {
             // 交換
             BaseArmorSO releaseArmor = m_inventory.SwapArmor(m_canSwapArmor[0].GetArmorSO());
-            RemoveCanSwapArmor(m_canSwapArmor[0]);
 
-            // オブジェクト化 飛び出す感じ
-            //if (releaseArmor != null)
-            //{
-            //    Debug.Log("Swap");
-            //}
+            RemoveCanSwapArmor(m_canSwapArmor[0]);
 
             return true;
 ;       }

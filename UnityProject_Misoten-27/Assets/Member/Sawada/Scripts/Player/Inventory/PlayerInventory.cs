@@ -34,7 +34,7 @@ public class PlayerInventory : MonoBehaviour
         }
         else if (Keyboard.current.rightArrowKey.wasPressedThisFrame)
         {
-            if (m_armorSlots.Count(armor => armor != null) >= 2) ArmorRightShift();
+           /* if (m_armorSlots.Count(armor => armor != null) >= 2)*/ ArmorRightShift();
         }
     }
 
@@ -68,8 +68,16 @@ public class PlayerInventory : MonoBehaviour
     {
         BaseArmorSO oldArmor = GetCurrentArmor();
 
+        // 古いアーマーの3DUIを削除
+        if (oldArmor != null)
+        {
+            m_playerInventoryUI.ClearItemPreview(m_currentArmorIndex);
+        }
+
+        // 上書き
         OverrideCurrentArmor(newArmor);
 
+        // m_frontをON
         m_playerInventoryUI.SetFrontUI(m_currentArmorIndex);
 
         return oldArmor;
@@ -81,7 +89,7 @@ public class PlayerInventory : MonoBehaviour
         // 上書き
         m_armorSlots[m_currentArmorIndex] = newArmor;
 
-        // UI更新
+        // UI3Dオブジェクト更新
         m_playerInventoryUI.UpdateArmorDisplay(m_currentArmorIndex, newArmor);
     }
 }

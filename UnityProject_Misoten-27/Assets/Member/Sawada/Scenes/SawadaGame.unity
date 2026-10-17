@@ -2403,13 +2403,14 @@ GameObject:
   - component: {fileID: 1474448415}
   - component: {fileID: 1474448417}
   - component: {fileID: 1474448416}
+  - component: {fileID: 1474448418}
   m_Layer: 9
   m_Name: ArmorModel03(Clone)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1474448415
 Transform:
   m_ObjectHideFlags: 0
@@ -2482,6 +2483,19 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1474448414}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &1474448418
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1474448414}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 39190285cc0635640a0f7987e04b00d0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ItemPreviewCameraVisibility
+  m_targetCamera: {fileID: 103150955}
 --- !u!1001 &1475895984
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -4047,6 +4061,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Player01
       objectReference: {fileID: 0}
+    - target: {fileID: 5040667259525543430, guid: 7e1d4857f63a13342b220b6ae63703a4, type: 3}
+      propertyPath: m_TargetTexture
+      value: 
+      objectReference: {fileID: 8400000, guid: 37f83e9b5888f1b4ebe260bd168f34aa, type: 2}
     - target: {fileID: 8664675662673021346, guid: 7e1d4857f63a13342b220b6ae63703a4, type: 3}
       propertyPath: m_Name
       value: ItemPreviews
