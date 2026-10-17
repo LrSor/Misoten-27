@@ -21,6 +21,11 @@ public class NPC_FADER : MonoBehaviour
     [SerializeField]
     private float m_shadowOffAlpha = 0.5f;
 
+    [Tooltip("薄くなり方のカーブ。1 = そのまま（最初に急に薄く見える）、大きいほど最初はゆっくり薄くなる。2 前後がおすすめ")]
+    [Range(1f, 4f)]
+    [SerializeField]
+    private float m_fadeCurvePower = 2f;
+
     [Header("当たり判定")]
     [Tooltip("薄くなったら当たり判定を消す")]
     [SerializeField]
@@ -135,12 +140,19 @@ public class NPC_FADER : MonoBehaviour
             SetupTransparentMaterials();
         }
 
+        // 実際にマテリアルに設定する透明度
+        // 半透明の色の混ざり方の関係で、透明度をそのまま下げると
+        // 少し下げただけでも急に薄くなったように見えるため、
+        // 最初はゆっくり、最後に向かって速く下がるように補正する
+        float appliedAlpha =
+            1f - Mathf.Pow(1f - alpha, m_fadeCurvePower);
+
         for (int i = 0; i < m_materials.Count; i++)
         {
             Color color = m_defaultColors[i];
 
             // 元から半透明だった場合も考えて掛け算にする
-            color.a *= alpha;
+            color.a *= appliedAlpha;
 
             m_materials[i].SetColor(
                 m_colorIds[i],

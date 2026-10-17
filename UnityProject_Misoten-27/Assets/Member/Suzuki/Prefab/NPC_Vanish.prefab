@@ -154,6 +154,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NPC_FADER
   m_shadowOffAlpha: 0.5
+  m_disableCollisionOnFade: 1
+  m_collisionOffAlpha: 0.6
 --- !u!114 &9204459731856247367
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -167,15 +169,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NPC_VANISH
   m_navMeshSampleDistance: 2
-  m_maxWalkTime: 15
+  m_stuckTime: 3
   m_minWalkSpeed: 2.6
   m_maxWalkSpeed: 3.4
   m_bobHeight: 0.05
   m_stepsPerMeter: 0.9
+  m_turnSmoothness: 6
+  m_minAvoidancePriority: 30
+  m_maxAvoidancePriority: 70
   m_destination: {fileID: 0}
-  m_fadeMode: 0
-  m_fadeDuration: 1.5
-  m_fadeStartProgress: 0
+  m_fadeMode: 1
+  m_fadeDuration: 1
+  m_fadeStartProgress: 0.363
   m_destroyOnVanish: 1
   m_onVanished:
     m_PersistentCalls:

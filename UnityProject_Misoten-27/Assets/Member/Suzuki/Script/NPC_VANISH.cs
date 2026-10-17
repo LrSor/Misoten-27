@@ -58,9 +58,12 @@ public class NPC_VANISH : NPC_BASE
     private VANISH_STATE m_currentState;
 
     // FADE_WHILE_WALKING 用
-    private Vector3 m_startPosition;
-    private float m_totalDistance = -1f;
-    private float m_progress;
+    private float m_totalDistance = -1f;        // 道のり全体の長さ
+    private bool m_isFadingWhileWalking;        // 薄くなり始めたか
+    private float m_fadeStartRemaining;         // 薄くなり始めた地点での残り距離
+
+    // 経路の曲がり角を受け取るバッファ（毎フレーム new しないよう使い回す）
+    private static readonly Vector3[] s_pathCorners = new Vector3[64];
 
     protected override void Awake()
     {
@@ -83,8 +86,6 @@ public class NPC_VANISH : NPC_BASE
 
     void Start()
     {
-        m_startPosition = transform.position;
-
         if (m_destination == null)
         {
             Debug.LogWarning(
@@ -155,59 +156,121 @@ public class NPC_VANISH : NPC_BASE
         }
     }
 
-    // 進んだ割合に合わせて透明度を下げる
+    //==================================================
+    // 歩きながら消える
+    //
+    // 1. 道のりの m_fadeStartProgress 割まで進んだら「薄くなり始める地点」とする
+    // 2. その地点での残り距離を覚えておく
+    // 3. 透明度 = 今の残り距離 ÷ 覚えた残り距離
+    //    → 薄くなり始める地点でちょうど 1、目的地でちょうど 0 になる
+    //==================================================
+
     void UpdateFadeWhileWalking()
     {
         // 経路の計算が終わるまでは待つ
-        if (m_navMeshAgent.pathPending)
+        if (m_navMeshAgent.pathPending ||
+            !m_navMeshAgent.hasPath)
         {
             return;
         }
 
         float remainingDistance =
-            m_navMeshAgent.remainingDistance;
+            GetRemainingPathDistance();
 
-        // 経路の残り距離が取れない場合は直線距離で代用
-        if (float.IsInfinity(remainingDistance))
-        {
-            remainingDistance =
-                Vector3.Distance(
-                    transform.position,
-                    m_navMeshAgent.destination);
-        }
-
-        // 最初に分かった残り距離を「全体の距離」にする
+        // 最初に分かった残り距離を「道のり全体の長さ」にする
         if (m_totalDistance < 0f)
         {
-            m_totalDistance =
-                Mathf.Max(
-                    remainingDistance,
-                    Vector3.Distance(
-                        m_startPosition,
-                        m_navMeshAgent.destination));
+            m_totalDistance = remainingDistance;
         }
 
-        if (m_totalDistance <= 0.01f)
+        if (!m_isFadingWhileWalking)
         {
-            return;
+            float progress =
+                m_totalDistance > 0.01f
+                    ? 1f - (remainingDistance / m_totalDistance)
+                    : 1f;
+
+            // まだ薄くなり始める地点に来ていない
+            if (progress < m_fadeStartProgress)
+            {
+                return;
+            }
+
+            // ここから薄くなり始める
+            m_isFadingWhileWalking = true;
+
+            m_fadeStartRemaining =
+                Mathf.Max(remainingDistance, 0.01f);
         }
 
-        float progress =
-            1f - (remainingDistance / m_totalDistance);
+        float alpha =
+            Mathf.Clamp01(remainingDistance / m_fadeStartRemaining);
 
         // 遠回りで一時的に離れても、濃く戻らないようにする
-        m_progress =
-            Mathf.Max(
-                m_progress,
-                Mathf.Clamp01(progress));
+        alpha =
+            Mathf.Min(alpha, m_fader.Alpha);
 
-        float fadeRate =
-            Mathf.InverseLerp(
-                m_fadeStartProgress,
-                1f,
-                m_progress);
+        m_fader.SetAlpha(alpha);
+    }
 
-        m_fader.SetAlpha(1f - fadeRate);
+    // 経路に沿った目的地までの残り距離（水平距離）
+    // NavMeshAgent.remainingDistance は状況によって Infinity になり、
+    // 直線距離で代用すると値が飛ぶので、経路の曲がり角から自分で計算する
+    float GetRemainingPathDistance()
+    {
+        int cornerCount =
+            m_navMeshAgent.path.GetCornersNonAlloc(s_pathCorners);
+
+        Vector3 position = transform.position;
+
+        // 曲がり角が取れない場合は目的地までの直線距離
+        if (cornerCount < 2)
+        {
+            return FlatDistance(
+                position,
+                m_navMeshAgent.destination);
+        }
+
+        // 次に向かっている曲がり角を探す
+        Vector3 steeringTarget =
+            m_navMeshAgent.steeringTarget;
+
+        int nextCorner = cornerCount - 1;
+        float closest = Mathf.Infinity;
+
+        for (int i = 1; i < cornerCount; i++)
+        {
+            float distance =
+                FlatDistance(s_pathCorners[i], steeringTarget);
+
+            if (distance < closest)
+            {
+                closest = distance;
+                nextCorner = i;
+            }
+        }
+
+        // 今の位置 → 次の曲がり角 → … → 目的地
+        float total =
+            FlatDistance(position, s_pathCorners[nextCorner]);
+
+        for (int i = nextCorner; i < cornerCount - 1; i++)
+        {
+            total += FlatDistance(
+                s_pathCorners[i],
+                s_pathCorners[i + 1]);
+        }
+
+        return total;
+    }
+
+    // 高さを無視した距離（上下の揺れで値がぶれないように）
+    static float FlatDistance(Vector3 a, Vector3 b)
+    {
+        a.y = 0f;
+        b.y = 0f;
+
+        return Vector3.Distance(a, b);
     }
 
     //==================================================
