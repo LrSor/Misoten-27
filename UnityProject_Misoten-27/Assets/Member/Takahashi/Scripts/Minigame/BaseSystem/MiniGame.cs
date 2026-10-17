@@ -15,13 +15,11 @@ public class MiniGame : MonoBehaviour
     //protected List<Joycon> m_joycons;
     //protected Joycon m_joyconL;
     ////protected Joycon m_joyconR;
-    //protected Joycon.Button? m_pressedButtonL;
-    ////protected Joycon.Button? m_pressedButtonR;
     //============================================================
 
-    protected bool m_isActive = false;
-    protected bool m_isFinish = false;
-    protected int m_score = 0;
+    private bool m_isActiveFlag = false;
+    private bool m_isFinishFlag = false;
+    private int m_score = 0;
 
     [SerializeField] MiniGameObject[] m_objects;
 
@@ -42,8 +40,8 @@ public class MiniGame : MonoBehaviour
     public virtual void Activate()
     {
         //変数初期化
-        m_isActive = true;
-        m_isFinish = false;
+        m_isActiveFlag = true;
+        m_isFinishFlag = false;
         m_score = 0;
 
         //ミニゲーム用オブジェクトの初期化
@@ -56,7 +54,7 @@ public class MiniGame : MonoBehaviour
     public virtual void Deactivate()
     {
         //ミニゲーム実行中のフラグを偽に変更
-        m_isActive = false;
+        m_isActiveFlag = false;
 
         //ミニゲーム用オブジェクトの終了処理
         foreach (var obj in m_objects)
@@ -68,12 +66,12 @@ public class MiniGame : MonoBehaviour
     public void FinishMiniGame()
     {
         //ミニゲーム終了フラグ
-        m_isFinish = true;
+        m_isFinishFlag = true;
     }
 
     public bool GetIsFinish()
     {
-        return m_isFinish;
+        return m_isFinishFlag;
     }
 
     public int GetScore()
@@ -89,7 +87,7 @@ public class MiniGame : MonoBehaviour
     void Update()
     {
         //ミニゲーム実行中フラグがたっている場合、ミニゲーム更新関数を実行
-        if (!m_isActive)
+        if (!m_isActiveFlag)
         {
             return;
         }

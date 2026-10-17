@@ -88,6 +88,5 @@ public class PlayerScore : MonoBehaviour
 
         //スコア表示UIを更新
         m_scoreText.text = m_totalScore.ToString("Total Score: 0000");
-
     }
 }
