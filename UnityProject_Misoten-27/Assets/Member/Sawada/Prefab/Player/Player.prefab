@@ -334,7 +334,6 @@ MonoBehaviour:
   m_itemPreviewCameraList:
   - {fileID: 1063307764340556283}
   - {fileID: 5040667259525543430}
-  m_itemPreviews: {fileID: 3199946813161695021}
 --- !u!1 &3358308923338855580
 GameObject:
   m_ObjectHideFlags: 0
@@ -524,6 +523,7 @@ GameObject:
   - component: {fileID: 1948802285203675209}
   - component: {fileID: 379404387939404725}
   - component: {fileID: 3107398066599127225}
+  - component: {fileID: 3935851522224205229}
   m_Layer: 6
   m_Name: Mainbody
   m_TagString: Player
@@ -672,6 +672,20 @@ MonoBehaviour:
   m_sprintMaxSpeed: 10
   m_sprintMinSpeed: 5
   m_sprintTime: 5
+--- !u!114 &3935851522224205229
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4500519972888530110}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 22f93cb1375a3cc4198ae6fb4d1478b0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerScore
+  m_results: []
+  m_scoreText: {fileID: 0}
 --- !u!1 &4811325795309357665
 GameObject:
   m_ObjectHideFlags: 0
@@ -999,7 +1013,7 @@ Transform:
   m_GameObject: {fileID: 6798334713888263258}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 3, y: 2.8, z: -9}
+  m_LocalPosition: {x: 0, y: 1.8, z: -5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

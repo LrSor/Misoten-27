@@ -203,6 +203,14 @@ public class LIU_SCENE_CONTROLLER : MonoBehaviour
     [SerializeField, Min(0.1f), InspectorName("片道の移動時間（秒）")]
     private float m_moveDuration = 2.0f;
 
+    [Header("Scene名")]
+    [SerializeField]
+    private string m_gameScene;
+    [SerializeField]
+    private string m_resultScene;
+    [SerializeField]
+    private string m_titleScene;
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetTransition()
     {
@@ -211,17 +219,17 @@ public class LIU_SCENE_CONTROLLER : MonoBehaviour
 
     public void LoadGame()
     {
-        StartTransition("LiuGameScene");
+        StartTransition(m_gameScene);
     }
 
     public void LoadResult()
     {
-        StartTransition("LiuResultScene");
+        StartTransition(m_resultScene);
     }
 
     public void LoadTitle()
     {
-        StartTransition("LiuTitleScene");
+        StartTransition(m_titleScene);
     }
 
     private void StartTransition(string sceneName)

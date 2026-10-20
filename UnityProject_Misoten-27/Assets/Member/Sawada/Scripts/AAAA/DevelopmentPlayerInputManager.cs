@@ -120,7 +120,7 @@ public class DevelopmentPlayerInputManager : MonoBehaviour
                 Mouse.current
             );
         }
-
+        
         Debug.Log(
             $"操作Player変更 : Player {index + 1}"
         );
