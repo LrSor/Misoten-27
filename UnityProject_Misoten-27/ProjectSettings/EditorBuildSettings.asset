@@ -9,13 +9,13 @@ EditorBuildSettings:
     path: Assets/Member/Sawada/Scenes/testTitle.unity
     guid: 99c9720ab356a0642a771bea13969a05
   - enabled: 1
-    path: Assets/Main_KAri/Scene/LiuTitleScene.unity
+    path: Assets/Main_KAri/Scene/LiuTitleScene_10_20.unity
     guid: aee8b5b361da41f4a81105eb992545ef
   - enabled: 1
     path: Assets/Member/Sawada/Scenes/testGame.unity
     guid: d63ac35bc45e19b468c97025cd1b3739
   - enabled: 1
-    path: Assets/Main_KAri/Scene/SawadaGame.unity
+    path: Assets/Main_KAri/Scene/SawadaGame_10_20.unity
     guid: 5c1971154ba6cb24d91f5e145a568c81
   - enabled: 1
     path: Assets/Member/Sawada/Scenes/testResult.unity

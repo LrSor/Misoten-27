@@ -661,6 +661,7 @@ Transform:
   m_Children:
   - {fileID: 1332691716}
   - {fileID: 1864335350}
+  - {fileID: 2041312322}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &217255392
@@ -2596,6 +2597,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 62899f850307741f2a39c98a8b639597, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.PlayerInput
+--- !u!20 &865561847 stripped
+Camera:
+  m_CorrespondingSourceObject: {fileID: 4856734483419231469, guid: 7e1d4857f63a13342b220b6ae63703a4, type: 3}
+  m_PrefabInstance: {fileID: 7162299011974984005}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &874924487 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 4532952710820102404, guid: 6840f0509469a3e4685857f68662b7fd, type: 3}
@@ -4798,6 +4804,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Text
+--- !u!1 &1586959141 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4811325795309357665, guid: 7e1d4857f63a13342b220b6ae63703a4, type: 3}
+  m_PrefabInstance: {fileID: 7162299011974984005}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1603308683
 GameObject:
   m_ObjectHideFlags: 0
@@ -6560,6 +6571,50 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 536.7169, y: 156.0227}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!1 &2041312321
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2041312322}
+  - component: {fileID: 2041312323}
+  m_Layer: 0
+  m_Name: CameraDisplaySetterManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2041312322
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2041312321}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 183628564}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2041312323
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2041312321}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f97dfadb38ba60944a50df723d71cf53, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CameraDisplaySetter
 --- !u!1 &2041339732 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 1286982857918699080, guid: 7cd25b2827470094ca9340091bdfb3a4, type: 3}
@@ -6943,12 +6998,26 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 3126517289341570151, guid: 7e1d4857f63a13342b220b6ae63703a4, type: 3}
   m_PrefabInstance: {fileID: 7162299011974984005}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
+  m_GameObject: {fileID: 1586959141}
   m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 62899f850307741f2a39c98a8b639597, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.PlayerInput
+--- !u!114 &6258057703241449415
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1586959141}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e28cc2d040759f24fba00c3a29a26c3a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::testDeisplay
+  m_cam: {fileID: 865561847}
+  m_num: 0
 --- !u!1001 &7162299011974984005
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -7083,7 +7152,10 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 1808062950176736201, guid: 7e1d4857f63a13342b220b6ae63703a4, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1474448415}
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 4811325795309357665, guid: 7e1d4857f63a13342b220b6ae63703a4, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6258057703241449415}
   m_SourcePrefab: {fileID: 100100000, guid: 7e1d4857f63a13342b220b6ae63703a4, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
