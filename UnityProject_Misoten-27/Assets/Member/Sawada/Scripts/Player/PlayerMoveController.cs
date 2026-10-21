@@ -19,10 +19,16 @@ public class PlayerMoveController : MonoBehaviour
     [Header("Camera")]
     [SerializeField] private Transform m_movementReference;
 
+    [Header("Inventory")]
+    [SerializeField] private Inventory m_inventory;
+
     private Rigidbody m_rb;
     [SerializeField] private PlayerInput m_playerInput;
     private InputAction m_moveAction;
     private InputAction m_sprintAction;
+
+    // Sprint
+    private bool m_rushFlag = false;
 
 
     // =========================================================
@@ -61,11 +67,12 @@ public class PlayerMoveController : MonoBehaviour
         }
     }
 
+    public void SetRushFlag(bool n) { m_rushFlag = n; }
+
 
     // =========================================================
     // Unity
     // =========================================================
-
     private void Awake()
     {
         m_rb = GetComponent<Rigidbody>();
@@ -75,11 +82,20 @@ public class PlayerMoveController : MonoBehaviour
         m_sprintAction = m_playerInput.actions.FindAction("Sprint", true);
     }
 
+    //private void OnTriggerEnter(Collider other)
+    public void OnCollisionEnter(Collision collision)
+    {
+        if (collision.gameObject.CompareTag("Character") || collision.gameObject.CompareTag("Player"))
+        {
+            Debug.Log("接触");
+            RushCharacter(collision.gameObject.GetComponent<CharacterReferenceController>());
+        }
+    }
+
 
     // =========================================================
     // Move
     // =========================================================
-
     public void Move(float maxSpeed)
     {
         Vector2 input = MoveInput;
@@ -125,7 +141,6 @@ public class PlayerMoveController : MonoBehaviour
         SetHorizontalVelocity(horizontalVelocity);
     }
 
-
     public void Decelerate()
     {
         Vector3 velocity = m_rb.linearVelocity;
@@ -143,9 +158,26 @@ public class PlayerMoveController : MonoBehaviour
 
 
     // =========================================================
+    // Sprint
+    // =========================================================
+    // CharacterかつAmor装備中なら取る
+    public void RushCharacter(CharacterReferenceController reference)
+    {
+        if (m_rushFlag == false) return;
+
+        // 装備中
+        BaseArmorSO armorSO = reference.Inventory.SwapArmor(null);
+        if (armorSO == null) return;
+
+        BaseArmorSO oldArmorSO = m_inventory.SwapArmor(armorSO);
+        SetRushFlag(false);
+
+        Debug.Log($"強奪完了: {armorSO}->{oldArmorSO}");
+    }
+
+    // =========================================================
     // Rotation
     // =========================================================
-
     public void Rotate()
     {
         Vector3 velocity = m_rb.linearVelocity;
@@ -168,7 +200,6 @@ public class PlayerMoveController : MonoBehaviour
     // =========================================================
     // Private
     // =========================================================
-
     private Vector3 GetMoveDirection(Vector2 input)
     {
         if (m_movementReference == null)
@@ -184,7 +215,6 @@ public class PlayerMoveController : MonoBehaviour
 
         return Vector3.ClampMagnitude(moveDirection, 1.0f);
     }
-
 
     private void SetHorizontalVelocity(Vector3 horizontalVelocity)
     {

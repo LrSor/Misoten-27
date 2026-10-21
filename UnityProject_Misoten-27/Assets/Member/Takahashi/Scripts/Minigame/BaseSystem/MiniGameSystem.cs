@@ -309,7 +309,7 @@ public class MiniGameSystem : MonoBehaviour
         //カメラをプレイヤー本体へ切り替え
         m_miniGameCamera.gameObject.SetActive(false);
         m_camera.gameObject.SetActive(true);
-
+        
         //メンバ変数初期化
         m_currentNum = m_countNum;
         m_state = STATE_MINIGAME.STATE_DEACTIVE;

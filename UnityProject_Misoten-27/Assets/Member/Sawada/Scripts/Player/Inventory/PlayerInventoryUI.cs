@@ -9,7 +9,7 @@ using UnityEngine;
  */
 public class PlayerInventoryUI : MonoBehaviour
 {
-    private PlayerInventory m_playerInventory;
+    private Inventory m_playerInventory;
 
     [SerializeField] private List<GameObject> m_frontUIList;
 
@@ -17,7 +17,7 @@ public class PlayerInventoryUI : MonoBehaviour
 
     private void Start()
     {
-        m_playerInventory = GetComponent<PlayerInventory>();
+        m_playerInventory = GetComponent<Inventory>();
     }
 
     // 特定のm_frontをOFF それ以外をONにする
@@ -44,13 +44,16 @@ public class PlayerInventoryUI : MonoBehaviour
         if (index < 0 || index >= m_frontUIList.Count) return;
 
         // armorの情報をUIに反映する
-        // 位置調整
-        GameObject itemPreview = Instantiate(armor.m_modelPrefab, m_itemPreviewCameraList[index].transform);
-        itemPreview.transform.localPosition = new Vector3(0, 0, 5);
+        if (armor != null)
+        {
+            // 位置調整
+            GameObject itemPreview = Instantiate(armor.m_modelPrefab, m_itemPreviewCameraList[index].transform);
+            itemPreview.transform.localPosition = new Vector3(0, 0, 5);
 
-        // カメラ表示設定
-        ItemPreviewCameraVisibility camVisibility = itemPreview.AddComponent<ItemPreviewCameraVisibility>();
-        camVisibility.SetTargetCamera(m_itemPreviewCameraList[index]);
+            // カメラ表示設定
+            ItemPreviewCameraVisibility camVisibility = itemPreview.AddComponent<ItemPreviewCameraVisibility>();
+            camVisibility.SetTargetCamera(m_itemPreviewCameraList[index]);
+        }
     }
 
     // 指定カメラの子オブジェクトを削除する

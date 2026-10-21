@@ -8,7 +8,7 @@ public class PlayerSwapController : MonoBehaviour
     private InputAction m_swapAction;
 
     [Header("Inventory")]
-    [SerializeField] private PlayerInventory m_inventory;
+    [SerializeField] private Inventory m_inventory;
 
     // swap可能一覧
     private List<FieldArmorMachine> m_canSwapArmor = new();
