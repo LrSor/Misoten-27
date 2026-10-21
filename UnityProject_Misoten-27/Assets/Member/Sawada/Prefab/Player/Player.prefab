@@ -270,6 +270,37 @@ PositionConstraint:
   m_Sources:
   - sourceTransform: {fileID: 7525411818611836798}
     weight: 1
+--- !u!1 &2533265544043274324
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1629414379625074321}
+  m_Layer: 6
+  m_Name: Armor
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1629414379625074321
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2533265544043274324}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 2.24, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7525411818611836798}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &3101592304862668963
 GameObject:
   m_ObjectHideFlags: 0
@@ -301,7 +332,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 1149727398687965720}
+  m_Father: {fileID: 7525411818611836798}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &9054616098022555476
 MonoBehaviour:
@@ -318,6 +349,7 @@ MonoBehaviour:
   m_armorSlots:
   - {fileID: 0}
   - {fileID: 0}
+  m_characterAmorController: {fileID: 7667333209505599405}
 --- !u!114 &2970960063746360391
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -516,6 +548,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7525411818611836798}
+  - component: {fileID: 4625603235219023910}
   - component: {fileID: 7672192505991679010}
   - component: {fileID: 9072490199029007473}
   - component: {fileID: 4025829762059057491}
@@ -524,8 +557,9 @@ GameObject:
   - component: {fileID: 379404387939404725}
   - component: {fileID: 3107398066599127225}
   - component: {fileID: 3935851522224205229}
+  - component: {fileID: 7667333209505599405}
   m_Layer: 6
-  m_Name: Mainbody
+  m_Name: PlayerBody
   m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -546,8 +580,23 @@ Transform:
   m_Children:
   - {fileID: 2682934377126028077}
   - {fileID: 5253947303704505872}
+  - {fileID: 7552321563818607883}
+  - {fileID: 1629414379625074321}
   m_Father: {fileID: 1149727398687965720}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4625603235219023910
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4500519972888530110}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 985413bb66a9c5e4187b5f3dc5473cca, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerReferenceController
+  m_inventory: {fileID: 9054616098022555476}
 --- !u!54 &7672192505991679010
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -616,6 +665,7 @@ MonoBehaviour:
   m_inputThreshold: 0.01
   m_stopThreshold: 0.001
   m_movementReference: {fileID: 2968105719628051741}
+  m_inventory: {fileID: 9054616098022555476}
   m_playerInput: {fileID: 3126517289341570151}
 --- !u!114 &9165444220983477422
 MonoBehaviour:
@@ -686,6 +736,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerScore
   m_results: []
   m_scoreText: {fileID: 0}
+--- !u!114 &7667333209505599405
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4500519972888530110}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 819243334049f0640804f051abb84dc8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterAmorController
+  m_parent: {fileID: 1629414379625074321}
 --- !u!1 &4811325795309357665
 GameObject:
   m_ObjectHideFlags: 0
@@ -717,7 +780,6 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 7525411818611836798}
-  - {fileID: 7552321563818607883}
   - {fileID: 3199946813161695021}
   - {fileID: 2968105719628051741}
   - {fileID: 1925400146287214508}
@@ -761,6 +823,10 @@ MonoBehaviour:
       m_Calls: []
     m_ActionId: 34830f4a-c7b1-4f14-9b1c-8092b7ec40ae
     m_ActionName: 'Player/Sprint[/Keyboard/leftShift]'
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: d278c1f2-91d1-49ce-9e40-8346c3b5833c
+    m_ActionName: 'Player/Swap[/Keyboard/e]'
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: Gamepad
   m_DefaultActionMap: Player
@@ -1205,7 +1271,7 @@ SphereCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
