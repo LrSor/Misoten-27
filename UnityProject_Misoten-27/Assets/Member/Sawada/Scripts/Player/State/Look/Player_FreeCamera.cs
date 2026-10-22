@@ -22,6 +22,6 @@ public class Player_FreeCamera : BaseState
     public override void FixedUpdateState()
     {
         // 視界の回転
-        m_controller.Look();
+        //m_controller.Look();
     }
 }
