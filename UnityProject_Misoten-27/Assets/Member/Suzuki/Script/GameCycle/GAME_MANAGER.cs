@@ -68,10 +68,6 @@ public class GAME_MANAGER : MonoBehaviour
     [SerializeField]
     private GameObject m_timeUpObject;
 
-    [Tooltip("現在の合計スコア")]
-    [SerializeField]
-    private TMP_Text m_scoreText;
-
     [Header("イベント（Inspector から登録できる）")]
     [SerializeField]
     private UnityEvent m_onGameStart = new UnityEvent();
@@ -109,6 +105,12 @@ public class GAME_MANAGER : MonoBehaviour
         get { return m_remainingTime; }
     }
 
+    // カウントダウンの残り（READY 中のみ。それ以外は 0）
+    public float ReadyRemaining
+    {
+        get { return m_state == GAME_STATE.READY ? Mathf.Max(m_stateTimer, 0f) : 0f; }
+    }
+
     // ドメインリロード無しで再生した場合に前回の登録が残らないようにする
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
@@ -133,16 +135,6 @@ public class GAME_MANAGER : MonoBehaviour
         Instance = this;
     }
 
-    void OnEnable()
-    {
-        GAME_SCORE.ScoreAdded += OnScoreAdded;
-    }
-
-    void OnDisable()
-    {
-        GAME_SCORE.ScoreAdded -= OnScoreAdded;
-    }
-
     void OnDestroy()
     {
         if (Instance == this)
@@ -164,7 +156,6 @@ public class GAME_MANAGER : MonoBehaviour
         SetActiveSafe(m_countdownText, false);
 
         UpdateTimerText();
-        UpdateScoreText();
 
         if (m_readyTime > 0f)
         {
@@ -390,24 +381,6 @@ public class GAME_MANAGER : MonoBehaviour
         }
 
         m_lockedInputs.Clear();
-    }
-
-    //==================================================
-    // スコア表示
-    //==================================================
-
-    void OnScoreAdded(int playerIndex, int amount)
-    {
-        UpdateScoreText();
-    }
-
-    void UpdateScoreText()
-    {
-        if (m_scoreText != null)
-        {
-            m_scoreText.text =
-                GAME_SCORE.TotalScore.ToString();
-        }
     }
 
     //==================================================

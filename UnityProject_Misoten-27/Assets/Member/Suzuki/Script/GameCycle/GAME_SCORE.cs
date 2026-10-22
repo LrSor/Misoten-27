@@ -6,7 +6,7 @@ using UnityEngine;
 //
 // ・どこからでも GAME_SCORE.AddScore(プレイヤー番号, 点数) で加点できる
 // ・ゲーム中以外（準備中・タイムアップ後）は加点されない
-// ・リザルトは GAME_SCORE.TotalScore を読む
+// ・リザルトは GAME_SCORE.GetPlayerScore でプレイヤーごとのスコアを読む
 //
 // static クラスなのでシーンに置く必要はなく、
 // シーンを移動しても値が消えない（タイトルに戻るときにリセットする）
