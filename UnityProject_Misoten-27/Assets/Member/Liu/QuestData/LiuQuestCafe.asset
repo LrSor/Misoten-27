@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9ce32af18b5f30d4db11804afed4f633, type: 3}
+  m_Name: LiuQuestCafe
+  m_EditorClassIdentifier: Assembly-CSharp::QuestData
+  questID: Liu_Test_A01
+  questTitle: "\u6975\u4E0A\u306E\u55AB\u8336\u5E97"
+  group: 0
+  recommendedPart: {fileID: 0}
+  questPrefab: {fileID: 6371290645904024985, guid: 6879c3a020df3cd4c95278dd9adb5d0b, type: 3}
