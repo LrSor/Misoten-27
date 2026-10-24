@@ -335,11 +335,12 @@ public class LIU_SCENE_CONTROLLER : MonoBehaviour
 
             if (progress >= 0.5f)
             {
-                // 全面が覆われた後、背面を黒にしてゲーム画面を隠す。
-                // トランジション終了時に、この画面もまとめて削除する。
-                // 不透明な白いテクスチャを黒く着色し、ゲーム画面を隠す。
-                snapshot.texture = Texture2D.whiteTexture;
-                snapshot.color = new Color(0f, 0f, 0f, 1f);
+                // 全面が覆われる位置を通過したら旧画面だけを透明にし、
+                // パネルが抜けていく後ろから新しいシーンを見せる。
+                // （新しいシーン側は IsTransitioning の間、
+                //   カウントダウンや入力受付を止めて待っている）
+                // 透明化後もクリックの遮断は継続する。
+                snapshot.color = Color.clear;
             }
             if (progress >= 1f)
             {
