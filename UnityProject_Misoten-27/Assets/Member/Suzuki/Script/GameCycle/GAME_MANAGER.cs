@@ -157,21 +157,16 @@ public class GAME_MANAGER : MonoBehaviour
 
         UpdateTimerText();
 
-        if (m_readyTime > 0f)
-        {
-            m_state = GAME_STATE.READY;
-            m_stateTimer = m_readyTime;
+        // トランジションが終わるまでは READY のまま待つ
+        // （カウントダウンが 0 秒の設定でも、画面が見えてから開始する）
+        m_state = GAME_STATE.READY;
+        m_stateTimer = m_readyTime;
 
-            SetActiveSafe(m_countdownText, true);
+        SetActiveSafe(m_countdownText, m_readyTime > 0f);
 
-            // プレイヤーは他のスクリプトの Start で生成されることがあるので、
-            // 全員の Start が終わった後（最初の Update）でロックする
-            m_needApplyLock = m_lockDuringReady;
-        }
-        else
-        {
-            StartGame();
-        }
+        // プレイヤーは他のスクリプトの Start で生成されることがあるので、
+        // 全員の Start が終わった後（最初の Update）でロックする
+        m_needApplyLock = m_lockDuringReady;
     }
 
     void Update()
@@ -206,17 +201,34 @@ public class GAME_MANAGER : MonoBehaviour
 
     void UpdateReady()
     {
+        // トランジション中（画面がまだ見えていない間）はカウントダウンを進めない
+        if (GAME_SCENE_LOADER.IsTransitioning)
+        {
+            UpdateCountdownText();
+            return;
+        }
+
         m_stateTimer -= Time.deltaTime;
+
+        UpdateCountdownText();
+
+        if (m_stateTimer <= 0f)
+        {
+            StartGame();
+        }
+    }
+
+    void UpdateCountdownText()
+    {
+        if (m_readyTime <= 0f)
+        {
+            return;
+        }
 
         if (m_countdownText != null)
         {
             m_countdownText.text =
                 Mathf.CeilToInt(Mathf.Max(m_stateTimer, 0.01f)).ToString();
-        }
-
-        if (m_stateTimer <= 0f)
-        {
-            StartGame();
         }
     }
 

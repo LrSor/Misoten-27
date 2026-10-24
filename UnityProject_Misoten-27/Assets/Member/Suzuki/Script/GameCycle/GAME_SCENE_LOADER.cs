@@ -4,34 +4,29 @@ using UnityEngine.SceneManagement;
 //==================================================
 // シーン遷移をまとめる場所
 //
-// ・連打しても1回しか遷移しない
+// 劉さんの LIU_SCENE_CONTROLLER（トランジション演出）を使って遷移する
+//   ・シーンに LIU_SCENE_CONTROLLER が置いてあれば、それを使う
+//     （画像や時間の設定はそのオブジェクトのもの）
+//   ・置いていなければ自動で作って使う（画像なし・初期設定の時間）
+//
+// ・遷移中に呼ばれても無視する（連打しても1回だけ）
 // ・Build Settings に登録されていないシーンは分かりやすいエラーを出す
 //
-// あとで劉さんのトランジション演出に差し替えるときは、
-// Load() の中身だけ変えれば全シーンに反映される
+// 他のスクリプトは GAME_SCENE_LOADER.IsTransitioning を見れば
+// 「トランジション中か（新しいシーンがまだ見えていないか）」が分かる
 //==================================================
 public static class GAME_SCENE_LOADER
 {
-    private static bool s_isLoading;
-
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void Initialize()
+    // トランジション中か（演出が終わるまで true）
+    public static bool IsTransitioning
     {
-        s_isLoading = false;
-
-        // 二重登録しないように一度外してから登録
-        SceneManager.sceneLoaded -= OnSceneLoaded;
-        SceneManager.sceneLoaded += OnSceneLoaded;
-    }
-
-    static void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        s_isLoading = false;
+        get { return LIU_SCENE_CONTROLLER.IsTransitioning; }
     }
 
     public static void Load(string sceneName)
     {
-        if (s_isLoading)
+        // すでに遷移中なら何もしない
+        if (IsTransitioning)
         {
             return;
         }
@@ -45,8 +40,39 @@ public static class GAME_SCENE_LOADER
             return;
         }
 
-        s_isLoading = true;
+        LIU_SCENE_CONTROLLER controller =
+            FindController();
 
-        SceneManager.LoadScene(sceneName);
+        controller.LoadScene(sceneName);
+    }
+
+    // 今のシーンにあるトランジション用コントローラーを探す。無ければ作る
+    static LIU_SCENE_CONTROLLER FindController()
+    {
+        Scene activeScene =
+            SceneManager.GetActiveScene();
+
+        LIU_SCENE_CONTROLLER[] controllers =
+            Object.FindObjectsByType<LIU_SCENE_CONTROLLER>(FindObjectsSortMode.None);
+
+        // 今のシーンに置いてあるものを優先する
+        foreach (LIU_SCENE_CONTROLLER controller in controllers)
+        {
+            if (controller.gameObject.scene == activeScene)
+            {
+                return controller;
+            }
+        }
+
+        Debug.Log(
+            "シーン「" + activeScene.name +
+            "」に LIU_SCENE_CONTROLLER が無いので、初期設定（画像なし）のものを自動で作りました");
+
+        // 遷移中はこのオブジェクトごと次のシーンへ持ち越されるので、
+        // 他のスクリプトを付けない専用のオブジェクトにする
+        GameObject controllerObject =
+            new GameObject("SceneController (自動作成)");
+
+        return controllerObject.AddComponent<LIU_SCENE_CONTROLLER>();
     }
 }

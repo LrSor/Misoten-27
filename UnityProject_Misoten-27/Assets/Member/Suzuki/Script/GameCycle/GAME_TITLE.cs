@@ -43,6 +43,14 @@ public class GAME_TITLE : MonoBehaviour
 
     void Update()
     {
+        // トランジション中（画面がまだ見えていない間）は待つ
+        // 入力受付までの時間も、トランジションが終わってから数える
+        if (GAME_SCENE_LOADER.IsTransitioning)
+        {
+            m_timer = 0f;
+            return;
+        }
+
         m_timer += Time.unscaledDeltaTime;
 
         UpdateBlink();
@@ -61,6 +69,11 @@ public class GAME_TITLE : MonoBehaviour
     // UI の Button からも呼べるように public にしている
     public void StartGame()
     {
+        if (GAME_SCENE_LOADER.IsTransitioning)
+        {
+            return;
+        }
+
         GAME_SCENE_LOADER.Load(m_gameSceneName);
     }
 

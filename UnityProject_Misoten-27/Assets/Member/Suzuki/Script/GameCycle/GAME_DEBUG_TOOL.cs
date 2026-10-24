@@ -143,6 +143,12 @@ public class GAME_DEBUG_TOOL : MonoBehaviour
             return;
         }
 
+        // この表示はトランジションの画面より手前に描かれてしまうので、遷移中は出さない
+        if (GAME_SCENE_LOADER.IsTransitioning)
+        {
+            return;
+        }
+
         SetupStyles();
 
         if (GAME_MANAGER.Instance != null)

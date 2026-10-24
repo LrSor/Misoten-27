@@ -102,6 +102,13 @@ public class GAME_RESULT : MonoBehaviour
 
     void Update()
     {
+        // トランジション中（画面がまだ見えていない間）は待つ
+        // 数え上げと入力受付は、画面が見えてから始める
+        if (GAME_SCENE_LOADER.IsTransitioning)
+        {
+            return;
+        }
+
         m_timer += Time.unscaledDeltaTime;
 
         bool canInput =
@@ -261,6 +268,11 @@ public class GAME_RESULT : MonoBehaviour
 
     public void ReturnToTitle()
     {
+        if (GAME_SCENE_LOADER.IsTransitioning)
+        {
+            return;
+        }
+
         GAME_SCORE.ResetScores();
 
         GAME_SCENE_LOADER.Load(m_titleSceneName);
