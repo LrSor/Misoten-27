@@ -196,6 +196,16 @@ public class LIU_SCENE_CONTROLLER : MonoBehaviour
     private bool m_transitionFlag;
     private Texture2D m_previousFrame;
 
+
+    // true：トランジション中
+    // false：トランジションしていない
+
+    public static bool IsTransitioning
+    {
+        get { return g_transitionFlag; }
+    }
+
+
     [Header("トランジション設定")]
     [SerializeField, InspectorName("表示する画像")]
     private Sprite m_transitionImage;
@@ -209,19 +219,10 @@ public class LIU_SCENE_CONTROLLER : MonoBehaviour
         g_transitionFlag = false;
     }
 
-    public void LoadGame()
+    // 指定したシーンへトランジション付きで遷移する。
+    public void LoadScene(string sceneName)
     {
-        StartTransition("LiuGameScene");
-    }
-
-    public void LoadResult()
-    {
-        StartTransition("LiuResultScene");
-    }
-
-    public void LoadTitle()
-    {
-        StartTransition("LiuTitleScene");
+        StartTransition(sceneName);
     }
 
     private void StartTransition(string sceneName)
@@ -334,11 +335,12 @@ public class LIU_SCENE_CONTROLLER : MonoBehaviour
 
             if (progress >= 0.5f)
             {
-                // 全面が覆われる位置を通過したら旧画面だけを透明にする。
-                // 透明化後もクリックの遮断は継続する。
-                snapshot.color = Color.clear;
+                // 全面が覆われた後、背面を黒にしてゲーム画面を隠す。
+                // トランジション終了時に、この画面もまとめて削除する。
+                // 不透明な白いテクスチャを黒く着色し、ゲーム画面を隠す。
+                snapshot.texture = Texture2D.whiteTexture;
+                snapshot.color = new Color(0f, 0f, 0f, 1f);
             }
-
             if (progress >= 1f)
             {
                 break;
