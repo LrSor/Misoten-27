@@ -55,6 +55,10 @@ public class GAME_MANAGER : MonoBehaviour
     [SerializeField]
     private bool m_lockDuringReady = true;
 
+    [Tooltip("ロック中に止めるスクリプト。PlayerInput を使っていないプレイヤーや、ミニゲームの開始ゾーンなどを入れる")]
+    [SerializeField]
+    private Behaviour[] m_lockBehaviours;
+
     [Header("UI（任意。空欄でも動く）")]
     [Tooltip("残り時間（例 2:59）")]
     [SerializeField]
@@ -86,6 +90,10 @@ public class GAME_MANAGER : MonoBehaviour
     // ロック中のプレイヤー入力（ロック前に有効だったものだけ覚えて戻す）
     private readonly List<PlayerInput> m_lockedInputs =
         new List<PlayerInput>();
+
+    // ロック中に止めたスクリプト（ロック前に有効だったものだけ覚えて戻す）
+    private readonly List<Behaviour> m_lockedBehaviours =
+        new List<Behaviour>();
 
     private bool m_isInputLocked;
     private bool m_needApplyLock;
@@ -372,6 +380,22 @@ public class GAME_MANAGER : MonoBehaviour
                 m_lockedInputs.Add(playerInput);
             }
         }
+
+        // Inspector で指定したスクリプトを止める
+        m_lockedBehaviours.Clear();
+
+        if (m_lockBehaviours != null)
+        {
+            foreach (Behaviour behaviour in m_lockBehaviours)
+            {
+                if (behaviour != null &&
+                    behaviour.enabled)
+                {
+                    behaviour.enabled = false;
+                    m_lockedBehaviours.Add(behaviour);
+                }
+            }
+        }
     }
 
     void UnlockPlayerInputs()
@@ -393,6 +417,16 @@ public class GAME_MANAGER : MonoBehaviour
         }
 
         m_lockedInputs.Clear();
+
+        foreach (Behaviour behaviour in m_lockedBehaviours)
+        {
+            if (behaviour != null)
+            {
+                behaviour.enabled = true;
+            }
+        }
+
+        m_lockedBehaviours.Clear();
     }
 
     //==================================================
