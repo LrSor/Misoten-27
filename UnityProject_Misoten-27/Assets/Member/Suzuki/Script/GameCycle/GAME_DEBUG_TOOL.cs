@@ -175,7 +175,8 @@ public class GAME_DEBUG_TOOL : MonoBehaviour
     void DrawGame(GAME_MANAGER manager)
     {
         DrawInfo(
-            "[ GAME ]  " + manager.State + "\n" +
+            "[ GAME ]  " + manager.State +
+            (GAME_INTRO.IsPlaying ? "  (INTRO  Enter: skip)" : "") + "\n" +
             "TIME   " + FormatTime(manager.RemainingTime) + "\n" +
             GetPlayerScoresLine() + "\n" +
             "\n" +
@@ -185,6 +186,12 @@ public class GAME_DEBUG_TOOL : MonoBehaviour
         switch (manager.State)
         {
             case GAME_MANAGER.GAME_STATE.READY:
+                // 開始演出中はカウントダウンを出さない（演出の邪魔にならないように）
+                if (manager.IsWaitingForCountdown)
+                {
+                    break;
+                }
+
                 DrawCenter(
                     Mathf.CeilToInt(Mathf.Max(manager.ReadyRemaining, 0.01f)).ToString(),
                     Color.white);

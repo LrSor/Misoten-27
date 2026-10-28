@@ -9,6 +9,7 @@ using UnityEngine.InputSystem;
 // ゲームシーンの進行役
 //
 //   READY   : 開始前のカウントダウン（3, 2, 1, START）
+//             開始演出（GAME_INTRO）がある場合は、それが終わってから数え始める
 //   PLAYING : 制限時間が減っていく。この間だけ加点される
 //   TIME_UP : 0 秒で操作をロック → 少し待ってリザルトへ
 //
@@ -113,6 +114,17 @@ public class GAME_MANAGER : MonoBehaviour
         get { return m_remainingTime; }
     }
 
+    // カウントダウンを始められずに待っているか
+    // （シーン遷移中、または開始演出 GAME_INTRO の再生中）
+    public bool IsWaitingForCountdown
+    {
+        get
+        {
+            return m_state == GAME_STATE.READY &&
+                   (GAME_SCENE_LOADER.IsTransitioning || GAME_INTRO.IsPlaying);
+        }
+    }
+
     // カウントダウンの残り（READY 中のみ。それ以外は 0）
     public float ReadyRemaining
     {
@@ -170,7 +182,7 @@ public class GAME_MANAGER : MonoBehaviour
         m_state = GAME_STATE.READY;
         m_stateTimer = m_readyTime;
 
-        SetActiveSafe(m_countdownText, m_readyTime > 0f);
+        // カウントダウンの表示は、トランジションと開始演出が終わってから出す（UpdateReady）
 
         // プレイヤーは他のスクリプトの Start で生成されることがあるので、
         // 全員の Start が終わった後（最初の Update）でロックする
@@ -209,12 +221,15 @@ public class GAME_MANAGER : MonoBehaviour
 
     void UpdateReady()
     {
-        // トランジション中（画面がまだ見えていない間）はカウントダウンを進めない
-        if (GAME_SCENE_LOADER.IsTransitioning)
+        // トランジション中（画面がまだ見えていない間）や開始演出中は
+        // カウントダウンを進めず、表示も出さない
+        if (IsWaitingForCountdown)
         {
-            UpdateCountdownText();
+            SetActiveSafe(m_countdownText, false);
             return;
         }
+
+        SetActiveSafe(m_countdownText, m_readyTime > 0f);
 
         m_stateTimer -= Time.deltaTime;
 
