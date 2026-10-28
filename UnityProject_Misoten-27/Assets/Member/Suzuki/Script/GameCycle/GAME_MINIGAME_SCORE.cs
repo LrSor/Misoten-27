@@ -1,11 +1,18 @@
 using UnityEngine;
 
 //==================================================
-// 高橋さんのミニゲームのスコアを GAME_SCORE に加点する橋渡し
+// 高橋さんのミニゲームと、ゲームの進行（GAME_MANAGER）をつなぐ橋渡し
 //
-// ・シーン内のミニゲーム（MiniGame を継承したもの）を自動で探す
-// ・ミニゲームが終わった瞬間（GetIsFinish が true になった瞬間）に、
-//   そのミニゲームのスコアを指定プレイヤーに加点する
+// ■ スコア
+//   ・シーン内のミニゲーム（MiniGame を継承したもの）を自動で探す
+//   ・ミニゲームが終わった瞬間（GetIsFinish が true になった瞬間）に、
+//     そのミニゲームのスコアを指定プレイヤーに加点する
+//
+// ■ タイムアップ
+//   ・制限時間が 0 になったら、ミニゲームの途中でも操作できないように止める
+//     （MiniGameSystem / MiniGame / MiniGameObject の Update を止める）
+//   ・その後はそのままリザルトへ移る
+//
 // ・高橋さんのスクリプトは変更していない
 //
 // ※ 今は1人プレイ用（全部 m_playerIndex のプレイヤーに加点）。
@@ -19,8 +26,22 @@ public class GAME_MINIGAME_SCORE : MonoBehaviour
     [SerializeField]
     private int m_playerIndex = 0;
 
+    [Tooltip("タイムアップでミニゲームの操作を止める")]
+    [SerializeField]
+    private bool m_stopOnTimeUp = true;
+
     private MiniGame[] m_miniGames;
     private bool[] m_wasFinished;
+
+    void OnEnable()
+    {
+        GAME_MANAGER.TimeUp += OnTimeUp;
+    }
+
+    void OnDisable()
+    {
+        GAME_MANAGER.TimeUp -= OnTimeUp;
+    }
 
     void Start()
     {
@@ -42,6 +63,11 @@ public class GAME_MINIGAME_SCORE : MonoBehaviour
     // ミニゲーム側の Update で終了・スコアが決まった後に確認する
     void LateUpdate()
     {
+        if (m_miniGames == null)
+        {
+            return;
+        }
+
         for (int i = 0; i < m_miniGames.Length; i++)
         {
             MiniGame miniGame = m_miniGames[i];
@@ -53,7 +79,7 @@ public class GAME_MINIGAME_SCORE : MonoBehaviour
 
             bool isFinished = miniGame.GetIsFinish();
 
-            // 終わった瞬間だけ加点する
+            // 終わった瞬間だけ加点する（タイムアップ後は GAME_SCORE 側で加点されない）
             if (isFinished && !m_wasFinished[i])
             {
                 int score = miniGame.GetScore();
@@ -67,5 +93,41 @@ public class GAME_MINIGAME_SCORE : MonoBehaviour
 
             m_wasFinished[i] = isFinished;
         }
+    }
+
+    //==================================================
+    // タイムアップ
+    //==================================================
+
+    void OnTimeUp()
+    {
+        if (!m_stopOnTimeUp)
+        {
+            return;
+        }
+
+        // スクリプトを無効にすると Update が呼ばれなくなり、
+        // ボタン入力・ジョイコンの傾き・カウントダウンなどが全部止まる
+        int count =
+            DisableAll<MiniGameSystem>() +
+            DisableAll<MiniGame>() +
+            DisableAll<MiniGameObject>();
+
+        Debug.Log("タイムアップ：ミニゲームの操作を止めました（" + count + " 個）");
+    }
+
+    static int DisableAll<T>() where T : MonoBehaviour
+    {
+        T[] targets =
+            FindObjectsByType<T>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
+
+        foreach (T target in targets)
+        {
+            target.enabled = false;
+        }
+
+        return targets.Length;
     }
 }

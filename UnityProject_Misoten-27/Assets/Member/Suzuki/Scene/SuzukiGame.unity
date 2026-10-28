@@ -14101,6 +14101,63 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 97cb0f2d474339844a39b77d4e47b3b6, type: 3}
+--- !u!1 &1910000001
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1910000002}
+  - component: {fileID: 1910000003}
+  m_Layer: 0
+  m_Name: GameIntro
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1910000002
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1910000001}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1910000003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1910000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d83d1bd63b9f4ff6ae46832c59e3743b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GAME_INTRO
+  m_playerCamera: {fileID: 1900000004}
+  m_center: {fileID: 0}
+  m_overviewTime: 4
+  m_pitch: 60
+  m_startDistance: 45
+  m_endDistance: 90
+  m_spinAngle: 40
+  m_zoomInTime: 2
+  m_waitForTransition: 1
+  m_allowSkip: 1
+  m_onFinished:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -14121,3 +14178,4 @@ SceneRoots:
   - {fileID: 1900000001}
   - {fileID: 1830854040}
   - {fileID: 931984480}
+  - {fileID: 1910000002}
