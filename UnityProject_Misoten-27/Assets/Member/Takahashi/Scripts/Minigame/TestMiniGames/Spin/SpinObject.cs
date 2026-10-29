@@ -60,7 +60,9 @@ public class SpinObject : MiniGameObject
         m_rotatedCount = 0;
         m_accumulatedRotationZ = 0f;
         transform.localEulerAngles = Vector3.zero;
+#if UNITY_EDITOR
         m_keyboardStep = 0;
+#endif
     }
 
     public override void UpdateObject()

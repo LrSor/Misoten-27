@@ -57,6 +57,13 @@ public class TestPlayerCameraLookController : MonoBehaviour
     private float m_targetYaw;
     private float m_rotationTimer;
     private bool m_isRotating;
+    private bool m_initialized;
+
+    // Configure inactive network instances before Awake, without editing the prefab asset.
+    public void ConfigureNetworkSplines(Transform splinesParent)
+    {
+        m_splinesParent = splinesParent;
+    }
 
 
     private void Awake()
@@ -97,6 +104,7 @@ public class TestPlayerCameraLookController : MonoBehaviour
         }
 
         m_previousPlayerPosition = m_player.position;
+        m_initialized = true;
 
         if (m_moveAction == null)
         {
@@ -110,7 +118,7 @@ public class TestPlayerCameraLookController : MonoBehaviour
     // Cameraステートから毎フレーム呼び出す
     public void Look()
     {
-        if (m_cameraTarget == null || m_player == null)
+        if (!m_initialized || m_cameraTarget == null || m_player == null)
             return;
 
         Vector3 currentPosition = m_player.position;
