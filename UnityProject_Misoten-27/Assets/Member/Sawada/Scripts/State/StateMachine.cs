@@ -53,6 +53,8 @@ public class StateMachine : MonoBehaviour
     }
 
     // Stateの切り替え
+    public bool IsInState<T>() where T : BaseState => m_currentState is T;
+
     public void ChangeState<T>() where T : BaseState
     {
         if (!m_stateDictionary.TryGetValue(typeof(T), out BaseState nextState))

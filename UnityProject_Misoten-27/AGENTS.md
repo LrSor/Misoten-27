@@ -2,7 +2,7 @@
 
 ## 適用範囲と優先事項
 
-- Unity プロジェクトのルートは `C:\Users\ths30612\Documents\GitHub\Misoten-27\UnityProject_Misoten-27` とする。
+- Unity プロジェクトのルートは `D:\制作\Unity\UnityProjects\Misoten-27\UnityProject_Misoten-27` とする。
 - 本ファイルのパス表記は、特記がなければ上記プロジェクトルートからの相対パスとする。
 - 作業前に適用される AGENTS.md と既存の変更内容を確認する。ユーザーや他の作業者による変更を上書き・取り消ししない。
 - 指定範囲外の変更が必要な場合は、変更せず、必要なパスと理由を提示してユーザーに確認する。
@@ -24,7 +24,8 @@
 ## Scene
 
 - 編集対象の Scene は次のファイルのみとする。
-  - `Assets/Member/Sawada/Scene/CordexScene.unity`
+  - `Assets/Member/Sawada/Scenes/CordexScene.unity`
+  - `Assets/Member/Sawada/Scenes/testMapPlayerMove.unity`
 - 指定 Scene が見つからない場合は、別の Scene を代わりに変更せず、ユーザーに確認する。
 - 他の Scene は編集・削除・移動・名前変更しない。
 

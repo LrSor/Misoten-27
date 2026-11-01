@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -13,13 +14,19 @@ namespace Sawada.Cordex
     [DefaultExecutionOrder(-10000)]
     public sealed class NetworkTestSession : MonoBehaviour
     {
-        const string Protocol = "SawadaNetworkTest/1";
+        const string Protocol = "SawadaNetworkTest/4";
         const float Timeout = 10f;
+        const float NetworkInterval = .05f;
+        const float InterpolationDelay = .1f;
         [SerializeField] GameObject playerPrefab;
+        [SerializeField] BaseArmorSO[] initialArmorSlots = Array.Empty<BaseArmorSO>();
         [Serializable] public class PlayerState
         {
             public int id;
-            public float x, z, yaw;
+            public float x, y, z, yaw;
+            public bool sprinting;
+            public int selectedArmor;
+            public int[] armor;
         }
         [Serializable] public class Message
         {
@@ -27,6 +34,9 @@ namespace Sawada.Cordex
             public int id, tick;
             public float x, z;
             public bool sprint;
+            public float time;
+            public float forwardX, forwardZ;
+            public int sprintPress, armorStep, swapPress;
             public PlayerState[] players;
         }
         sealed class Connection
@@ -36,11 +46,22 @@ namespace Sawada.Cordex
             public float lastReceive, lastInput, closeAt;
             public Vector2 input;
             public bool sprint;
+            public Vector2 forward = Vector2.up;
+            public int sprintPress, appliedSprintPress, armorStep, appliedArmorStep, swapPress, appliedSwapPress;
         }
         readonly List<Connection> connections = new List<Connection>();
         readonly Dictionary<int, PlayerState> states = new Dictionary<int, PlayerState>();
         readonly Dictionary<int, GameObject> avatars = new Dictionary<int, GameObject>();
-        readonly Color[] colors = { Color.cyan, new Color(1f,.4f,.2f), Color.green, Color.magenta };
+        readonly Dictionary<int, Rigidbody> bodies = new Dictionary<int, Rigidbody>();
+        readonly Dictionary<int, PlayerMoveController> movers = new Dictionary<int, PlayerMoveController>();
+        readonly Dictionary<int, Inventory> inventories = new Dictionary<int, Inventory>();
+        readonly Dictionary<int, PlayerSwapController> swappers = new Dictionary<int, PlayerSwapController>();
+        FieldArmorMachine[] fieldArmors;
+        BaseArmorSO[] armorCatalog;
+        readonly List<Message> snapshots = new List<Message>();
+        float renderTime;
+        float snapshotReceivedAt;
+        bool renderTimeReady;
         TcpListener listener;
         TcpPeer server;
         TcpClient connectingSocket;
@@ -49,16 +70,27 @@ namespace Sawada.Cordex
         Camera lobbyView;
         TestPlayerCameraLookController localLook;
         Transform inactivePlayers;
-        string ip = "127.0.0.1", portText = "7777", status = "Choose Host or Client";
+        string ip = "", portText = "7777", status = "Choose Host or enter the Host PC's LAN IPv4";
+        string localAddresses = "";
         int localId, tick, receivedTick;
-        bool hosting, connecting, testMotion;
+        bool hosting, connecting, testMotion, testGameplay, testPickup;
         float started, lastReceive, sendAt, snapshotAt, connectStarted, exitAfter;
         Vector2 localInput;
         bool localSprint;
+        Vector2 localForward = Vector2.up;
+        int localSprintPress, appliedLocalSprintPress, localArmorStep, appliedLocalArmorStep;
+        int localSwapPress, appliedLocalSwapPress;
         StreamWriter trace;
 
         void Awake()
         {
+            string HierarchyKey(Transform item) => item.parent == null ? item.name
+                : HierarchyKey(item.parent) + "/" + item.GetSiblingIndex() + ":" + item.name;
+            fieldArmors = FindObjectsByType<FieldArmorMachine>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+                .Where(f => f.gameObject.scene == gameObject.scene)
+                .OrderBy(f => HierarchyKey(f.transform), StringComparer.Ordinal).ToArray();
+            armorCatalog = initialArmorSlots.Concat(fieldArmors.Select(f => f.GetArmorSO()))
+                .Where(a => a != null).Distinct().ToArray();
             Application.runInBackground = true;
             Application.targetFrameRate = 60;
             if (!Application.isEditor) Screen.SetResolution(900, 650, FullScreenMode.Windowed);
@@ -99,7 +131,10 @@ namespace Sawada.Cordex
             }
             ip = Arg("--net-ip", ip);
             portText = Arg("--net-port", portText);
+            RefreshLocalAddresses();
             testMotion = args.Contains("--net-test-motion");
+            testGameplay = args.Contains("--net-test-gameplay");
+            testPickup = args.Contains("--net-test-pickup");
             float.TryParse(Arg("--net-exit-after", "0"), System.Globalization.NumberStyles.Float,
                 System.Globalization.CultureInfo.InvariantCulture, out exitAfter);
             string tracePath = Arg("--net-trace");
@@ -119,17 +154,40 @@ namespace Sawada.Cordex
             return false;
         }
 
+        void RefreshLocalAddresses()
+        {
+            try
+            {
+                // List candidates rather than choosing a VPN/virtual adapter as the Host address.
+                var addresses = NetworkInterface.GetAllNetworkInterfaces()
+                    .Where(n => n.OperationalStatus == OperationalStatus.Up
+                        && n.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+                    .SelectMany(n => n.GetIPProperties().UnicastAddresses)
+                    .Select(a => a.Address)
+                    .Where(a => a.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(a))
+                    .Select(a => a.ToString()).Distinct().OrderBy(a => a, StringComparer.Ordinal);
+                localAddresses = string.Join(", ", addresses);
+                if (localAddresses.Length == 0) localAddresses = "None found. Check Wi-Fi / Ethernet or run ipconfig.";
+            }
+            catch (Exception e)
+            {
+                localAddresses = "Unavailable. Run ipconfig to find this PC's IPv4.";
+                Debug.LogWarning("[NetworkTest] IPv4 lookup: " + e.Message);
+            }
+        }
+
         public void StartHost()
         {
             if (hosting || connecting || server != null || !ReadPort(out int port)) return;
             try
             {
+                RefreshLocalAddresses();
                 listener = new TcpListener(IPAddress.Any, port);
                 listener.Start(8);
                 hosting = true;
                 localId = 1;
                 states.Add(1, SpawnState(1));
-                SetStatus("Host listening on 0.0.0.0:" + port + " (TCP)");
+                SetStatus("Host ready on TCP port " + port + ". Share this PC's LAN IPv4 with Clients.");
             }
             catch (Exception e) { StopSession("Host failed: " + e.Message); }
         }
@@ -137,8 +195,12 @@ namespace Sawada.Cordex
         public void StartClient()
         {
             if (hosting || connecting || server != null || !ReadPort(out int port)) return;
+            if (string.IsNullOrWhiteSpace(ip))
+            { SetStatus("Enter the Host PC's LAN IPv4 (example: 192.168.1.20)"); return; }
             if (!IPAddress.TryParse(ip.Trim(), out var address) || address.AddressFamily != AddressFamily.InterNetwork)
             { SetStatus("Invalid IPv4 address"); return; }
+            if (address.Equals(IPAddress.Any) || address.Equals(IPAddress.Broadcast))
+            { SetStatus("Enter a Host IPv4 address, not 0.0.0.0 or 255.255.255.255"); return; }
             connectingSocket = new TcpClient(AddressFamily.InterNetwork);
             try
             {
@@ -170,12 +232,15 @@ namespace Sawada.Cordex
                         SetStatus("Connected; waiting for Host approval");
                     }
                 }
-                else if (now - connectStarted > Timeout) StopSession("Connect timeout (10 seconds)");
+                else if (now - connectStarted > Timeout)
+                    StopSession("Connect timeout: check Host IP / port, same LAN and Host firewall (TCP).");
             }
             ReadLocalInput(now);
             if (hosting) PollHost(now);
             else if (server != null) PollClient(now);
             UpdateAvatars();
+            // PositionConstraint evaluates before LateUpdate. Feed it the current rendered pose.
+            RenderClientAvatars(now);
         }
 
         void ReadLocalInput(float now)
@@ -183,11 +248,28 @@ namespace Sawada.Cordex
             localInput = Vector2.zero;
             localSprint = false;
             if (localId == 0) return;
+            if (testPickup)
+            {
+                float elapsed = now - started;
+                localSwapPress = elapsed >= 4f ? 2 : elapsed >= 1f ? 1 : 0;
+                localArmorStep = elapsed >= 6f ? 2 : elapsed >= 3f ? 1 : 0;
+                return;
+            }
             if (testMotion)
             {
                 // Explicit verification mode only: alternate direction every 2 seconds.
                 float sign = ((int)((now - started) / 2) % 2 == 0) ? 1 : -1;
                 localInput = localId % 2 == 0 ? new Vector2(sign, 0) : new Vector2(0, sign);
+                return;
+            }
+            if (testGameplay)
+            {
+                float elapsed = now - started;
+                localInput = localId % 2 == 0 ? Vector2.right : Vector2.up;
+                localForward = localInput;
+                localSprint = elapsed >= 1f && elapsed < 1.1f;
+                localSprintPress = elapsed >= 1f ? 1 : 0;
+                localArmorStep = elapsed >= 9f ? 2 : elapsed >= 7f ? 1 : 0;
                 return;
             }
             if (!Application.isFocused) return;
@@ -197,10 +279,23 @@ namespace Sawada.Cordex
                 localInput = new Vector2((k.dKey.isPressed ? 1 : 0) - (k.aKey.isPressed ? 1 : 0),
                     (k.wKey.isPressed ? 1 : 0) - (k.sKey.isPressed ? 1 : 0));
                 localSprint = k.leftShiftKey.isPressed;
+                if (k.eKey.wasPressedThisFrame) localSwapPress++;
+                if (k.leftShiftKey.wasPressedThisFrame) localSprintPress++;
+                if (k.leftArrowKey.wasPressedThisFrame) localArmorStep--;
+                else if (k.rightArrowKey.wasPressedThisFrame) localArmorStep++;
             }
             if (Gamepad.current != null && Gamepad.current.leftStick.ReadValue().sqrMagnitude > .04f)
                 localInput = Gamepad.current.leftStick.ReadValue();
             localInput = Vector2.ClampMagnitude(localInput, 1);
+            if (avatars.TryGetValue(localId, out var ownedAvatar))
+            {
+                var reference = ownedAvatar.transform.Find("CameraTarget");
+                if (reference != null)
+                {
+                    Vector3 forward = Vector3.ProjectOnPlane(reference.forward, Vector3.up).normalized;
+                    if (forward.sqrMagnitude > .001f) localForward = new Vector2(forward.x, forward.z);
+                }
+            }
             if (view != null)
             {
                 Vector3 forward = Vector3.ProjectOnPlane(view.transform.forward, Vector3.up).normalized;
@@ -212,7 +307,20 @@ namespace Sawada.Cordex
             }
         }
 
-        static PlayerState SpawnState(int id) => new PlayerState { id = id, x = (id - 2.5f) * 3, z = 0 };
+        PlayerState SpawnState(int id)
+        {
+            var body = playerPrefab != null ? playerPrefab.GetComponentInChildren<Rigidbody>(true) : null;
+            if (testPickup && fieldArmors.Length > 0)
+            {
+                // Explicit test mode only: start overlapping a field item to test the real trigger/E path.
+                Vector3 position = fieldArmors[(id - 1) % fieldArmors.Length].transform.position + Vector3.up * 1.2f;
+                return new PlayerState { id = id, x = position.x, y = position.y, z = position.z };
+            }
+            // Prefab assets have no simulated pose in the Editor. Read the saved Transform,
+            // otherwise Rigidbody.position can be zero and spawn the capsule inside the floor.
+            return new PlayerState { id = id, x = (id - 2.5f) * 3,
+                y = body != null ? body.transform.position.y : 1.72f, z = 0 };
+        }
         static void Send(TcpPeer peer, Message message) => peer.Send(JsonUtility.ToJson(message));
         static bool Finite(float n) => !float.IsNaN(n) && !float.IsInfinity(n);
 
@@ -252,11 +360,19 @@ namespace Sawada.Cordex
                         Send(c.peer, new Message { kind = "welcome", id = id, protocol = Protocol });
                         Debug.Log("[NetworkTest] JOIN P" + id);
                     }
-                    else if (m.kind == "input" && Finite(m.x) && Finite(m.z) && Mathf.Abs(m.x) <= 1.01f && Mathf.Abs(m.z) <= 1.01f)
+                    else if (m.kind == "input" && Finite(m.x) && Finite(m.z) && Mathf.Abs(m.x) <= 1.01f && Mathf.Abs(m.z) <= 1.01f
+                        && Finite(m.forwardX) && Finite(m.forwardZ) && Mathf.Abs(m.forwardX) <= 1.01f && Mathf.Abs(m.forwardZ) <= 1.01f
+                        && m.sprintPress >= c.sprintPress && (long)m.sprintPress - c.sprintPress <= 32
+                        && m.swapPress >= c.swapPress && (long)m.swapPress - c.swapPress <= 32
+                        && Math.Abs((long)m.armorStep - c.armorStep) <= 32)
                     {
                         // Ownership comes from the socket, never a client-supplied player ID.
                         c.input = Vector2.ClampMagnitude(new Vector2(m.x, m.z), 1);
                         c.sprint = m.sprint;
+                        c.forward = new Vector2(m.forwardX, m.forwardZ).normalized;
+                        c.sprintPress = m.sprintPress;
+                        c.armorStep = m.armorStep;
+                        c.swapPress = m.swapPress;
                         c.lastInput = now;
                     }
                     else { Reject(c, "Invalid input message", now); break; }
@@ -269,10 +385,35 @@ namespace Sawada.Cordex
                     if (c.id != 0) { states.Remove(c.id); Debug.Log("[NetworkTest] LEAVE P" + c.id); }
                 }
             }
+            UpdateAvatars();
+            if (!hosting) return;
+            ApplyArmorSelection(1, localArmorStep, ref appliedLocalArmorStep);
+            foreach (var c in connections)
+                if (c.id > 0 && c.closeAt == 0) ApplyArmorSelection(c.id, c.armorStep, ref c.appliedArmorStep);
+            FeedSwap(1, localSwapPress, ref appliedLocalSwapPress);
+            foreach (var c in connections)
+                if (c.id > 0 && c.closeAt == 0) FeedSwap(c.id, c.swapPress, ref c.appliedSwapPress);
+            // Read the simulated pose after physics, never the interpolated render transform.
+            foreach (var pair in bodies)
+            {
+                if (!states.TryGetValue(pair.Key, out var state)) continue;
+                Vector3 position = pair.Value.position;
+                state.x = position.x; state.y = position.y; state.z = position.z;
+                state.yaw = pair.Value.rotation.eulerAngles.y;
+                state.sprinting = movers[pair.Key].GetComponent<StateMachine>().IsInState<Player_Sprint>();
+                var inventory = inventories[pair.Key];
+                state.selectedArmor = inventory.CurrentArmorIndex;
+                state.armor = Enumerable.Range(0, inventory.ArmorSlotCount)
+                    .Select(i => Array.IndexOf(armorCatalog, inventory.GetArmorAt(i)) + 1).ToArray();
+                // Null is always encoded as 0, even if an initial slot is empty.
+                for (int i = 0; i < state.armor.Length; i++)
+                    if (inventory.GetArmorAt(i) == null) state.armor[i] = 0;
+            }
             if (now >= snapshotAt)
             {
-                snapshotAt = now + .05f;
-                var m = new Message { kind = "state", tick = ++tick, players = states.Values.OrderBy(p => p.id).ToArray() };
+                snapshotAt = now + NetworkInterval;
+                var m = new Message { kind = "state", tick = ++tick, time = Time.fixedUnscaledTime,
+                    players = states.Values.OrderBy(p => p.id).ToArray() };
                 foreach (var c in connections) if (c.id > 0 && c.closeAt == 0) Send(c.peer, m);
                 Trace(m);
             }
@@ -297,12 +438,25 @@ namespace Sawada.Cordex
                 { localId = m.id; SetStatus("Client connected as P" + localId); }
                 else if (m.kind == "state" && localId > 0 && m.players != null && m.players.Length <= 4)
                 {
-                    if (m.players.Any(p => p == null || p.id < 1 || p.id > 4 || !Finite(p.x) || !Finite(p.z) || !Finite(p.yaw)) ||
+                    if (!Finite(m.time) || m.tick <= receivedTick ||
+                        (snapshots.Count > 0 && m.time < snapshots[snapshots.Count - 1].time) ||
+                        m.players.Any(p => p == null || p.id < 1 || p.id > 4 || !Finite(p.x) || !Finite(p.y) || !Finite(p.z) || !Finite(p.yaw)
+                            || p.armor == null || p.armor.Length == 0 || p.armor.Length > 8
+                            || p.selectedArmor < 0 || p.selectedArmor >= p.armor.Length
+                            || p.armor.Any(a => a < 0 || a > armorCatalog.Length)) ||
                         m.players.Select(p => p.id).Distinct().Count() != m.players.Length)
                     { StopSession("Invalid Host state"); return; }
                     states.Clear();
                     foreach (var p in m.players) states.Add(p.id, p);
                     receivedTick = m.tick;
+                    snapshots.Add(m);
+                    snapshotReceivedAt = now;
+                    if (snapshots.Count > 32) snapshots.RemoveAt(0);
+                    if (!renderTimeReady)
+                    {
+                        renderTime = m.time - InterpolationDelay;
+                        renderTimeReady = true;
+                    }
                     Trace(m);
                 }
                 else { StopSession("Unexpected Host message / protocol mismatch"); return; }
@@ -312,58 +466,137 @@ namespace Sawada.Cordex
             if (now - lastReceive > Timeout) { StopSession("Host timeout (10 seconds)"); return; }
             if (localId > 0 && now >= sendAt)
             {
-                sendAt = now + .05f;
-                Send(server, new Message { kind = "input", x = localInput.x, z = localInput.y, sprint = localSprint });
+                sendAt = now + NetworkInterval;
+                Send(server, new Message { kind = "input", x = localInput.x, z = localInput.y, sprint = localSprint,
+                    forwardX = localForward.x, forwardZ = localForward.y,
+                    sprintPress = localSprintPress, armorStep = localArmorStep, swapPress = localSwapPress });
             }
         }
 
         void FixedUpdate()
         {
             if (!hosting) return;
-            MovePlayer(1, localInput, localSprint);
+            FeedMovement(1, localInput, localSprint || localSprintPress != appliedLocalSprintPress, localForward);
+            appliedLocalSprintPress = localSprintPress;
             foreach (var c in connections)
                 if (c.id > 0 && c.closeAt == 0)
-                    MovePlayer(c.id, Time.realtimeSinceStartup - c.lastInput < .4f ? c.input : Vector2.zero, c.sprint);
+                {
+                    bool fresh = Time.realtimeSinceStartup - c.lastInput < .4f;
+                    FeedMovement(c.id, fresh ? c.input : Vector2.zero,
+                        fresh && (c.sprint || c.sprintPress != c.appliedSprintPress), c.forward);
+                    c.appliedSprintPress = c.sprintPress;
+                }
         }
 
-        void MovePlayer(int id, Vector2 input, bool sprint)
+        void FeedMovement(int id, Vector2 input, bool sprint, Vector2 forward)
         {
-            if (!states.TryGetValue(id, out var p)) return;
-            float speed = sprint ? 10 : 5;
-            p.x = Mathf.Clamp(p.x + input.x * speed * Time.fixedDeltaTime, -20, 20);
-            p.z = Mathf.Clamp(p.z + input.y * speed * Time.fixedDeltaTime, -20, 20);
-            if (input.sqrMagnitude > .001f) p.yaw = Mathf.Atan2(input.x, input.y) * Mathf.Rad2Deg;
+            if (movers.TryGetValue(id, out var mover))
+                mover.SetNetworkInput(input, sprint, new Vector3(forward.x, 0, forward.y));
+        }
+
+        void ApplyArmorSelection(int id, int step, ref int appliedStep)
+        {
+            if (!inventories.TryGetValue(id, out var inventory)) return;
+            int delta = (int)Math.Max(-32L, Math.Min(32L, (long)step - appliedStep));
+            if (inventory.ArmorSlotCount > 0)
+                for (int i = 0; i < Math.Abs(delta); i++)
+                    if (delta < 0) inventory.ArmorLeftShift(); else inventory.ArmorRightShift();
+            appliedStep = step;
+        }
+
+        void FeedSwap(int id, int press, ref int appliedPress)
+        {
+            if (!swappers.TryGetValue(id, out var swapper)) return;
+            swapper.SetNetworkSwapInput(press != appliedPress);
+            appliedPress = press;
         }
 
         void UpdateAvatars()
         {
             foreach (int id in avatars.Keys.Where(id => !states.ContainsKey(id)).ToArray())
-            { Destroy(avatars[id]); avatars.Remove(id); }
+            {
+                avatars[id].SetActive(false);
+                Destroy(avatars[id]); avatars.Remove(id); bodies.Remove(id); movers.Remove(id); inventories.Remove(id); swappers.Remove(id);
+            }
             foreach (var p in states.Values)
             {
                 if (!avatars.TryGetValue(p.id, out var avatar))
                 {
                     if (playerPrefab == null) { StopSession("Player prefab reference is missing"); return; }
                     avatar = CreateAvatar(p.id);
-                    foreach (var r in avatar.GetComponentsInChildren<Renderer>(true))
+                    var physicsBody = avatar.GetComponentInChildren<Rigidbody>(true);
+                    if (physicsBody == null)
                     {
-                        var block = new MaterialPropertyBlock();
-                        r.GetPropertyBlock(block);
-                        block.SetColor("_BaseColor", colors[p.id - 1]);
-                        block.SetColor("_Color", colors[p.id - 1]);
-                        r.SetPropertyBlock(block);
+                        Destroy(avatar);
+                        StopSession("Player prefab requires a Rigidbody"); return;
                     }
                     avatar.name = "Network Player " + p.id;
                     avatar.transform.SetParent(transform, false);
-                    avatar.transform.position = new Vector3(p.x, playerPrefab.transform.position.y, p.z);
+                    // The prefab's Rigidbody is on PlayerBody, not its root.
+                    avatar.transform.position += new Vector3(p.x, p.y, p.z) - physicsBody.transform.position;
+                    physicsBody.position = new Vector3(p.x, p.y, p.z);
+                    physicsBody.rotation = Quaternion.Euler(0, p.yaw, 0);
+                    bodies.Add(p.id, physicsBody);
+                    var mover = physicsBody.GetComponent<PlayerMoveController>();
+                    var inventory = avatar.GetComponentInChildren<Inventory>(true);
+                    if (mover == null || inventory == null)
+                    {
+                        Destroy(avatar); StopSession("Player movement or inventory reference is missing"); return;
+                    }
+                    movers.Add(p.id, mover);
+                    inventories.Add(p.id, inventory);
+                    var swapper = avatar.GetComponentInChildren<PlayerSwapController>(true);
+                    if (swapper == null) { Destroy(avatar); StopSession("Player swap reference is missing"); return; }
+                    swappers.Add(p.id, swapper);
+                    swapper.SetNetworkSwapInput(false);
+                    if (p.id == localId)
+                    {
+                        var display = FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+                            .FirstOrDefault(c => c.gameObject.scene == gameObject.scene && c.name == "PlayerDisplay");
+                        if (display != null) inventory.GetComponent<PlayerInventoryUI>().ConfigureNetworkDisplay(display);
+                        else Debug.LogWarning("[NetworkTest] PlayerDisplay canvas is missing");
+                    }
+                    mover.SetNetworkInput(Vector2.zero, false, Vector3.forward);
+                    inventory.ConfigureNetworkInventory(initialArmorSlots);
                     avatar.SetActive(true);
                     avatars.Add(p.id, avatar);
                     Debug.Log($"[NetworkTest] VIEW P{p.id} owned={p.id == localId} cameras={avatar.GetComponentsInChildren<Camera>().Count(c => c.enabled)} listeners={avatar.GetComponentsInChildren<AudioListener>().Count(a => a.enabled)}");
                 }
-                // Same authoritative transform on every participant; no local prediction.
-                avatar.transform.position = new Vector3(p.x, playerPrefab.transform.position.y, p.z);
-                var body = avatar.transform.Find("PlayerBody");
-                if (body != null) body.rotation = Quaternion.Euler(0, p.yaw, 0);
+                // Host bodies are moved exclusively by physics. Clients render buffered poses.
+                if (!hosting && p.armor != null)
+                    inventories[p.id].ApplyNetworkInventory(p.selectedArmor,
+                        p.armor.Select(a => a == 0 ? null : armorCatalog[a - 1]).ToArray());
+            }
+        }
+
+        void RenderClientAvatars(float now)
+        {
+            if (hosting || snapshots.Count == 0) return;
+            // Advance the target between packets too: packet arrival is not a render clock.
+            float targetTime = snapshots[snapshots.Count - 1].time
+                + (now - snapshotReceivedAt) - InterpolationDelay;
+            float error = targetTime - renderTime;
+            if (Mathf.Abs(error) > .5f) renderTime = targetTime;
+            else
+            {
+                // Absorb ordinary arrival jitter without changing playback speed every frame.
+                float rate = error > NetworkInterval ? 1.02f : error < -NetworkInterval ? .98f : 1f;
+                renderTime += Time.unscaledDeltaTime * rate;
+            }
+            renderTime = Mathf.Min(renderTime, snapshots[snapshots.Count - 1].time);
+            while (snapshots.Count > 2 && snapshots[1].time <= renderTime) snapshots.RemoveAt(0);
+            var from = snapshots[0];
+            var to = snapshots.Count > 1 ? snapshots[1] : from;
+            float t = to.time > from.time ? Mathf.InverseLerp(from.time, to.time, renderTime) : 1;
+            foreach (var pair in bodies)
+            {
+                var a = from.players.FirstOrDefault(p => p.id == pair.Key);
+                var b = to.players.FirstOrDefault(p => p.id == pair.Key);
+                // A newly joined player has no previous sample yet.
+                if (a == null || b == null) continue;
+                pair.Value.transform.SetPositionAndRotation(
+                    Vector3.Lerp(new Vector3(a.x, a.y, a.z), new Vector3(b.x, b.y, b.z), t),
+                    Quaternion.Euler(0, Mathf.LerpAngle(a.yaw, b.yaw, t), 0));
             }
         }
 
@@ -380,10 +613,32 @@ namespace Sawada.Cordex
                     script is Unity.Cinemachine.CinemachineBrain ||
                     script is TestPlayerCameraLookController;
                 bool renderScript = script is UnityEngine.Rendering.Universal.UniversalAdditionalCameraData;
-                script.enabled = renderScript || (owned && cameraScript);
+                bool movementScript = script is PlayerMoveController || script is Player_Idle
+                    || script is Player_Walk || script is Player_Sprint
+                    || script is PlayerSwapController || script is Player_Swap || script is Player_SwapIdle
+                    || (script is StateMachine && (script.GetComponent<PlayerMoveController>() != null
+                        || script.GetComponent<PlayerSwapController>() != null));
+                script.enabled = renderScript || (owned && cameraScript) || (hosting && movementScript);
             }
-            foreach (var body in copy.GetComponentsInChildren<Rigidbody>(true)) body.isKinematic = true;
-            foreach (var collider in copy.GetComponentsInChildren<Collider>(true)) collider.enabled = false;
+            if (owned && !hosting)
+            {
+                // Client proxies are rendered each frame, so their camera must follow each frame.
+                foreach (var brain in copy.GetComponentsInChildren<Unity.Cinemachine.CinemachineBrain>(true))
+                {
+                    brain.UpdateMethod = Unity.Cinemachine.CinemachineBrain.UpdateMethods.LateUpdate;
+                    brain.BlendUpdateMethod = Unity.Cinemachine.CinemachineBrain.BrainUpdateMethods.LateUpdate;
+                }
+            }
+            foreach (var body in copy.GetComponentsInChildren<Rigidbody>(true))
+            {
+                body.isKinematic = !hosting;
+                body.useGravity = hosting;
+                body.interpolation = hosting ? RigidbodyInterpolation.Interpolate : RigidbodyInterpolation.None;
+                body.collisionDetectionMode = hosting ? CollisionDetectionMode.ContinuousDynamic : CollisionDetectionMode.Discrete;
+            }
+            // Preserve prefab colliders on Host. Proxies must not run a second simulation.
+            if (!hosting)
+                foreach (var collider in copy.GetComponentsInChildren<Collider>(true)) collider.enabled = false;
             foreach (var camera in copy.GetComponentsInChildren<Camera>(true))
             {
                 camera.enabled = owned && camera.name == "PlayerCamera";
@@ -444,6 +699,10 @@ namespace Sawada.Cordex
             connections.Clear(); states.Clear();
             foreach (var avatar in avatars.Values) { avatar.SetActive(false); Destroy(avatar); }
             avatars.Clear();
+            bodies.Clear(); snapshots.Clear(); renderTimeReady = false;
+            movers.Clear(); inventories.Clear();
+            swappers.Clear(); localSwapPress = appliedLocalSwapPress = 0;
+            localSprintPress = appliedLocalSprintPress = localArmorStep = appliedLocalArmorStep = 0;
             localLook = null;
             view = lobbyView;
             if (lobbyView != null) lobbyView.enabled = true;
@@ -456,8 +715,9 @@ namespace Sawada.Cordex
         void OnGUI()
         {
             GUI.skin.label.wordWrap = true;
-            GUILayout.BeginArea(new Rect(12, 12, 440, 245), GUI.skin.box);
-            GUILayout.Label("NETWORK TEST | Host + 3 Clients | TCP");
+            GUILayout.BeginArea(new Rect(12, 12, 440, Screen.height - 24));
+            GUILayout.BeginVertical(GUI.skin.box);
+            GUILayout.Label("LAN PLAY | Host + 3 Clients | TCP");
             bool idle = !hosting && !connecting && server == null;
             GUI.enabled = idle;
             GUILayout.BeginHorizontal();
@@ -471,21 +731,17 @@ namespace Sawada.Cordex
             if (GUILayout.Button("Connect Client", GUILayout.Height(30))) StartClient();
             GUILayout.EndHorizontal();
             GUI.enabled = true;
+            GUILayout.Label("This PC's IPv4 candidates (use the Host PC's Wi-Fi / Ethernet address):");
+            GUILayout.TextField(localAddresses);
+            if (idle && GUILayout.Button("Refresh this PC's IP addresses")) RefreshLocalAddresses();
+            GUILayout.Label("Other PCs: enter the Host's LAN IPv4 above and use the same port.\n127.0.0.1 is for same-PC tests only. Allow Host TCP on the private LAN firewall.");
             GUILayout.Label(status);
             GUILayout.Label($"Players: {states.Count}/4   You: {(localId == 0 ? "-" : "P" + localId)}   Role: {(hosting ? "Host" : localId > 0 ? "Client" : "Offline")}   Tick: {(hosting ? tick : receivedTick)}");
-            GUILayout.Label("WASD / left stick: move   Left Shift: run\nClick a window to control it. Unfocused input stops.\nHost binds all IPv4 interfaces; Client uses the IP above.");
+            GUILayout.Label("WASD / left stick: move   Left Shift: Sprint\nE: equip overlapping field armor   Arrows: switch slot\nClick a window to control it. Unfocused input stops.");
             if (!idle && GUILayout.Button("Disconnect / Stop Host")) StopSession();
             if (testMotion) GUILayout.Label("AUTOMATED MOVEMENT TEST MODE");
+            GUILayout.EndVertical();
             GUILayout.EndArea();
-            if (view == null) return;
-            foreach (var p in states.Values)
-            {
-                Vector3 point = view.WorldToScreenPoint(new Vector3(p.x, 3, p.z));
-                if (point.z <= 0) continue;
-                GUI.color = colors[p.id - 1];
-                GUI.Label(new Rect(point.x - 40, Screen.height - point.y, 130, 28), "P" + p.id + (p.id == localId ? " (YOU)" : ""));
-            }
-            GUI.color = Color.white;
         }
 
         void OnDestroy()

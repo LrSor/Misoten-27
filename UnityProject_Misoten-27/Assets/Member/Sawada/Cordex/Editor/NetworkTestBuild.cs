@@ -77,9 +77,16 @@ namespace Sawada.Cordex.Editor
             }
             finally
             {
-                EditorSceneManager.RestoreSceneManagerSetup(previous);
-                foreach (var entry in settingsBefore)
-                    if (!File.ReadAllBytes(entry.Key).SequenceEqual(entry.Value)) File.WriteAllBytes(entry.Key, entry.Value);
+                try
+                {
+                    // Batch mode may start without any loaded scene to restore.
+                    if (previous.Length > 0) EditorSceneManager.RestoreSceneManagerSetup(previous);
+                }
+                finally
+                {
+                    foreach (var entry in settingsBefore)
+                        if (!File.ReadAllBytes(entry.Key).SequenceEqual(entry.Value)) File.WriteAllBytes(entry.Key, entry.Value);
+                }
             }
         }
     }
