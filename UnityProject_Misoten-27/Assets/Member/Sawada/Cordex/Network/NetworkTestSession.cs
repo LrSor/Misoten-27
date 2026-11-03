@@ -14,12 +14,15 @@ namespace Sawada.Cordex
     [DefaultExecutionOrder(-10000)]
     public sealed class NetworkTestSession : MonoBehaviour
     {
-        const string Protocol = "SawadaNetworkTest/4";
+        const string Protocol = "SawadaNetworkTest/5";
         const float Timeout = 10f;
         const float NetworkInterval = .05f;
         const float InterpolationDelay = .1f;
         [SerializeField] GameObject playerPrefab;
         [SerializeField] BaseArmorSO[] initialArmorSlots = Array.Empty<BaseArmorSO>();
+        [SerializeField] GameObject[] worldPrefabs = Array.Empty<GameObject>();
+        NetworkWorld world;
+        float worldSendAt, localWorldActionAt;
         [Serializable] public class PlayerState
         {
             public int id;
@@ -30,8 +33,11 @@ namespace Sawada.Cordex
         }
         [Serializable] public class Message
         {
-            public string kind, protocol, reason;
+            public string kind, protocol, reason, catalog, action;
             public int id, tick;
+            public int request, target, part, parts;
+            public bool accepted;
+            public NetworkWorld.State[] world;
             public float x, z;
             public bool sprint;
             public float time;
@@ -48,6 +54,8 @@ namespace Sawada.Cordex
             public bool sprint;
             public Vector2 forward = Vector2.up;
             public int sprintPress, appliedSprintPress, armorStep, appliedArmorStep, swapPress, appliedSwapPress;
+            public int lastRequest;
+            public float actionAt;
         }
         readonly List<Connection> connections = new List<Connection>();
         readonly Dictionary<int, PlayerState> states = new Dictionary<int, PlayerState>();
@@ -107,6 +115,8 @@ namespace Sawada.Cordex
             staging.transform.SetParent(transform, false);
             staging.SetActive(false);
             inactivePlayers = staging.transform;
+            try { world = new NetworkWorld(this, worldPrefabs, inactivePlayers); }
+            catch (Exception e) { Debug.LogException(e); enabled = false; return; }
             var sourceCamera = playerPrefab != null
                 ? playerPrefab.GetComponentsInChildren<Camera>(true).FirstOrDefault(c => c.name == "PlayerCamera") : null;
             if (sourceCamera != null)
@@ -195,6 +205,7 @@ namespace Sawada.Cordex
                 listener = new TcpListener(IPAddress.Any, port);
                 listener.Start(8);
                 hosting = true;
+                world.SetHost(true);
                 localId = 1;
                 states.Add(1, SpawnState(1));
                 SetStatus("Host ready on TCP port " + port + ". Share this PC's LAN IPv4 with Clients.");
@@ -249,6 +260,7 @@ namespace Sawada.Cordex
                 if (asHost)
                 {
                     hosting = true;
+                    world.SetHost(true);
                     localId = 1;
                     states.Add(1, SpawnState(1));
                     SetStatus("Room created; connecting to Relay...");
@@ -288,7 +300,7 @@ namespace Sawada.Cordex
                     server = relay.Client;
                     relayConnecting = false;
                     lastReceive = now;
-                    Send(server, new Message { kind = "hello", protocol = Protocol });
+                    Send(server, new Message { kind = "hello", protocol = Protocol, catalog = world.Catalog });
                     SetStatus("Connected; waiting for Host approval");
                 }
                 if ((relayStarting || relayConnecting || (hosting && !roomAnnounced)) && now - relayStarted > 45f)
@@ -308,7 +320,7 @@ namespace Sawada.Cordex
                         connectingSocket = null;
                         connecting = false;
                         lastReceive = now;
-                        Send(server, new Message { kind = "hello", protocol = Protocol });
+                        Send(server, new Message { kind = "hello", protocol = Protocol, catalog = world.Catalog });
                         SetStatus("Connected; waiting for Host approval");
                     }
                 }
@@ -316,6 +328,7 @@ namespace Sawada.Cordex
                     StopSession("Connect timeout: check Host IP / port, same LAN and Host firewall (TCP).");
             }
             ReadLocalInput(now);
+            if (hosting) world.TickHost();
             if (hosting) PollHost(now);
             else if (server != null) PollClient(now);
             UpdateAvatars();
@@ -360,6 +373,11 @@ namespace Sawada.Cordex
                     (k.wKey.isPressed ? 1 : 0) - (k.sKey.isPressed ? 1 : 0));
                 localSprint = k.leftShiftKey.isPressed;
                 if (k.eKey.wasPressedThisFrame) localSwapPress++;
+                if (k.fKey.wasPressedThisFrame && TryGetPlayerPosition(localId, out var position))
+                {
+                    var door = world.Nearest(position);
+                    if (door != null) door.RequestInteraction();
+                }
                 if (k.leftShiftKey.wasPressedThisFrame) localSprintPress++;
                 if (k.leftArrowKey.wasPressedThisFrame) localArmorStep--;
                 else if (k.rightArrowKey.wasPressedThisFrame) localArmorStep++;
@@ -442,12 +460,24 @@ namespace Sawada.Cordex
                     {
                         if (m.kind != "hello" || m.protocol != Protocol)
                         { Reject(c, "Protocol mismatch: " + Protocol + " required", now); break; }
+                        if (m.catalog != world.Catalog)
+                        { Reject(c, "World catalog mismatch: use the same map and build", now); break; }
                         int id = Enumerable.Range(2, 3).FirstOrDefault(n => !states.ContainsKey(n));
                         if (id == 0) { Reject(c, "Room full: maximum 4 players including Host", now); break; }
                         c.id = id;
                         states.Add(id, SpawnState(id));
                         Send(c.peer, new Message { kind = "welcome", id = id, protocol = Protocol });
                         Debug.Log("[NetworkTest] JOIN P" + id);
+                    }
+                    else if (m.kind == "world-action" && m.request > c.lastRequest
+                        && m.target > 0 && (m.action == "interact" || m.action == "delete"))
+                    {
+                        c.lastRequest = m.request;
+                        bool allowed = now >= c.actionAt;
+                        c.actionAt = now + .2f;
+                        bool accepted = allowed && world.HandleAction(c.id, m.target, m.action);
+                        Send(c.peer, new Message { kind = "world-result", request = m.request, target = m.target,
+                            accepted = accepted, reason = accepted ? "" : "Out of range, unavailable or not permitted" });
                     }
                     else if (m.kind == "input" && Finite(m.x) && Finite(m.z) && Mathf.Abs(m.x) <= 1.01f && Mathf.Abs(m.z) <= 1.01f
                         && Finite(m.forwardX) && Finite(m.forwardZ) && Mathf.Abs(m.forwardX) <= 1.01f && Mathf.Abs(m.forwardZ) <= 1.01f
@@ -506,6 +536,15 @@ namespace Sawada.Cordex
                 foreach (var c in connections) if (c.id > 0 && c.closeAt == 0) Send(c.peer, m);
                 Trace(m);
             }
+            if (now >= worldSendAt)
+            {
+                worldSendAt = now + .1f;
+                foreach (var message in world.Capture())
+                {
+                    foreach (var c in connections) if (c.id > 0 && c.closeAt == 0) Send(c.peer, message);
+                    Trace(message);
+                }
+            }
         }
 
         void Reject(Connection c, string reason, float now)
@@ -525,6 +564,15 @@ namespace Sawada.Cordex
                 if (m.kind == "reject") { StopSession("Connection rejected: " + m.reason); return; }
                 if (m.kind == "welcome" && m.protocol == Protocol && m.id >= 2 && m.id <= 4 && localId == 0)
                 { localId = m.id; SetStatus("Client connected as P" + localId); }
+                else if (m.kind == "world" && localId > 0)
+                {
+                    if (!world.Receive(m)) { StopSession("Invalid Host world state"); return; }
+                    Trace(m);
+                }
+                else if (m.kind == "world-result" && localId > 0)
+                {
+                    WorldActionCompleted?.Invoke(m.request, m.accepted, m.reason);
+                }
                 else if (m.kind == "state" && localId > 0 && m.players != null && m.players.Length <= 4)
                 {
                     if (!Finite(m.time) || m.tick <= receivedTick ||
@@ -581,6 +629,37 @@ namespace Sawada.Cordex
         {
             if (movers.TryGetValue(id, out var mover))
                 mover.SetNetworkInput(input, sprint, new Vector3(forward.x, 0, forward.y));
+        }
+
+        int worldRequest;
+        public bool IsHost => hosting;
+        public event Action<int, bool, string> WorldActionCompleted;
+        public NetworkWorldObject ServerSpawn(int prefabId, Vector3 position, Quaternion rotation)
+            => world?.ServerSpawn(prefabId, position, rotation);
+        public bool ServerDespawn(NetworkWorldObject item) => world != null && world.ServerDespawn(item);
+
+        internal bool TryGetPlayerPosition(int id, out Vector3 position)
+        {
+            if (bodies.TryGetValue(id, out var body) && body != null)
+            { position = body.position; return true; }
+            position = default; return false;
+        }
+
+        public bool RequestWorldAction(int targetId, string action)
+        {
+            if (localId == 0 || world == null || (action != "interact" && action != "delete")
+                || Time.realtimeSinceStartup < localWorldActionAt) return false;
+            localWorldActionAt = Time.realtimeSinceStartup + .2f;
+            int request = ++worldRequest;
+            if (hosting)
+            {
+                bool accepted = world.HandleAction(localId, targetId, action);
+                WorldActionCompleted?.Invoke(request, accepted, accepted ? "" : "Out of range, unavailable or not permitted");
+                return true;
+            }
+            if (server == null) return false;
+            Send(server, new Message { kind = "world-action", request = request, target = targetId, action = action });
+            return true; // Queued, not yet accepted. Host replies through WorldActionCompleted.
         }
 
         void ApplyArmorSelection(int id, int step, ref int appliedStep)
@@ -789,6 +868,8 @@ namespace Sawada.Cordex
             foreach (var c in connections) c.peer.Dispose();
             relay?.Dispose(); relay = null;
             connections.Clear(); states.Clear();
+            world?.Reset();
+            worldSendAt = localWorldActionAt = 0; worldRequest = 0;
             foreach (var avatar in avatars.Values) { avatar.SetActive(false); Destroy(avatar); }
             avatars.Clear();
             bodies.Clear(); snapshots.Clear(); renderTimeReady = false;
@@ -859,7 +940,7 @@ namespace Sawada.Cordex
             }
             GUILayout.Label(status);
             GUILayout.Label($"Players: {states.Count}/4   You: {(localId == 0 ? "-" : "P" + localId)}   Role: {(hosting ? "Host" : localId > 0 ? "Client" : "Offline")}   Tick: {(hosting ? tick : receivedTick)}");
-            GUILayout.Label("WASD / left stick: move   Left Shift: Sprint\nE: equip overlapping field armor   Arrows: switch slot\nClick a window to control it. Unfocused input stops.");
+            GUILayout.Label("WASD / left stick: move   Left Shift: Sprint\nE: equip overlapping field armor   Arrows: switch slot\nF: interact with nearest network door / spawn point\nClick a window to control it. Unfocused input stops.");
             if (!idle && GUILayout.Button("Cancel / Disconnect / Stop Host")) StopSession();
             if (testMotion) GUILayout.Label("AUTOMATED MOVEMENT TEST MODE");
             GUILayout.EndVertical();

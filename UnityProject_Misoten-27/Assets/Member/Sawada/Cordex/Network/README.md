@@ -4,6 +4,39 @@
 Scene は `Assets/Member/Sawada/Scenes/testMapPlayerMove.unity`。`Player_ver2.prefab` を生成元に使用（Prefab本体は変更しない）。
 Display 1～5の分配・起動処理は追加していません。
 
+## Host権威型のマップ同期（2026-11-03）
+
+プロトコルを `SawadaNetworkTest/5` に変更。旧実行ファイルとは接続できないため、全員に同じ最新版を配布する。
+移動・装備に加え、登録したマップオブジェクトもHostが確定する。Clientは操作要求を送り、Hostが接続元のプレイヤー位置・距離・操作の許可を判定し、結果と確定状態を送る。Host自身の操作も同じ判定を通る。
+
+- Sceneの `NPC_BASE` と `FieldArmorMachine` は起動時に自動登録する。その他の動く物体には、許可されたScene内のインスタンスに `NetworkWorldObject` を付ける。既存Prefabアセットの変更は不要。
+- 登録対象のスクリプト・NavMeshAgent・Rigidbody・ColliderはHostで動かす。Clientではシミュレーションを止め、受信した位置・回転を滑らかに表示する。`FieldArmorMachine` のモデル生成と `NPC_FADER` の見た目反映はClientでも使用する。その他の表示専用スクリプトは `Client Visual Scripts` に明示する。
+- `NPC_SPAWNER` は実行時だけ元の処理を止め、既存のPrefab・ルート・人数・間隔・混雑半径を読み取るアダプターがHostで生成する。元のSuzukiスクリプトとPrefabは変更しない。NPCの移動・透明度・消滅を配信する。
+- 扉の回転軸となるSceneオブジェクトに `NetworkDoor` を付けると、近くでFを押して開閉要求を送れる。既定の操作距離は3m。開閉と衝突はHostが確定する。対象マップの既存建物へ扉を新設・自動配置する処理は含まない。
+- 通常の生成には `NetworkTestSession` の `World Prefabs` に既存Prefabを登録し、Hostのゲーム処理から `ServerSpawn(prefabIndex, position, rotation)` を呼ぶ。生成物へ実行時に同期コンポーネントを付ける。削除は `ServerDespawn(object)` を使う。Clientが任意のPrefabや座標を直接指定して生成することは許可しない。
+- Client操作による生成には、Sceneの固定地点へ `NetworkSpawnPoint` を付け、`Prefab Index` と生成位置・最大数・間隔を設定する。近くでFを押すとHostが距離と上限を検証し、登録済みPrefabをHostで生成して全Clientへ反映する。
+- Client側の `RequestInteraction()` / `RequestDelete()` は送信要求。戻り値がtrueでもHostでの成功を意味しない。確定結果はSessionの `WorldActionCompleted(requestId, accepted, reason)` で受け取る。削除要求は `Allow Client Delete` を明示した対象だけ許可する。操作要求は0.2秒に1回まで。
+- 共通IDで位置・回転・スケール・有効状態・状態値・NPCの透明度を約10Hzで配信する。12個ごとに分割し、全パートの検証後に反映する。途中参加でも現在の生成物と削除済み状態を受け取れる。最大512個（Scene登録分も含む）。大量NPC向けの距離別送信・差分圧縮は未実装で、512体の性能を保証するものではない。
+- 停止時に実行時生成物を削除し、Scene登録物の初期位置・有効状態を戻す。Sceneオブジェクトは `ServerDespawn` で非表示にするため再接続できる。外部処理でSceneオブジェクト自体を `Destroy` した場合は消滅を通知できるが、次のセッションで復元するにはScene再読込が必要。
+- 同期するのは登録オブジェクトの上記の状態。得点・クエスト・任意の子階層やAnimatorパラメーターなど、ゲーム固有の状態は別途接続が必要。`Instantiate` / `Destroy` をプロジェクト全体で自動捕捉する方式ではない。同期対象の入れ子は未対応。
+
+Sceneと生成カタログの構成が違う相手は接続時に拒否する。カタログ照合は全アセットの内容一致を保証しないため、必ず同じビルドを使う。
+LAN TCPとOnline Relayは同じ要求・状態メッセージを使う。カメラ・UI・描画・補間は各Clientで処理する。
+
+検証メニュー: **Sawada > Cordex > Check Host Authority (in memory)**。既存Sceneを保存せず、一時Sceneで近距離の許可・遠距離の拒否・Client生成禁止・生成/削除・扉状態・分割配信・再接続・旧スポナーの参照読み取りを確認する。
+バッチ実行: `-executeMethod Sawada.Cordex.NetworkAuthorityChecks.Run`。
+`--net-trace` の記録には従来の `kind=state` に加えて `kind=world` が含まれるため、プレイヤー検証では `kind=state` の行だけを対象にする。
+
+今回の確認結果:
+
+- Unity上の一時Scene検証に合格。生成要求の許可・間隔制限、遠距離拒否、Client生成禁止、衝突の権限、生成/削除、扉状態、複数パート、再接続、不正座標拒否、非表示NPCの受信、旧スポナーのTransform参照読み取りを確認。
+- 最終Windows x64ビルド成功、エラー0・警告3。警告は既存カメラの未使用フィールドとUnity Cloud関連。既存ビルド処理による対象Scene・Player生成元PrefabのMissing Script/参照チェック通過。
+- 同一PCのHost＋3 Clientで、プレイヤー状態392件・マップ状態220件がHostの同じ配信番号のJSONと完全一致。途中参加・4人表示・切断後の人数更新を確認。
+- 最終版のHost＋Clientでもプレイヤー状態200件・マップ状態108件が完全一致。浮遊アイテムの上下移動と装備取得を確認。旧プロトコルと異なるカタログでの接続を拒否。両プロセスの実行時例外なし。
+- 記録先は `Builds/AuthorityVerification/`。主な記録は `checks-release.log`、`build-release.log`、`transport-result.json`、`release-result.json`、各Host/Clientの `.jsonl` と `.log`。
+- 未確認: 大量NPCの負荷・NavMesh上でのNPC群の実動作、配置した扉の手動操作、別PC/LAN・Relayでの今回の変更後の通信。現在の対象Sceneに扉やNPC群を新設してはいない。任意のゲーム固有処理まで自動で権威化されるものではない。
+- Unityがビルド・終了時に自動変更した設定を復元し、成果物の差分は `Assets/Member/Sawada/Cordex/Network/` 内だけであることを確認。
+
 ## 別LANからのオンライン接続（2026-11-03）
 
 通常起動では **Internet (room code)** を選択する。全PCに同じビルドを配布し、以下の手順で接続する。
