@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using System.Linq;
 
 //ミニゲーム開始ゾーン
 //
@@ -14,7 +15,7 @@ public class MiniGameZone : MonoBehaviour
         Enum.GetValues(typeof(Joycon.Button)) as Joycon.Button[];
 
     private List<Joycon> m_joycons;
-    private Joycon m_joyconL;
+    private Joycon m_joycon;
     //private Joycon m_joyconR;
     private Joycon.Button? m_pressedButtonL;
     //private Joycon.Button? m_pressedButtonR;
@@ -46,8 +47,7 @@ public class MiniGameZone : MonoBehaviour
 
         if (m_joycons == null || m_joycons.Count <= 0) return;
 
-        m_joyconL = m_joycons.Find(c => c.isLeft);
-        //m_joyconR = m_joycons.Find(c => !c.isLeft);
+        m_joycon = m_joycons.First();
         //============================================================
     }
 
@@ -61,7 +61,7 @@ public class MiniGameZone : MonoBehaviour
 
         // デバッグ用にエディタ上のみキーボード操作を受け付ける
 #if UNITY_EDITOR
-        bool hasJoycon = (m_joyconL != null);
+        bool hasJoycon = (m_joycon != null);
         if(!hasJoycon )
         {
             if (m_playerObject && Keyboard.current.zKey.wasPressedThisFrame)
@@ -74,7 +74,7 @@ public class MiniGameZone : MonoBehaviour
 #endif
 
         //L2ボタン入力でゲーム開始
-        if (m_playerObject && m_joyconL.GetButtonDown(Joycon.Button.SHOULDER_2))
+        if (m_playerObject && m_joycon.GetButtonDown(Joycon.Button.SHOULDER_2))
         {
             //ミニゲーム起動(引数でプレイヤーオブジェクトを渡す)
             m_system.Activate(m_playerObject);
@@ -86,10 +86,8 @@ public class MiniGameZone : MonoBehaviour
     //プレイヤー衝突判定
     public void OnCollisionEnter(Collision collision)
     {
-        if(collision.gameObject.tag == "Player" && !m_isPlayingFlag)
+        if(collision.gameObject.tag == "Player" && !m_isPlayingFlag && !m_playerObject)
         {
-            Debug.Log("ミニゲーム開始可能");
-
             //メンバ変数にプレイヤーオブジェクトを紐付け
             m_playerObject = collision.gameObject;
         }
@@ -101,13 +99,13 @@ public class MiniGameZone : MonoBehaviour
         {
             Debug.Log("ミニゲームゾーンから離脱");
 
-            if(m_isPlayingFlag)
+            if(collision.gameObject == m_playerObject)
             {
                 m_isPlayingFlag = false;
+                
+                //メンバ変数に紐付けされたプレイヤーオブジェクトを解除
+                m_playerObject = null;
             }
-
-            //メンバ変数に紐付けされたプレイヤーオブジェクトを解除
-            m_playerObject = null;
         }
     }
 }

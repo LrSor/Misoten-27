@@ -3,6 +3,7 @@ using System;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEngine.InputSystem;
+using System.Linq;
 
 public class RotateObject : MiniGameObject
 {
@@ -13,8 +14,7 @@ public class RotateObject : MiniGameObject
         Enum.GetValues(typeof(Joycon.Button)) as Joycon.Button[];
 
     private List<Joycon> m_joycons;
-    private Joycon m_joyconL;
-    //private Joycon m_joyconR;
+    private Joycon m_joycon;
     //============================================================
 
     //============================================================
@@ -73,15 +73,14 @@ public class RotateObject : MiniGameObject
 
         if (m_joycons == null || m_joycons.Count <= 0) return;
 
-        m_joyconL = m_joycons.Find(c => c.isLeft);
-        //m_joyconR = m_joycons.Find(c => !c.isLeft);
+        m_joycon = m_joycons.First();
         //============================================================
     }
 
     //オブジェクト終了関数
     public override void Deactivate()
     {
-        m_joyconL = null;
+        m_joycon = null;
 
         transform.localEulerAngles = Vector3.zero;
     }
@@ -90,7 +89,7 @@ public class RotateObject : MiniGameObject
     public override void UpdateObject()
     {
 #if UNITY_EDITOR
-        bool hasJoycon = (m_joyconL != null);
+        bool hasJoycon = (m_joycon != null);
         //ジョイコンが接続されている場合、キーボード操作処理を飛ばしジョイコン操作を行う
         if (!hasJoycon)
         {
@@ -149,7 +148,14 @@ public class RotateObject : MiniGameObject
         //------------------------------------------------------------
         // 現在の加速度を取得
         //------------------------------------------------------------
-        Vector3 accel = m_joyconL.GetAccel();
+        Vector3 accel = m_joycon.GetAccel();
+
+        //ジョイコンがRの場合、加速度YとZの数値を反転
+        if (!m_joycon.isLeft)
+        {
+            accel.y = -accel.y;
+            accel.z = -accel.z;
+        }
 
         //------------------------------------------------------------
         // 前回との差分（Δaccel）を計算
