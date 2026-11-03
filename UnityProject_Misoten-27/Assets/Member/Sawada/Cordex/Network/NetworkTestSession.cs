@@ -41,7 +41,7 @@ namespace Sawada.Cordex
         }
         sealed class Connection
         {
-            public TcpPeer peer;
+            public INetworkTestPeer peer;
             public int id;
             public float lastReceive, lastInput, closeAt;
             public Vector2 input;
@@ -63,14 +63,20 @@ namespace Sawada.Cordex
         float snapshotReceivedAt;
         bool renderTimeReady;
         TcpListener listener;
-        TcpPeer server;
+        INetworkTestPeer server;
+        RelayTestTransport relay;
+        bool internetMode = true, relayStarting, relayConnecting, roomAnnounced;
+        int relayGeneration;
+        float relayStarted;
+        string joinCodeInput = "";
+        bool Busy => hosting || connecting || server != null || relay != null;
         TcpClient connectingSocket;
         Task connectTask;
         Camera view;
         Camera lobbyView;
         TestPlayerCameraLookController localLook;
         Transform inactivePlayers;
-        string ip = "", portText = "7777", status = "Choose Host or enter the Host PC's LAN IPv4";
+        string ip = "", portText = "7777", status = "Create an online room or enter a room code to join";
         string localAddresses = "";
         int localId, tick, receivedTick;
         bool hosting, connecting, testMotion, testGameplay, testPickup;
@@ -143,8 +149,12 @@ namespace Sawada.Cordex
                 try { trace = new StreamWriter(tracePath) { AutoFlush = true }; }
                 catch (Exception e) { Debug.LogWarning("Trace: " + e.Message); }
             }
-            if (Arg("--net-mode") == "host") StartHost();
-            else if (Arg("--net-mode") == "client") StartClient();
+            joinCodeInput = Arg("--net-code", joinCodeInput);
+            string mode = Arg("--net-mode");
+            if (mode == "host") { internetMode = false; StartHost(); }
+            else if (mode == "client") { internetMode = false; StartClient(); }
+            else if (mode == "relay-host") StartRelayHost();
+            else if (mode == "relay-client") StartRelayClient();
         }
 
         bool ReadPort(out int port)
@@ -178,7 +188,7 @@ namespace Sawada.Cordex
 
         public void StartHost()
         {
-            if (hosting || connecting || server != null || !ReadPort(out int port)) return;
+            if (Busy || !ReadPort(out int port)) return;
             try
             {
                 RefreshLocalAddresses();
@@ -194,7 +204,7 @@ namespace Sawada.Cordex
 
         public void StartClient()
         {
-            if (hosting || connecting || server != null || !ReadPort(out int port)) return;
+            if (Busy || !ReadPort(out int port)) return;
             if (string.IsNullOrWhiteSpace(ip))
             { SetStatus("Enter the Host PC's LAN IPv4 (example: 192.168.1.20)"); return; }
             if (!IPAddress.TryParse(ip.Trim(), out var address) || address.AddressFamily != AddressFamily.InterNetwork)
@@ -212,10 +222,80 @@ namespace Sawada.Cordex
             catch (Exception e) { StopSession("Connect failed: " + e.Message); }
         }
 
+        public void StartRelayHost() => StartRelay(true);
+        public void StartRelayClient() => StartRelay(false);
+
+        async void StartRelay(bool asHost)
+        {
+            if (Busy) return;
+            string code = joinCodeInput.Trim().ToUpperInvariant();
+            if (!asHost && (code.Length == 0 || code.Length > 16
+                || code.Any(c => !((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')))))
+            { SetStatus("Enter the room code provided by the Host (letters / digits)."); return; }
+            int generation = ++relayGeneration;
+            var transport = new RelayTestTransport();
+            relay = transport;
+            relayStarting = true;
+            relayStarted = Time.realtimeSinceStartup;
+            SetStatus(asHost ? "Creating an online room..." : "Joining online room...");
+            try
+            {
+                if (asHost) await transport.StartHostAsync();
+                else await transport.StartClientAsync(code);
+                // A canceled / superseded request must never revive a stopped session.
+                if (this == null || generation != relayGeneration) { transport.Dispose(); return; }
+                relayStarting = false;
+                relayStarted = Time.realtimeSinceStartup;
+                if (asHost)
+                {
+                    hosting = true;
+                    localId = 1;
+                    states.Add(1, SpawnState(1));
+                    SetStatus("Room created; connecting to Relay...");
+                }
+                else
+                {
+                    relayConnecting = true;
+                    SetStatus("Connecting to the room Host...");
+                }
+            }
+            catch (Exception e)
+            {
+                transport.Dispose();
+                if (this != null && generation == relayGeneration)
+                    StopSession("Online connection failed: " + e.Message
+                        + " Check internet access and Unity Cloud Authentication / Relay configuration.");
+            }
+        }
+
         void Update()
         {
             float now = Time.realtimeSinceStartup;
             if (exitAfter > 0 && now - started >= exitAfter) { Application.Quit(); return; }
+            if (relay != null)
+            {
+                try { relay.Tick(); }
+                catch (Exception e) { StopSession("Relay failed: " + e.Message); return; }
+                if (relay.Error != null) { StopSession(relay.Error); return; }
+                if (hosting && !roomAnnounced && relay.Ready)
+                {
+                    roomAnnounced = true;
+                    SetStatus("Online room ready. Share the room code with other players.");
+                    Debug.Log("[NetworkTest] ROOM CODE " + relay.JoinCode);
+                }
+                if (relayConnecting && relay.ClientConnected)
+                {
+                    server = relay.Client;
+                    relayConnecting = false;
+                    lastReceive = now;
+                    Send(server, new Message { kind = "hello", protocol = Protocol });
+                    SetStatus("Connected; waiting for Host approval");
+                }
+                if ((relayStarting || relayConnecting || (hosting && !roomAnnounced)) && now - relayStarted > 45f)
+                { StopSession("Online connection timeout. Check internet access and create / join the room again."); return; }
+                if (relayConnecting && relay.Client != null && relay.Client.Closed)
+                { StopSession("Could not reach the room Host. Create / join the room again."); return; }
+            }
             if (connecting)
             {
                 if (connectTask.IsCompleted)
@@ -321,7 +401,7 @@ namespace Sawada.Cordex
             return new PlayerState { id = id, x = (id - 2.5f) * 3,
                 y = body != null ? body.transform.position.y : 1.72f, z = 0 };
         }
-        static void Send(TcpPeer peer, Message message) => peer.Send(JsonUtility.ToJson(message));
+        static void Send(INetworkTestPeer peer, Message message) => peer.Send(JsonUtility.ToJson(message));
         static bool Finite(float n) => !float.IsNaN(n) && !float.IsInfinity(n);
 
         Message Decode(string json)
@@ -335,11 +415,20 @@ namespace Sawada.Cordex
             try
             {
                 // Bound work per frame even under a burst of connection attempts.
-                for (int i = 0; i < 8 && listener.Pending(); i++)
+                for (int i = 0; i < 8; i++)
                 {
-                    var socket = listener.AcceptTcpClient();
-                    if (connections.Count >= 8) { socket.Close(); continue; }
-                    connections.Add(new Connection { peer = new TcpPeer(socket), lastReceive = now });
+                    INetworkTestPeer peer;
+                    if (relay != null)
+                    {
+                        if (!relay.TryAccept(out peer)) break;
+                    }
+                    else
+                    {
+                        if (listener == null || !listener.Pending()) break;
+                        peer = new TcpPeer(listener.AcceptTcpClient());
+                    }
+                    if (connections.Count >= 8) { peer.Dispose(); continue; }
+                    connections.Add(new Connection { peer = peer, lastReceive = now });
                 }
             }
             catch (Exception e) { StopSession("Listener failed: " + e.Message); return; }
@@ -686,6 +775,8 @@ namespace Sawada.Cordex
 
         public void StopSession(string reason = "Disconnected by user")
         {
+            relayGeneration++;
+            relayStarting = relayConnecting = roomAnnounced = false;
             listener?.Stop(); listener = null;
             server?.Dispose(); server = null;
             connectingSocket?.Close(); connectingSocket = null;
@@ -696,6 +787,7 @@ namespace Sawada.Cordex
                 connectTask = null;
             }
             foreach (var c in connections) c.peer.Dispose();
+            relay?.Dispose(); relay = null;
             connections.Clear(); states.Clear();
             foreach (var avatar in avatars.Values) { avatar.SetActive(false); Destroy(avatar); }
             avatars.Clear();
@@ -717,28 +809,58 @@ namespace Sawada.Cordex
             GUI.skin.label.wordWrap = true;
             GUILayout.BeginArea(new Rect(12, 12, 440, Screen.height - 24));
             GUILayout.BeginVertical(GUI.skin.box);
-            GUILayout.Label("LAN PLAY | Host + 3 Clients | TCP");
-            bool idle = !hosting && !connecting && server == null;
+            GUILayout.Label("ONLINE / LAN PLAY | Host + 3 Clients");
+            bool idle = !Busy;
             GUI.enabled = idle;
-            GUILayout.BeginHorizontal();
-            GUILayout.Label("Host IPv4", GUILayout.Width(70));
-            ip = GUILayout.TextField(ip, 45, GUILayout.Width(190));
-            GUILayout.Label("Port", GUILayout.Width(35));
-            portText = GUILayout.TextField(portText, 5, GUILayout.Width(70));
-            GUILayout.EndHorizontal();
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Start Host", GUILayout.Height(30))) StartHost();
-            if (GUILayout.Button("Connect Client", GUILayout.Height(30))) StartClient();
-            GUILayout.EndHorizontal();
+            internetMode = GUILayout.Toolbar(internetMode ? 0 : 1, new[] { "Internet (room code)", "LAN (IP address)" }) == 0;
+            if (internetMode)
+            {
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("Room code", GUILayout.Width(80));
+                joinCodeInput = GUILayout.TextField(joinCodeInput, 16);
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Create online room", GUILayout.Height(30))) StartRelayHost();
+                if (GUILayout.Button("Join with code", GUILayout.Height(30))) StartRelayClient();
+                GUILayout.EndHorizontal();
+            }
+            else
+            {
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("Host IPv4", GUILayout.Width(70));
+                ip = GUILayout.TextField(ip, 45, GUILayout.Width(190));
+                GUILayout.Label("Port", GUILayout.Width(35));
+                portText = GUILayout.TextField(portText, 5, GUILayout.Width(70));
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Start Host", GUILayout.Height(30))) StartHost();
+                if (GUILayout.Button("Connect Client", GUILayout.Height(30))) StartClient();
+                GUILayout.EndHorizontal();
+            }
             GUI.enabled = true;
-            GUILayout.Label("This PC's IPv4 candidates (use the Host PC's Wi-Fi / Ethernet address):");
-            GUILayout.TextField(localAddresses);
-            if (idle && GUILayout.Button("Refresh this PC's IP addresses")) RefreshLocalAddresses();
-            GUILayout.Label("Other PCs: enter the Host's LAN IPv4 above and use the same port.\n127.0.0.1 is for same-PC tests only. Allow Host TCP on the private LAN firewall.");
+            if (internetMode)
+            {
+                if (hosting && relay != null && roomAnnounced)
+                {
+                    GUILayout.BeginHorizontal();
+                    GUILayout.Label("Your room code", GUILayout.Width(100));
+                    GUILayout.TextField(relay.JoinCode);
+                    if (GUILayout.Button("Copy", GUILayout.Width(60))) GUIUtility.systemCopyBuffer = relay.JoinCode;
+                    GUILayout.EndHorizontal();
+                }
+                GUILayout.Label("Play across different networks using a room code.\nHost must keep the room open. Share the code only with invited players.");
+            }
+            else
+            {
+                GUILayout.Label("This PC's IPv4 candidates (use the Host PC's Wi-Fi / Ethernet address):");
+                GUILayout.TextField(localAddresses);
+                if (idle && GUILayout.Button("Refresh this PC's IP addresses")) RefreshLocalAddresses();
+                GUILayout.Label("Other PCs: enter the Host's LAN IPv4 above and use the same port.\n127.0.0.1 is for same-PC tests only. Allow Host TCP on the private LAN firewall.");
+            }
             GUILayout.Label(status);
             GUILayout.Label($"Players: {states.Count}/4   You: {(localId == 0 ? "-" : "P" + localId)}   Role: {(hosting ? "Host" : localId > 0 ? "Client" : "Offline")}   Tick: {(hosting ? tick : receivedTick)}");
             GUILayout.Label("WASD / left stick: move   Left Shift: Sprint\nE: equip overlapping field armor   Arrows: switch slot\nClick a window to control it. Unfocused input stops.");
-            if (!idle && GUILayout.Button("Disconnect / Stop Host")) StopSession();
+            if (!idle && GUILayout.Button("Cancel / Disconnect / Stop Host")) StopSession();
             if (testMotion) GUILayout.Label("AUTOMATED MOVEMENT TEST MODE");
             GUILayout.EndVertical();
             GUILayout.EndArea();

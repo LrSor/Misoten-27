@@ -9,8 +9,16 @@ using System.Threading.Tasks;
 
 namespace Sawada.Cordex
 {
+    internal interface INetworkTestPeer : IDisposable
+    {
+        string Error { get; }
+        bool Closed { get; }
+        bool TryRead(out string message);
+        void Send(string message);
+    }
+
     // Length-prefixed UTF-8 frames. All Unity APIs and JSON parsing stay on the main thread.
-    internal sealed class TcpPeer : IDisposable
+    internal sealed class TcpPeer : INetworkTestPeer
     {
         const int MaxFrame = 8192;
         readonly TcpClient client;

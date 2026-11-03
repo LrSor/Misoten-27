@@ -4,6 +4,38 @@
 Scene は `Assets/Member/Sawada/Scenes/testMapPlayerMove.unity`。`Player_ver2.prefab` を生成元に使用（Prefab本体は変更しない）。
 Display 1～5の分配・起動処理は追加していません。
 
+## 別LANからのオンライン接続（2026-11-03）
+
+通常起動では **Internet (room code)** を選択する。全PCに同じビルドを配布し、以下の手順で接続する。
+
+1. Hostが **Create online room** を押す。オンライン接続が完了すると **Your room code** が表示される。
+2. **Copy** で部屋コードをコピーし、招待する相手に伝える。
+3. Clientは **Room code** に入力して **Join with code** を押す。IPアドレス・ポート入力・VPNアプリの導入は不要。
+4. Hostを含め最大4人。Hostがアプリを閉じるか **Cancel / Disconnect / Stop Host** を押すと部屋は終了する。再作成時は新しいコードを使う。
+5. 同じLANで従来どおり接続する場合は **LAN (IP address)** に切り替える。
+
+インターネット接続とUnity Relayへの通信が必要。学校・施設などのネットワーク制限によりRelayの通信が遮断される環境では接続できない場合がある。部屋コードは招待する相手だけに共有する。
+
+### 実装と開発環境
+
+- Multiplayer Services `2.4.1`、Unity Transport `2.7.4` を追加。関連するAuthentication / CoreなどはPackage Managerで解決し、CollectionsはSDKの要求に従い `2.6.5` から `2.6.8` へ更新。
+- Unity Authenticationの匿名認証でRelay allocationを作成・参加する。単一PCで複数アプリを検証できるよう、サービス初期化時は各プロセス固有の匿名プロファイルを使用する。プレイヤーが別途アカウントを入力する画面は追加しない。
+- OnlineはUTP + RelayのDTLS接続。ReliableSequencedとFragmentationを組み合わせ、TCPと同じ順序・到達保証で最大8192バイトのJSONメッセージを運ぶ。送受信キューは各128件。混雑時は送信を次フレームへ持ち越し、上限超過では切断する。
+- ゲームの入力検証・Host物理計算・状態同期・Client補間はLANと共通。Netcode for GameObjectsへの移行、Scene / Prefabの変更は行わない。通信中断時の自動再接続とHost移譲は未実装。
+- 非同期接続処理には世代番号とDisposeチェックを用い、キャンセル後に遅れて完了した処理が部屋や接続を復活させない。サービス初期化・部屋作成・接続待ちには45秒のタイムアウトを設ける。
+- 現在リンク済みのUnity CloudプロジェクトでRelayの実通信を確認した。別のCloudプロジェクトへ変更する場合は、開発者がそのプロジェクトのAuthentication / Relay利用設定を確認する。サービスアカウントの秘密鍵をゲームに同梱する必要はない。
+- Unity公式資料: [RelayとUTPの連携](https://docs.unity.com/en-us/mps-sdk/integrations)、[Multiplayer Servicesの導入](https://docs.unity.com/en-us/mps-sdk/install-and-upgrade)。
+
+### 検証記録
+
+- Windows x64ビルド成功（エラー0・警告3）、Unity終了コード0。対象Scene・生成元PrefabのMissing Scriptチェック通過。
+- 警告は既存カメラスクリプトの未使用フィールド、バッチEditorのCloudプロジェクト連携に関する警告、未サインインによるネイティブシンボル非アップロード。ビルドしたアプリでは匿名認証・部屋作成・実Relay接続に成功。
+- 同一PCのHost＋3 Clientで、実際のUnity Relayを経由した自動移動試験に成功。各Clientの159件（計477件）の4人分の状態JSONがHost配信と完全一致。全プロセス終了コード0、実行時例外なし。
+- 同じビルドのLAN IPv4接続でもHost＋3 Clientが成功し、各199件（計597件）がHostと一致。
+- 部屋コードの空欄と、試験で作成後に終了した部屋のコードを入力した場合に、入力案内または接続失敗の理由を表示し、終了コード0で正常終了することを確認。
+- 別LANの別PC同士の実機接続、新しいパネルの目視・手動操作、通信品質が悪い環境の遅延・損失試験、接続キャンセルの実操作は未確認。
+- 記録: `Builds/NetworkTest/Verification/unity-build-relay.log`、`Relay-20261103-165658/`、`Lan-RelayRegression-20261103/` のログ・JSONL・結果JSON。
+
 ## 表示方針（2026-10-31）
 
 通常Playとの見た目の差を増やさないため、通信テスト用に追加した頭上のP番号・YOU表示と、参加者ごとのマテリアル色上書きを削除。必要な接続操作・参加人数・自分の番号は左上の通信用UIに集約する。
@@ -43,12 +75,12 @@ PrefabアセットのRigidbody.positionは未初期化の物理位置を返す�
 - 実キーボードによる手動E操作は未確認。入力自体は自動試験で置き換え、既存Swap Stateと物理接触判定を実行した。
 - 記録: `Builds/NetworkTest/Verification/pickup-final-result.json`、`pickup-final-host.jsonl`、`pickup-final-client.jsonl`、各同名 `.log`。最終ビルドはUnity Editorの既存メニューから実行。
 
-- .NET TCP、IPv4、既定ポート7777。追加パッケージなし。
+- LANは.NET TCP、IPv4、既定ポート7777。Onlineは上記Unity Relay / UTPを使用する。
 - Hostは `0.0.0.0` に待ち受け、Host自身がP1、ClientがP2～P4。
 - Hostは既存のFixed Timestep（0.02秒＝50Hz）でRigidbodyの水平速度を更新し、Unityの物理で重力・衝突を計算。全員のXYZ位置・向き・Host時刻を約20Hzで送信。
 - Clientは自分の移動入力だけを送信。操作対象は接続ソケットから決定し、Client指定のIDや位置は採用しない。
 - Playerは元Prefabのマテリアル・色を使用。テスト用の頭上文字や色分けは追加しない。参加人数と自分の番号は左上の通信用UIで確認する。
-- TCPは4バイトのビッグエンディアン長 + UTF-8 JSON。プロトコル識別子 `SawadaNetworkTest/4`。旧版とは接続不可のため、HostとClientを同じソースから再ビルドする。
+- LANのTCPは4バイトのビッグエンディアン長 + UTF-8 JSON。OnlineはUTPのメッセージ単位で同じJSONを運ぶ。プロトコル識別子 `SawadaNetworkTest/4`。HostとClientを同じソースから再ビルドする。
 - 1メッセージ最大8192バイト、送受信キューは各128件を上限とする。
 - 通信断はソケット終了または10秒タイムアウトで検知。未承認接続は5秒で終了。
 - 入力更新が0.4秒止まるとHostはそのプレイヤーの移動を停止。
@@ -121,7 +153,9 @@ PowerShellで `Builds/NetworkTest/Verify-Network.ps1` を実行する（空い�
 
 検証用起動引数:
 
-- `--net-mode host` または `--net-mode client`: 起動直後に選択した役割で接続。
+- `--net-mode host` または `--net-mode client`: LANモードで起動直後に選択した役割で接続。
+- `--net-mode relay-host`: Onlineの部屋を作成。Relay接続完了時、ログに `[NetworkTest] ROOM CODE <コード>` を出力する。
+- `--net-mode relay-client --net-code <コード>`: Onlineの部屋に参加。Onlineでは `--net-ip` / `--net-port` は使用しない。
 - `--net-ip 192.168.1.20`、`--net-port 7777`: 接続設定。ClientはHostの実際のLAN IPv4を指定する。同一PC試験だけ `--net-ip 127.0.0.1` を明示する。
 - `--net-test-motion`: 明示的に指定した場合だけ自動移動入力を使用。
 - `--net-test-gameplay`: 自動移動に加え、1秒後にSprintを短く押して離し、7秒・9秒後に装備スロットを切り替える検証モード。`--net-test-motion`とは併用しない。
@@ -136,7 +170,7 @@ Sceneが参照する既存 `Player_ver2.prefab` を実行時に複製する。Pr
 自分の入力・カメラ関係を有効化する。Host上の全プレイヤーでは既存の移動StateMachine・PlayerMoveController・Idle/Walk/Sprintを使用し、所有者ごとの通信入力を渡す。Inventoryの直接キーボード読み取りは無効のまま、Hostが既存の左右スロット切り替えメソッドを呼ぶ。
 Host上の全プレイヤーはPlayerBodyの動的Rigidbodyと既存Colliderを使用する。歩行5、Sprintは既存Prefabの設定（10→5、5秒）に従う。鉛直速度は維持して重力に任せ、従来のXZ±20制限と高さ固定を撤去した。
 HostはRigidbody補間とContinuousDynamic衝突検出を使用し、生成時を除いてTransformへ位置を上書きしない。壁・床への衝突はマップの既存Colliderとレイヤー設定に従う。
-Client上はKinematicかつCollider無効の表示用コピーとし、Hostから受信した状態を約100ms遅らせて位置・向きを補間する。TCPの受信が途絶えると最後の状態で止める。Clientで二重に物理計算しない。
+Client上はKinematicかつCollider無効の表示用コピーとし、Hostから受信した状態を約100ms遅らせて位置・向きを補間する。状態の受信が途絶えると最後の状態で止める。Clientで二重に物理計算しない。
 Client自身にも通信遅延と補間待ちがある。Sprint中かどうかと装備スロット・装備内容をHostから同期する。選択の左右入力と短いShift入力は通信間隔の途中で失われないよう回数も送信する。Sprintに使う所有者の視点の水平向きをHostへ送り、カメラ自体の計算は各アプリ内で行う。
 Hostでは既存PlayerSwapControllerとSwap Stateを使用し、FieldArmorのTriggerに重なってEを押すと現在のスロットへ装備する。装備候補はHostの接触判定で決める。参照元SawadaGameのSwap処理と同じくFieldArmor本体は残る。
 装備IDはSceneのFieldArmorが参照するSOから共通の順序で作成し、各プレイヤーの装備内容を同期する。初期装備2枠は空のまま。取得後は既存のCharacterAmorControllerでモデルを反映し、左右矢印で切り替える。
@@ -149,6 +183,7 @@ Hostでは既存PlayerSwapControllerとSwap Stateを使用し、FieldArmorのTri
 
 - `NetworkTestSession.cs`: UI、入力、接続・人数管理、Host移動計算、状態同期、実行時外観生成。
 - `TcpPeer.cs`: 非同期TCP送受信、フレーミング、切断とキュー上限。
+- `RelayTestTransport.cs`: 匿名認証、部屋コードの作成・参加、DTLS / Reliable / FragmentationによるRelay送受信。
 - `../Editor/NetworkTestBuild.cs`: WindowsビルドとScene/PrefabのMissing Script・参照チェック。
 - 本READMEおよび各追加ファイル・フォルダーの `.meta`。
 - `../../Scenes/testMapPlayerMove.unity`: NetworkTestSessionを追加、既存単独プレイヤーをScene内だけで非アクティブ化。
