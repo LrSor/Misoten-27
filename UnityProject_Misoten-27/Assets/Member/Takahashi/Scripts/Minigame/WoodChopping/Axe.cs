@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using System.Linq;
 
 public class Axe : MiniGameObject
 {
@@ -12,8 +13,7 @@ public class Axe : MiniGameObject
         Enum.GetValues(typeof(Joycon.Button)) as Joycon.Button[];
 
     private List<Joycon> m_joycons;
-    private Joycon m_joyconL;
-    //private Joycon m_joyconR;
+    private Joycon m_joycon;
     //============================================================
 
     [SerializeField] MiniGame m_miniGame;
@@ -41,14 +41,14 @@ public class Axe : MiniGameObject
 
         if (m_joycons == null || m_joycons.Count <= 0) return;
 
-        m_joyconL = m_joycons.Find(c => c.isLeft);
-        //m_joyconR = m_joycons.Find(c => !c.isLeft);
+        m_joycon = m_joycons.First();
+        
         //============================================================
     }
 
     public override void Deactivate()
     {
-        m_joyconL = null;
+        m_joycon = null;
 
         transform.localEulerAngles = Vector3.zero;
     }
@@ -56,7 +56,7 @@ public class Axe : MiniGameObject
     public override void UpdateObject()
     {
 #if UNITY_EDITOR
-        bool hasJoycon = (m_joyconL != null);
+        bool hasJoycon = (m_joycon != null);
         //ジョイコンが接続されている場合、キーボード操作処理を飛ばしジョイコン操作を行う
         if(!hasJoycon)
         {
@@ -99,11 +99,18 @@ public class Axe : MiniGameObject
 
 #endif
 
-
         //--------------------------------------------
         // JoyConの加速度を取得
         //--------------------------------------------
-        Vector3 accel = m_joyconL.GetAccel();
+        Vector3 accel = m_joycon.GetAccel();
+        
+
+        //ジョイコンがRの場合、加速度YとZの数値を反転
+        if(!m_joycon.isLeft)
+        {
+            accel.y = -accel.y;
+            accel.z = -accel.z;
+        }
         // accel.y が 1.0 に近いほど「振り下ろし」と判定
 
         //--------------------------------------------
@@ -132,7 +139,7 @@ public class Axe : MiniGameObject
             m_miniGame.FinishMiniGame();
 
 #if UNITY_EDITOR
-            bool hasJoycon = (m_joyconL != null);
+            bool hasJoycon = (m_joycon != null);
             if (!hasJoycon)
             {
                 float collisionPower = Mathf.Abs(m_shamAccel.y);
@@ -156,7 +163,7 @@ public class Axe : MiniGameObject
             //--------------------------------------------
             // JoyCon の加速度を取得（振り下ろし強さ）
             //--------------------------------------------
-            Vector3 joyconAccel = m_joyconL.GetAccel();
+            Vector3 joyconAccel = m_joycon.GetAccel();
             float joyconPower = Mathf.Abs(joyconAccel.y);
 
             {//--------------------------------------------

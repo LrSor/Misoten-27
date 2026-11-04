@@ -3,6 +3,7 @@ using System;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEngine.InputSystem;
+using System.Linq;
 
 public class CoffeeMill: MiniGameObject
 {
@@ -13,8 +14,7 @@ public class CoffeeMill: MiniGameObject
         Enum.GetValues(typeof(Joycon.Button)) as Joycon.Button[];
 
     private List<Joycon> m_joycons;
-    private Joycon m_joyconL;
-    //private Joycon m_joyconR;
+    private Joycon m_joycon;
     //============================================================
 
     //============================================================
@@ -23,11 +23,17 @@ public class CoffeeMill: MiniGameObject
     [Header("ミニゲーム本体")] //不要なら削除しても良し
     [SerializeField] MiniGame m_miniGame;
 
-    [Header("オブジェクトのデフォルト位置")]//
-    [SerializeField] Transform m_defaultPosition;
+    [Header("オブジェクトのデフォルト位置を指定するオブジェクト")]//
+    [SerializeField] Transform m_defaultPositionObject;
+    private Vector3 m_defaultPosition;
+
+    [Header("移動範囲")]
+    [SerializeField] float m_moveLange = 0;
+
     //オブジェクトが移動した後の位置を保持
     Vector3 m_movePosition;
-
+    Vector3 m_prevPosition;
+    
     //前回の加速度を保持
     Vector3 m_prevAccel;
 
@@ -37,22 +43,49 @@ public class CoffeeMill: MiniGameObject
     //============================================================
     // 追加メンバ変数（速度を保持）
     //============================================================
-    private Vector2 m_velocity = Vector2.zero;   // Y,Z軸の速度
-    private float m_sensitivity = 0.05f;         // 加速度→速度変換の係数（調整可）
+   private Vector2 m_velocity = Vector2.zero;   // Y,Z軸の速度
+   [Header("移動速度補正")]
+   [SerializeField] private float m_sensitivity = 0.05f;
+   [Header("ジョイコン加速度の感度")]
+   [SerializeField] private float m_accelSensitivity = 0.05f;
+   
+   [Header("テスト用Gyro感度")]
+   [SerializeField] private float m_gyroSensitivity = 1.0f;
+   [Header("テスト用Gyro移動距離(なるべく小さい値)")]
+   [SerializeField] private float m_gyroMoveLange = 0.1f;
+
+    // ジャイロ積分用
+    private float m_accumulatedRotationZ = 0f;
+    // 1回転とみなす閾値（360°）
+    private const float ROTATION_THRESHOLD = 180f;
+
+    [Header("非回転時減衰速度(回していない間に毎フレーム幾つ下がるか)")]
+    [SerializeField] int m_attenuationSpeed = 0;
+
+
+
 
 #if UNITY_EDITOR
     //デバッグ用に追加する変数はここに記載
-    
+    private int m_keyboardStep = 0;
 #endif
+
+    private void Start()
+    {
+        m_defaultPosition = m_defaultPositionObject.position;
+
+        Debug.Log("defaultPos ->" + m_defaultPosition);
+    }
 
     //オブジェクト初期化関数
     public override void Activate()
     {
         //メンバ変数の初期化などは、ジョイコンの初期化より先に行う
 
-        transform.position = m_defaultPosition.position;
+        transform.position = m_defaultPosition;
         m_movePosition = Vector3.zero;
-
+        m_prevPosition = Vector3.zero;
+        
         m_prevAccel = Vector3.zero;
 
         m_rotatedCount = 0;
@@ -63,6 +96,7 @@ public class CoffeeMill: MiniGameObject
         JoyconManager joyconManager = GameObject.FindFirstObjectByType<JoyconManager>();
         if (joyconManager.GetIsKeyboardPlay())
         {
+            m_keyboardStep = 0;
             return;
         }
 #endif
@@ -74,19 +108,18 @@ public class CoffeeMill: MiniGameObject
 
         if (m_joycons == null || m_joycons.Count <= 0) return;
 
-        m_joyconL = m_joycons.Find(c => c.isLeft);
-        //m_joyconR = m_joycons.Find(c => !c.isLeft);
+        m_joycon = m_joycons.First();
         //============================================================
     }
 
     //オブジェクト終了関数
     public override void Deactivate()
     {
-        m_joyconL = null;
+        m_joycon = null;
 
-        transform.position = m_defaultPosition.position;
+        transform.position = m_defaultPosition;
         m_movePosition = Vector3.zero;
-
+        //
         m_prevAccel = Vector3.zero;
 
         m_rotatedCount = 0;
@@ -97,67 +130,138 @@ public class CoffeeMill: MiniGameObject
     public override void UpdateObject()
     {
 #if UNITY_EDITOR
-        //bool hasJoycon = (m_joyconL != null);
-        ////ジョイコンが接続されている場合、キーボード操作処理を飛ばしジョイコン操作を行う
-        //if (!hasJoycon)
-        //{
-        //    //デバッグ用のキーボード操作は全てここに記載
-        //    //============================================================
-        //    // デバッグ用キーボード操作
-        //    // W → D → S → A の順に押されたら 1 回転とみなす
-        //    //============================================================
+        bool hasJoycon = (m_joycon != null);
+        //ジョイコンが接続されている場合、キーボード操作処理を飛ばしジョイコン操作を行う
+        if (!hasJoycon)
+        {
+            //デバッグ用のキーボード操作は全てここに記載
+            //============================================================
+            // デバッグ用キーボード操作
+            // W → D → S → A の順に押されたら 1 回転とみなす
+            //============================================================
 
-        //    // 現在のステップに応じて必要なキーを判定
-        //    switch (m_keyboardStep)
-        //    {
-        //        case 0:
-        //            if (Keyboard.current.dKey.isPressed)
-        //            {
-        //                m_keyboardStep = 1;
-        //            }
-        //            break;
+            // 現在のステップに応じて必要なキーを判定
+            switch (m_keyboardStep)
+            {
+                case 0:
+                    if (Keyboard.current.dKey.isPressed)
+                    {
+                        m_keyboardStep = 1;
+                    }
+                    break;
 
-        //        case 1:
-        //            if (Keyboard.current.sKey.isPressed)
-        //            {
-        //                m_keyboardStep = 2;
-        //            }
-        //            break;
+                case 1:
+                    if (Keyboard.current.sKey.isPressed)
+                    {
+                        m_keyboardStep = 2;
+                    }
+                    break;
 
-        //        case 2:
-        //            if (Keyboard.current.aKey.isPressed)
-        //            {
-        //                m_keyboardStep = 3;
-        //            }
-        //            break;
+                case 2:
+                    if (Keyboard.current.aKey.isPressed)
+                    {
+                        m_keyboardStep = 3;
+                    }
+                    break;
 
-        //        case 3:
-        //            if (Keyboard.current.wKey.isPressed)
-        //            {
-        //                m_rotatedCount += 1;
+                case 3:
+                    if (Keyboard.current.wKey.isPressed)
+                    {
+                        m_rotatedCount += 1;
 
-        //                // ステップをリセット
-        //                m_keyboardStep = 0;
-        //            }
-        //            break;
-        //    }
+                        // ステップをリセット
+                        m_keyboardStep = 0;
+                    }
+                    break;
+            }
 
-        //    // オブジェクトの回転演出（任意）
-        //    // キーボード操作時は積算角度を使わないため簡易的に回転
-        //    transform.localEulerAngles = new Vector3(
-        //        transform.localEulerAngles.x,
-        //        transform.localEulerAngles.y,
-        //        m_keyboardStep * -90f // W→D→S→A の進行に応じて 0,90,180,270
-        //    );
-        //    return;
-        //}
+            // オブジェクトの回転演出（任意）
+            // キーボード操作時は積算角度を使わないため簡易的に回転
+            transform.localEulerAngles = new Vector3(
+                transform.localEulerAngles.x,
+                transform.localEulerAngles.y,
+                m_keyboardStep * -90f // W→D→S→A の進行に応じて 0,90,180,270
+            );
+            return;
+        }
 
 #endif
+
+        //横持ちをして前後左右に傾ける事でオブジェクトを移動させるテスト
+        MoveBySlope();
+        return;
+        
+        m_rotatedCount -= m_attenuationSpeed;
+        if ((m_rotatedCount < 0))
+        {
+            m_rotatedCount = 0;
+        }
+
+        //投げた際の処理
+        if (m_joycon.GetButtonUp(Joycon.Button.SHOULDER_1))
+        {
+            
+        }
+
+
+
+            //------------------------------------------------------------
+            // ジャイロ値（角速度）を取得
+            //------------------------------------------------------------
+            // GetGyro() は「角速度(rad/s)」を返す。
+            // 角速度を時間で積分すると「角度(rad)」になるため、
+            // Time.deltaTime を掛けて角度に変換する。
+            Vector3 gyro = m_joycon.GetGyro();
+
+        //------------------------------------------------------------
+        // Z軸の角速度を積分して回転角度を推定
+        //------------------------------------------------------------
+        // rad → degree に変換するため Mathf.Rad2Deg を掛ける。
+        float deltaAngleZ = gyro.z * Mathf.Rad2Deg * Time.deltaTime;
+
+        // 積算角度に加算
+        m_accumulatedRotationZ += Mathf.Abs(deltaAngleZ);
+
+        //オブジェクトの回転
+        transform.localEulerAngles = new Vector3(
+                transform.localEulerAngles.x,
+                m_accumulatedRotationZ * (360 / ROTATION_THRESHOLD),
+                transform.localEulerAngles.z
+            );
+
+        //------------------------------------------------------------
+        // 360°以上回転したら 1 回転と判定
+        //------------------------------------------------------------
+        if (m_accumulatedRotationZ >= ROTATION_THRESHOLD)
+        {
+            m_rotatedCount += 1;
+
+            // カウント後は積算角度をリセット
+            m_accumulatedRotationZ = 0f;
+        }
+
+    }
+
+    public int GetRotatedCount()
+    {
+        return m_rotatedCount;
+    }
+
+    
+    private void UseAccel()
+    {
         //以下に処理を記載
+
+        //キー入力で初期地へ移動
+        if (m_joycon.GetButtonDown(Joycon.Button.SHOULDER_1))
+        {
+            transform.position = m_defaultPosition;
+        }
+
         //------------------------------------------------------------
         // JoyCon の加速度取得（X軸は無視）
         //------------------------------------------------------------
-        Vector3 accel = m_joyconL.GetAccel();
+        Vector3 accel = m_joycon.GetAccel();
         float accelY = accel.y;
         float accelZ = accel.z;
 
@@ -168,8 +272,22 @@ public class CoffeeMill: MiniGameObject
         float deltaY = accelY - m_prevAccel.y;
         float deltaZ = accelZ - m_prevAccel.z;
 
-        m_velocity.x += deltaY * m_sensitivity;   // 左右(Y)
-        m_velocity.y += deltaZ * m_sensitivity;   // 前後(Z)
+        //------------------------------------------------------------
+        // 感度調整(指定未満の加速度ならば、移動を取り消す)
+        //------------------------------------------------------------
+        if (-m_accelSensitivity < accel.y && accel.y < m_accelSensitivity)
+        {
+            deltaY = 0;
+            Debug.Log(deltaY + ":" + m_sensitivity + "未満なので無効");
+        }
+        if (-m_accelSensitivity < accel.z && accel.z < m_accelSensitivity)
+        {
+            deltaZ = 0;
+        }
+
+        //移動速度の補正
+        m_velocity.x += deltaZ * m_sensitivity;
+        m_velocity.y -= deltaY * m_sensitivity;
 
         // 速度の減衰（慣性を抑える）
         m_velocity *= 0.9f;
@@ -177,29 +295,84 @@ public class CoffeeMill: MiniGameObject
         //------------------------------------------------------------
         // 速度 → 位置へ変換
         //------------------------------------------------------------
+        m_movePosition = Vector3.zero;
         m_movePosition.x += m_velocity.x;
-        m_movePosition.z += m_velocity.y;
-
-        //------------------------------------------------------------
-        // 移動範囲を ±5 に制限
-        //------------------------------------------------------------
-        m_movePosition.x = Mathf.Clamp(m_movePosition.x, -5f, 5f);
-        m_movePosition.z = Mathf.Clamp(m_movePosition.z, -5f, 5f);
+        //m_movePosition.z += m_velocity.y;
 
         //------------------------------------------------------------
         // 実際のオブジェクト位置に反映
         //------------------------------------------------------------
-        transform.position = m_defaultPosition.position + m_movePosition;
+        Vector3 setPosition = m_movePosition;
+        setPosition += transform.position;
+        Debug.Log(setPosition);
 
+        //オブジェクトが移動範囲外に出る場合、範囲内へ納める
+        Vector3 clampPosition = setPosition - m_defaultPosition;
+        clampPosition.x = Math.Clamp(clampPosition.x, -m_moveLange, m_moveLange);
+        clampPosition.z = Math.Clamp(clampPosition.z, -m_moveLange, m_moveLange);
+        transform.position = m_defaultPosition + clampPosition;
+        //
+        //
+        //Debug.Log(clampPosition);
         //------------------------------------------------------------
         // 前回の加速度を更新
         //------------------------------------------------------------
         m_prevAccel = accel;
-
     }
 
-    public int GetRotatedCount()
+    private void MoveOb()
     {
-        return m_rotatedCount;
+        //キー入力で初期地へ移動
+        if (m_joycon.GetButtonDown(Joycon.Button.SHOULDER_1))
+        {
+            transform.position = m_defaultPosition;
+        }
+
+        Vector3 gyro = m_joycon.GetGyro();
+        Vector3 move = Vector3.zero;
+        if(gyro.y > m_gyroSensitivity)
+        {
+            move.z = m_gyroMoveLange;
+        }
+        else if(gyro.y<-m_gyroSensitivity)
+        {
+            move.z = -m_gyroMoveLange;
+        }
+
+        if (gyro.z > m_gyroSensitivity)
+        {
+            move.x = m_gyroMoveLange;
+        }
+        else if (gyro.z < -m_gyroSensitivity)
+        {
+            move.x = -m_gyroMoveLange;
+        }
+
+        transform.position += move;
+    }
+   
+    private void MoveBySlope()
+    {
+        transform.position = m_defaultPosition;
+        //------------------------------------------------------------
+        // JoyCon の加速度取得（X軸は無視）
+        //------------------------------------------------------------
+        Vector3 accel = m_joycon.GetAccel();
+
+        //ジョイコンがRの場合、加速度YとZの数値を反転
+        if (!m_joycon.isLeft)
+        {
+            accel.x = -accel.x;
+            accel.y = -accel.y;
+        }
+
+        float accelX = accel.x;
+        float accelY = accel.y;
+
+        Vector3 movePosition = Vector3.zero;
+        movePosition.x = accelX * 5;
+        movePosition.y = accelY * 5;
+
+        transform.position += movePosition;
     }
 }

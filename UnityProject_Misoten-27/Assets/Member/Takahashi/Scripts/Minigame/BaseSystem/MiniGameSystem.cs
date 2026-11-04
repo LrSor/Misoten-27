@@ -3,6 +3,7 @@ using System;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
+using System.Linq;
 
 public class MiniGameSystem : MonoBehaviour
 {
@@ -13,10 +14,7 @@ public class MiniGameSystem : MonoBehaviour
         Enum.GetValues(typeof(Joycon.Button)) as Joycon.Button[];
 
     private List<Joycon> m_joycons;
-    private Joycon m_joyconL;
-    //private Joycon m_joyconR;
-    private Joycon.Button? m_pressedButtonL;
-    //private Joycon.Button? m_pressedButtonR;
+    private Joycon m_joycon;
     //============================================================
 
     enum STATE_MINIGAME
@@ -33,10 +31,10 @@ public class MiniGameSystem : MonoBehaviour
 
     [Header("ミニゲーム本体のスクリプト")]
     [SerializeField] MiniGame m_minigame;
-    [Header("プレイヤー本体のカメラ(仮実装)")]
-    [SerializeField] Camera m_camera;
-    [Header("ミニゲーム用カメラ(仮実装)")]
+    [Header("ミニゲーム用カメラ")]
     [SerializeField] Camera m_miniGameCamera;
+    [Header("ミニゲーム用Canvas")]
+    [SerializeField] Canvas m_miniGameCanvas;
     [Header("遊び方説明用のイラスト")]
     [SerializeField] private Image m_howToPlay;
     [Header("ポーズ(ジョイコンの初期位置)を指定するイラスト")]
@@ -52,7 +50,10 @@ public class MiniGameSystem : MonoBehaviour
     private bool m_isActiveFlag = false;
     private STATE_MINIGAME m_state;
     private GameObject m_playerObject = null;
+    private Camera m_playerCamera = null;
+    private Canvas m_playerCanvas = null;
     private bool m_pressedFlag = false;
+    private int m_defaultTargetDisplay = 6;
 
 
     void Start()
@@ -76,7 +77,7 @@ public class MiniGameSystem : MonoBehaviour
 
         //デバッグ用にジョイコンが接続されていない場合の処理をここで受け付ける
 #if UNITY_EDITOR
-        bool hasJoycon = (m_joyconL != null);
+        bool hasJoycon = (m_joycon != null);
         //ジョイコンが接続されている場合、キーボード操作処理を飛ばしジョイコン操作を行う
         if(!hasJoycon)
         {
@@ -175,7 +176,7 @@ public class MiniGameSystem : MonoBehaviour
                 break;
 
             case STATE_MINIGAME.STATE_HOWTOPLAY:
-                if (m_joyconL.GetButtonDown(Joycon.Button.SHOULDER_1) && !m_pressedFlag)
+                if (m_joycon.GetButtonDown(Joycon.Button.SHOULDER_1) && !m_pressedFlag)
                 {
                     //UI更新
                     m_howToPlay.gameObject.SetActive(false);
@@ -189,7 +190,7 @@ public class MiniGameSystem : MonoBehaviour
                 break;
 
             case STATE_MINIGAME.STATE_POSE:
-                if (m_joyconL.GetButtonDown(Joycon.Button.SHOULDER_1) && !m_pressedFlag)
+                if (m_joycon.GetButtonDown(Joycon.Button.SHOULDER_1) && !m_pressedFlag)
                 {
                     //UI更新
                     m_pose.gameObject.SetActive(false);
@@ -239,7 +240,7 @@ public class MiniGameSystem : MonoBehaviour
                 break;
 
             case STATE_MINIGAME.STATE_RESULT:
-                if (m_joyconL.GetButtonDown(Joycon.Button.SHOULDER_1))
+                if (m_joycon.GetButtonDown(Joycon.Button.SHOULDER_1))
                 {
                     Deactive();
                 }
@@ -251,10 +252,10 @@ public class MiniGameSystem : MonoBehaviour
     }
 
 
-    public void Activate(GameObject player)
+    public void Activate(GameObject playerObject)
     {
         //メンバ変数へプレイヤーオブジェクトをを紐付け
-        m_playerObject = player;
+        m_playerObject = playerObject;
         //プレイヤー本体の動作を停止
         m_playerObject.SetActive(false);
 
@@ -263,9 +264,15 @@ public class MiniGameSystem : MonoBehaviour
         //ミニゲーム実行ステータスを待機へ変更(同フレーム内でボタン入力が行われた際の対策)
         m_state = STATE_MINIGAME.STATE_IDLE;
 
-        //仮実装
         //カメラをミニゲーム用に切り替え
-        m_camera.gameObject.SetActive(false);
+        //プレイヤーのカメラ,Canvasを取得
+        m_playerCamera = m_playerObject.GetComponent<PlayerScore>().GetPlayerCamera();
+        m_playerCanvas = m_playerObject.GetComponent<PlayerScore>().GetPlayerCanvas();
+        //ミニゲーム用カメラ、Canvasのターゲットディスプレイをプレイヤーと同じものへ変更
+        m_miniGameCamera.targetDisplay = m_playerCamera.targetDisplay;
+        m_miniGameCanvas.targetDisplay = m_playerCanvas.targetDisplay;
+        //プレイヤー本体のカメラを無効化し、ミニゲームのカメラを有効化
+        m_playerCamera.gameObject.SetActive(false);
         m_miniGameCamera.gameObject.SetActive(true);
 
         //デバッグ用: キーボード操作が有効の場合、ジョイコンの初期化を停止
@@ -284,8 +291,7 @@ public class MiniGameSystem : MonoBehaviour
 
         if (m_joycons == null || m_joycons.Count <= 0) return;
 
-        m_joyconL = m_joycons.Find(c => c.isLeft);
-        //m_joyconR = m_joycons.Find(c => !c.isLeft);
+        m_joycon = m_joycons.First();
         //============================================================
     }
 
@@ -305,11 +311,14 @@ public class MiniGameSystem : MonoBehaviour
         //スコアUIの非表示
         m_score.gameObject.SetActive(false);
 
-        //仮実装
-        //カメラをプレイヤー本体へ切り替え
+        //カメラをプレイヤー本体用へ切り替え
+        //ミニゲーム用カメラ、Canvasのターゲットディスプレイをデフォルトへ変更
+        m_miniGameCamera.targetDisplay = m_defaultTargetDisplay;
+        m_miniGameCanvas.targetDisplay = m_defaultTargetDisplay;
+        //ミニゲーム用カメラを無効化し、プレイヤー用カメラを有効化
         m_miniGameCamera.gameObject.SetActive(false);
-        m_camera.gameObject.SetActive(true);
-        
+        m_playerCamera.gameObject.SetActive(true);
+
         //メンバ変数初期化
         m_currentNum = m_countNum;
         m_state = STATE_MINIGAME.STATE_DEACTIVE;

@@ -52,7 +52,7 @@ public class ShakeObject : MiniGameObject
 
         if (m_joycons == null || m_joycons.Count <= 0) return;
 
-        m_joyconL = m_joycons.Find(c => c.isLeft);
+        m_joyconL = m_joycons.Find(c => !c.isLeft);
         //m_joyconR = m_joycons.Find(c => !c.isLeft);
         //============================================================
     }
@@ -92,13 +92,13 @@ public class ShakeObject : MiniGameObject
         Vector3 accel = m_joyconL.GetAccel();  // 加速度取得（縦持ち前提）
 
         // 下方向の振りを検知
-        if (!m_isDownSwingFlag && accel.y < accelThresholdDown)
+        if (!m_isDownSwingFlag && accel.x < accelThresholdDown)
         {
             m_isDownSwingFlag = true;
         }
 
         // 上方向の振りを検知 → スコア加算
-        if (m_isDownSwingFlag && accel.y > accelThresholdUp)
+        if (m_isDownSwingFlag && accel.x > accelThresholdUp)
         {
             m_shakedCount++;
             m_isDownSwingFlag = false;
