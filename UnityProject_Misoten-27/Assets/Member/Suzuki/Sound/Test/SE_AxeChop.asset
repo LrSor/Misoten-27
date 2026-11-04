@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a40acaed0eb74708a1c5b3bd452916ff, type: 3}
+  m_Name: SE_AxeChop
+  m_EditorClassIdentifier: Assembly-CSharp::SOUND_DATA
+  m_clips:
+  - {fileID: 8300000, guid: 48486799ac3ed6e4592f06a81e805ed2, type: 3}
+  m_category: 1
+  m_volume: 1
+  m_volumeRandom: 0
+  m_pitch: 1
+  m_pitchRandom: 0.05
+  m_loop: 0
+  m_is3D: 0
+  m_minDistance: 2
+  m_maxDistance: 30
+  m_minInterval: 0.05
+  m_maxCount: 0

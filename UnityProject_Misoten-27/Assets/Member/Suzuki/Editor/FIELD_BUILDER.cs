@@ -18,7 +18,7 @@ using UnityEngine;
 //   ├─ TimeGates     移動時間を計るゲート（両端）
 //   └─ SpawnPoints
 //      ├─ Player     プレイヤーの出現地点 ×4
-//      ├─ Quest      クエストの出現地点（グループ A～E × 2）
+//      ├─ Quest      クエストの出現地点（グループ A～E × 3）
 //      ├─ Part       部品の出現地点（グループ A～E × 4）
 //      └─ NPC        NPC 用の地点 ×8
 //
@@ -62,12 +62,21 @@ public class FIELD_BUILDER : ScriptableWizard
 
     static readonly Vector2[][] QUEST_POINTS =
     {
-        new[] { new Vector2(-25f, 25f), new Vector2(22f, -8f) },    // A
-        new[] { new Vector2(0f, 28f),   new Vector2(-28f, 6f) },    // B
-        new[] { new Vector2(26f, 26f),  new Vector2(6f, -12f) },    // C
-        new[] { new Vector2(-12f, 14f), new Vector2(28f, -28f) },   // D
-        new[] { new Vector2(14f, 24f),  new Vector2(-6f, -6f) },    // E
+        // Liu さんの LiuQuestManager は「2個出す」＋「直前の地点は避ける」ので、
+        // クリア後に補充するには 1 グループ 3 か所以上必要
+        new[] { new Vector2(-25f, 25f), new Vector2(22f, -8f),  new Vector2(-30f, -18f) },  // A
+        new[] { new Vector2(0f, 28f),   new Vector2(-28f, 6f),  new Vector2(12f, -30f) },   // B
+        new[] { new Vector2(26f, 26f),  new Vector2(6f, -12f),  new Vector2(-12f, -14f) },  // C
+        new[] { new Vector2(-12f, 14f), new Vector2(28f, -28f), new Vector2(32f, 12f) },    // D
+        new[] { new Vector2(14f, 24f),  new Vector2(-6f, -6f),  new Vector2(6f, 19f) },     // E
     };
+
+    // 出現地点の目印（地面に置く平たい円）の直径と厚み
+    const float PLAYER_MARKER_SIZE = 1.2f;
+    const float QUEST_MARKER_SIZE = 1.6f;
+    const float PART_MARKER_SIZE = 0.7f;
+    const float NPC_MARKER_SIZE = 0.8f;
+    const float MARKER_HEIGHT = 0.03f;
 
     static readonly Vector2[] PLAYER_POINTS =
     {
@@ -145,6 +154,9 @@ public class FIELD_BUILDER : ScriptableWizard
         }
 
         BuildSpawnPoints(root.transform);
+
+        // 目印の表示切り替え（再生中は自動で隠す）
+        root.AddComponent<FIELD_MARKER_VIEW>();
 
         Selection.activeGameObject = root;
 
@@ -342,8 +354,7 @@ public class FIELD_BUILDER : ScriptableWizard
         {
             Transform point = CreatePoint("Player_" + (i + 1), players, PLAYER_POINTS[i] * s);
 
-            CreateMarker("Marker", PrimitiveType.Capsule, point,
-                new Vector3(0f, 1f, 0f), new Vector3(0.6f, 1f, 0.6f), playerMaterial);
+            CreateFloorMarker(point, PLAYER_MARKER_SIZE, playerMaterial);
         }
 
         // クエスト（グループごと）
@@ -361,8 +372,7 @@ public class FIELD_BUILDER : ScriptableWizard
 
                 AddCustomSpawnPoint(point, CustomSpawnPoint.PointType.Quest, (GroupType)group, pointName);
 
-                CreateMarker("Marker", PrimitiveType.Cube, point,
-                    new Vector3(0f, 0.5f, 0f), Vector3.one, material);
+                CreateFloorMarker(point, QUEST_MARKER_SIZE, material);
             }
         }
 
@@ -387,8 +397,7 @@ public class FIELD_BUILDER : ScriptableWizard
 
                 AddCustomSpawnPoint(point, CustomSpawnPoint.PointType.Part, (GroupType)group, pointName);
 
-                CreateMarker("Marker", PrimitiveType.Sphere, point,
-                    new Vector3(0f, 0.5f, 0f), Vector3.one * 0.6f, material);
+                CreateFloorMarker(point, PART_MARKER_SIZE, material);
             }
         }
 
@@ -400,8 +409,7 @@ public class FIELD_BUILDER : ScriptableWizard
         {
             Transform point = CreatePoint("NPC_" + (i + 1), npcs, NPC_POINTS[i] * s);
 
-            CreateMarker("Marker", PrimitiveType.Cylinder, point,
-                new Vector3(0f, 1f, 0f), new Vector3(0.5f, 1f, 0.5f), npcMaterial);
+            CreateFloorMarker(point, NPC_MARKER_SIZE, npcMaterial);
         }
     }
 
@@ -444,6 +452,16 @@ public class FIELD_BUILDER : ScriptableWizard
         block.transform.localScale = scale;
         block.GetComponent<Renderer>().sharedMaterial = material;
         return block;
+    }
+
+    // 地面に置く平たい円の目印（直径 diameter m）
+    // 高さがほとんどないので、出現したクエストや部品、プレイヤーと重なっても見分けやすい
+    static GameObject CreateFloorMarker(Transform parent, float diameter, Material material)
+    {
+        return CreateMarker("Marker", PrimitiveType.Cylinder, parent,
+            new Vector3(0f, MARKER_HEIGHT, 0f),
+            new Vector3(diameter, MARKER_HEIGHT, diameter),
+            material);
     }
 
     // 見た目だけの目印（当たり判定を外す。プレイヤーや NPC がぶつからないように）

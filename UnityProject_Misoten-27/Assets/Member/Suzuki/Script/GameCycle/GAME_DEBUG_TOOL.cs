@@ -16,6 +16,7 @@ using UnityEngine.InputSystem;
 // ■ キー操作（Game シーンのみ）
 //   F1 ～ F4 : 1P ～ 4P に 100 点
 //   F5       : 残り時間を 5 秒にする（すぐタイムアップを確認したいとき）
+//   F6       : プレイヤーにいちばん近いクエストをクリアしたことにする
 //   他のメンバーの数字キー操作とかぶらないように F キーを使っている
 //
 // 本番では外してよい
@@ -86,6 +87,64 @@ public class GAME_DEBUG_TOOL : MonoBehaviour
         {
             GAME_MANAGER.Instance.SetRemainingTime(5f);
         }
+
+        if (keyboard.f6Key.wasPressedThisFrame)
+        {
+            ClearNearestQuest();
+        }
+    }
+
+    // プレイヤーにいちばん近いクエストをクリアしたことにする
+    // （ミニゲームとつながるまでの確認用。クリアされると同じグループに新しいクエストが出る）
+    void ClearNearestQuest()
+    {
+        Quest[] quests =
+            FindObjectsByType<Quest>(FindObjectsSortMode.None);
+
+        if (quests.Length == 0)
+        {
+            Debug.Log("【デバッグ】クエストがありません");
+            return;
+        }
+
+        Vector3 origin =
+            GetPlayerPosition();
+
+        Quest nearest = null;
+        float nearestDistance = float.MaxValue;
+
+        foreach (Quest quest in quests)
+        {
+            float distance =
+                (quest.transform.position - origin).sqrMagnitude;
+
+            if (distance < nearestDistance)
+            {
+                nearestDistance = distance;
+                nearest = quest;
+            }
+        }
+
+        string title =
+            nearest.Data != null ? nearest.Data.questTitle : nearest.name;
+
+        Debug.Log("【デバッグ】クエスト「" + title + "」をクリア");
+
+        nearest.ClearQuest();
+    }
+
+    // Player タグが付いていて、実際に動く体（Rigidbody 付き）の位置
+    static Vector3 GetPlayerPosition()
+    {
+        foreach (GameObject player in GameObject.FindGameObjectsWithTag("Player"))
+        {
+            if (player.GetComponent<Rigidbody>() != null)
+            {
+                return player.transform.position;
+            }
+        }
+
+        return Vector3.zero;
     }
 
     void AddDebugScore(int playerIndex)
@@ -181,7 +240,8 @@ public class GAME_DEBUG_TOOL : MonoBehaviour
             GetPlayerScoresLine() + "\n" +
             "\n" +
             "F1-F4 : +" + m_debugScore + " (1P-4P)\n" +
-            "F5    : 5 sec left");
+            "F5    : 5 sec left\n" +
+            "F6    : clear nearest quest");
 
         switch (manager.State)
         {
