@@ -8671,6 +8671,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   playerPrefab: {fileID: 4026893428455149443, guid: 8f6ad4f0a8b7f39488c75d5843617181, type: 3}
   initialArmorSlots: []
+  worldPrefabs: []
 --- !u!1 &2104608666
 GameObject:
   m_ObjectHideFlags: 0
@@ -8939,7 +8940,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &9100040001
 Transform:
   m_ObjectHideFlags: 0
@@ -8966,7 +8967,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 626d9005ed2b49d3b6b07e950124a4e2, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Sawada.Cordex.NetworkFloatingRotator
   interactionDistance: 3
   allowClientDelete: 0
