@@ -21,6 +21,7 @@ public class Player : MonoBehaviour
     private KeyControl m_controlLeft;
     private KeyControl m_controlRight;
 
+    [SerializeField] PlayerController m_controller;
 
     void Start()
     {
@@ -55,6 +56,19 @@ public class Player : MonoBehaviour
             transform.position = new Vector3(x + m_speed, y, z);
         }
 
+        //配列0 -> x
+        //配列1 -> y
+        var stick = m_controller.PlayerJoycon.GetStick();
+        if (!m_controller.PlayerJoycon.isLeft)
+        {
+            stick[0] = -stick[0];
+            //stick[1] = -stick[1];
+        }
 
+        Vector3 move = Vector3.zero;
+        move.x = stick[1] * 0.1f;
+        move.z = stick[0] * 0.1f;
+
+        transform.position += move;
     }
 }
