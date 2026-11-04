@@ -358,6 +358,7 @@ public class CoffeeMill: MiniGameObject
         // JoyCon の加速度取得（X軸は無視）
         //------------------------------------------------------------
         Vector3 accel = m_joycon.GetAccel();
+        var stick = m_joycon.GetStick();
 
         //ジョイコンがRの場合、加速度YとZの数値を反転
         if (!m_joycon.isLeft)
