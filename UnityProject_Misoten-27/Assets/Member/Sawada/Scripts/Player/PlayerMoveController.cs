@@ -29,6 +29,19 @@ public class PlayerMoveController : MonoBehaviour
 
     // Sprint
     private bool m_rushFlag = false;
+    private bool m_networkInput;
+    private Vector2 m_networkMove;
+    private bool m_networkSprint;
+    private Vector3 m_networkForward = Vector3.forward;
+
+    // The Host supplies each owner's input; offline PlayerInput behavior is unchanged.
+    public void SetNetworkInput(Vector2 move, bool sprint, Vector3 forward)
+    {
+        m_networkInput = true;
+        m_networkMove = Vector2.ClampMagnitude(move, 1f);
+        m_networkSprint = sprint;
+        if (forward.sqrMagnitude > .001f) m_networkForward = forward.normalized;
+    }
 
 
     // =========================================================
@@ -38,6 +51,7 @@ public class PlayerMoveController : MonoBehaviour
     {
         get
         {
+            if (m_networkInput) return m_networkMove;
             if (m_playerInput == null ||
                 !m_playerInput.enabled ||
                 m_moveAction == null)
@@ -63,7 +77,7 @@ public class PlayerMoveController : MonoBehaviour
     {
         get
         {
-            return m_sprintAction.IsPressed();
+            return m_networkInput ? m_networkSprint : m_sprintAction.IsPressed();
         }
     }
 
@@ -122,11 +136,11 @@ public class PlayerMoveController : MonoBehaviour
     }
     public void AutoMove(float maxSpeed, float minSpeed, float time, float timer)
     {
-        if (m_movementReference == null)
+        if (!m_networkInput && m_movementReference == null)
             return;
 
         // 視点の方向を取得（上下方向は無視）
-        Vector3 moveDirection = Vector3.ProjectOnPlane(
+        Vector3 moveDirection = m_networkInput ? m_networkForward : Vector3.ProjectOnPlane(
             m_movementReference.forward, Vector3.up).normalized;
 
         // 経過時間から進行率を算出（0.0 ～ 1.0）
@@ -164,6 +178,7 @@ public class PlayerMoveController : MonoBehaviour
     public void RushCharacter(CharacterReferenceController reference)
     {
         if (m_rushFlag == false) return;
+        if (reference == null || reference.Inventory == null || reference.Inventory == m_inventory) return;
 
         // 装備中
         BaseArmorSO armorSO = reference.Inventory.SwapArmor(null);
@@ -202,6 +217,7 @@ public class PlayerMoveController : MonoBehaviour
     // =========================================================
     private Vector3 GetMoveDirection(Vector2 input)
     {
+        if (m_networkInput) return new Vector3(input.x, 0, input.y);
         if (m_movementReference == null)
             return Vector3.zero;
 

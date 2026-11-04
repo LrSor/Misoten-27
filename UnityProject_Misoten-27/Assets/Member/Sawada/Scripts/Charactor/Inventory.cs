@@ -19,6 +19,48 @@ public class Inventory : MonoBehaviour
 
     private PlayerInventoryUI m_playerInventoryUI;
 
+    public int CurrentArmorIndex => m_currentArmorIndex;
+    public int ArmorSlotCount => m_armorSlots.Count;
+    public BaseArmorSO GetArmorAt(int index) => m_armorSlots[index];
+
+    // Network instances keep this component's keyboard Update disabled. The Host calls
+    // the same slot-selection and fitting methods used by offline Play.
+    public void ConfigureNetworkInventory(BaseArmorSO[] initialSlots)
+    {
+        m_playerInventoryUI = GetComponent<PlayerInventoryUI>();
+        if (initialSlots != null && initialSlots.Length > 0)
+            m_armorSlots = new List<BaseArmorSO>(initialSlots);
+        for (int i = 0; i < m_armorSlots.Count; i++)
+        {
+            m_playerInventoryUI?.ClearItemPreview(i);
+            m_playerInventoryUI?.UpdateArmorDisplay(i, m_armorSlots[i]);
+        }
+        SelectNetworkArmor(m_currentArmorIndex);
+    }
+
+    public void SelectNetworkArmor(int index)
+    {
+        if (index < 0 || index >= m_armorSlots.Count) return;
+        m_currentArmorIndex = index;
+        m_playerInventoryUI?.SetFrontUI(index);
+        m_characterAmorController.FitArmor(m_armorSlots[index]);
+    }
+
+    public void ApplyNetworkInventory(int selectedIndex, BaseArmorSO[] slots)
+    {
+        bool changed = m_currentArmorIndex != selectedIndex || m_armorSlots.Count != slots.Length;
+        for (int i = 0; !changed && i < slots.Length; i++) changed = m_armorSlots[i] != slots[i];
+        if (!changed) return;
+        for (int i = 0; i < slots.Length; i++)
+        {
+            if (i < m_armorSlots.Count && m_armorSlots[i] == slots[i]) continue;
+            m_playerInventoryUI?.ClearItemPreview(i);
+            m_playerInventoryUI?.UpdateArmorDisplay(i, slots[i]);
+        }
+        m_armorSlots = new List<BaseArmorSO>(slots);
+        SelectNetworkArmor(selectedIndex);
+    }
+
 
     private void Start()
     {
