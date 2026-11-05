@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -108,5 +109,11 @@ public class PlayerScore : MonoBehaviour
     public void SetPlayerCanvas(Canvas canvas)
     {
         m_canvas = canvas;
+        Transform scoreTransform = m_canvas.transform.Find("PlayerScore");
+
+        if (scoreTransform != null)
+        {
+            m_scoreText = scoreTransform.GetComponent<Text>();
+        }
     }
 }

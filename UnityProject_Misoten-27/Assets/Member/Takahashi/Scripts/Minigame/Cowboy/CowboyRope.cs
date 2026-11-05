@@ -16,7 +16,6 @@ public class CowboyRope : MiniGameObject
 
     private List<Joycon> m_joycons;
     private Joycon m_joycon;
-    //private Joycon m_joyconR;
     //============================================================
 
     //============================================================
@@ -39,6 +38,9 @@ public class CowboyRope : MiniGameObject
 
     private bool m_buttonDownFlag = false;
 
+
+    [Header("現在溜まっているパワーを表示するUI")]
+    [SerializeField] Text m_powerText;
     [Header("回す速さが足りない事を伝えるUI")]
     [SerializeField] Image m_notEnoughSpeed;
     [Header("ボタン入力を促すUI")]
@@ -52,7 +54,9 @@ public class CowboyRope : MiniGameObject
 
     private void Start()
     {
-
+        m_powerText.gameObject.SetActive(false);
+        m_notEnoughSpeed.gameObject.SetActive(false);
+        m_pleasePressButton.gameObject.SetActive(false);
     }
 
     //オブジェクト初期化関数
@@ -63,6 +67,8 @@ public class CowboyRope : MiniGameObject
         m_accumulatedRotationZ = 0;
         m_buttonDownFlag = false;
 
+        m_powerText.gameObject.SetActive(true);
+        m_powerText.text = m_power.ToString("Power: 00");
         m_notEnoughSpeed.gameObject.SetActive(false);
         m_pleasePressButton.gameObject.SetActive(false);
 
@@ -162,6 +168,10 @@ public class CowboyRope : MiniGameObject
         m_notEnoughSpeed.gameObject.SetActive(false);
         m_pleasePressButton.gameObject.SetActive(false);
 
+        //現在のパワーを表示
+        m_powerText.text = m_power.ToString("Power: 00");
+        Debug.Log("現在のpower -> " + m_power);
+
         //パワーダウン
         m_power -= m_powerDown;
         if ((m_power < 0))
@@ -177,7 +187,7 @@ public class CowboyRope : MiniGameObject
         }
 
         //ボタンを押していない場合、ボタン入力を促す
-        if(!m_joycon.GetButtonDown(Joycon.Button.SHOULDER_1))
+        if(!m_joycon.GetButton(Joycon.Button.SHOULDER_1))
         {
             //UI表示
             m_pleasePressButton.gameObject.SetActive(true);
@@ -185,11 +195,11 @@ public class CowboyRope : MiniGameObject
         }
 
         //パワーが足りない場合、もっと回すよう促す
-        if(m_power < m_throwPower)
-        {
-            //UI表示
-            m_notEnoughSpeed.gameObject.SetActive(true);
-        }
+        //if(m_power < m_throwPower)
+        //{
+        //    //UI表示
+        //    m_notEnoughSpeed.gameObject.SetActive(true);
+        //}
 
         //------------------------------------------------------------
         // ジャイロ値（角速度）を取得
