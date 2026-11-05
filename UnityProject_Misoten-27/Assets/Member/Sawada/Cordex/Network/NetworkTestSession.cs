@@ -18,6 +18,8 @@ namespace Sawada.Cordex
         const float Timeout = 10f;
         const float NetworkInterval = .05f;
         const float InterpolationDelay = .1f;
+        [SerializeField] bool useEntitiesTrial;
+        EntitiesTrialSession entitiesTrial;
         [SerializeField] GameObject playerPrefab;
         [SerializeField] BaseArmorSO[] initialArmorSlots = Array.Empty<BaseArmorSO>();
         [SerializeField] GameObject[] worldPrefabs = Array.Empty<GameObject>();
@@ -137,6 +139,12 @@ namespace Sawada.Cordex
                 view = lobbyView;
             }
             started = Time.realtimeSinceStartup;
+            if (useEntitiesTrial)
+            {
+                entitiesTrial = gameObject.AddComponent<EntitiesTrialSession>();
+                entitiesTrial.Configure(playerPrefab, world, inactivePlayers, lobbyView);
+                enabled = false;
+            }
         }
 
         void Start()
@@ -636,7 +644,7 @@ namespace Sawada.Cordex
         }
 
         int worldRequest;
-        public bool IsHost => hosting;
+        public bool IsHost => entitiesTrial != null ? entitiesTrial.IsHost : hosting;
         public event Action<int, bool, string> WorldActionCompleted;
         public NetworkWorldObject ServerSpawn(int prefabId, Vector3 position, Quaternion rotation)
             => world?.ServerSpawn(prefabId, position, rotation);
@@ -644,6 +652,7 @@ namespace Sawada.Cordex
 
         internal bool TryGetPlayerPosition(int id, out Vector3 position)
         {
+            if (entitiesTrial != null) return entitiesTrial.TryGetPosition(id, out position);
             if (bodies.TryGetValue(id, out var body) && body != null)
             { position = body.position; return true; }
             position = default; return false;
@@ -651,6 +660,8 @@ namespace Sawada.Cordex
 
         public bool RequestWorldAction(int targetId, string action)
         {
+            // Gameplay interactions are deliberately unavailable until their Host-only migration.
+            if (entitiesTrial != null) return false;
             if (localId == 0 || world == null || (action != "interact" && action != "delete")
                 || Time.realtimeSinceStartup < localWorldActionAt) return false;
             localWorldActionAt = Time.realtimeSinceStartup + .2f;

@@ -68,7 +68,9 @@ namespace Sawada.Cordex.Editor
                     scenes = new[] { ScenePath },
                     locationPathName = path,
                     target = BuildTarget.StandaloneWindows64,
-                    options = BuildOptions.Development
+                    options = BuildOptions.Development,
+                    // Enables Netcode's standard command-line network simulator in trial players.
+                    extraScriptingDefines = new[] { "NETCODE_DEBUG" }
                 });
                 File.WriteAllText("Builds/NetworkTest/Verification/build-result.txt",
                     report.summary.result + "\nErrors: " + report.summary.totalErrors + "\nWarnings: " + report.summary.totalWarnings + "\n" + path);
