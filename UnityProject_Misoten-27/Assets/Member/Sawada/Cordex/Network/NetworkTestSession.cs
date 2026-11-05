@@ -83,6 +83,7 @@ namespace Sawada.Cordex
         Camera view;
         Camera lobbyView;
         TestPlayerCameraLookController localLook;
+        PlayerInput localPlayerInput;
         Transform inactivePlayers;
         string ip = "", portText = "7777", status = "Create an online room or enter a room code to join";
         string localAddresses = "";
@@ -366,24 +367,26 @@ namespace Sawada.Cordex
                 return;
             }
             if (!Application.isFocused) return;
+            if (localPlayerInput != null && localPlayerInput.isActiveAndEnabled)
+            {
+                var actions = localPlayerInput.actions;
+                localInput = actions.FindAction("Move", true).ReadValue<Vector2>();
+                var sprint = actions.FindAction("Sprint", true);
+                localSprint = sprint.IsPressed();
+                if (sprint.WasPressedThisFrame()) localSprintPress++;
+                if (actions.FindAction("Swap", true).WasPressedThisFrame()) localSwapPress++;
+            }
             if (Keyboard.current != null)
             {
                 var k = Keyboard.current;
-                localInput = new Vector2((k.dKey.isPressed ? 1 : 0) - (k.aKey.isPressed ? 1 : 0),
-                    (k.wKey.isPressed ? 1 : 0) - (k.sKey.isPressed ? 1 : 0));
-                localSprint = k.leftShiftKey.isPressed;
-                if (k.eKey.wasPressedThisFrame) localSwapPress++;
                 if (k.fKey.wasPressedThisFrame && TryGetPlayerPosition(localId, out var position))
                 {
                     var door = world.Nearest(position);
                     if (door != null) door.RequestInteraction();
                 }
-                if (k.leftShiftKey.wasPressedThisFrame) localSprintPress++;
                 if (k.leftArrowKey.wasPressedThisFrame) localArmorStep--;
                 else if (k.rightArrowKey.wasPressedThisFrame) localArmorStep++;
             }
-            if (Gamepad.current != null && Gamepad.current.leftStick.ReadValue().sqrMagnitude > .04f)
-                localInput = Gamepad.current.leftStick.ReadValue();
             localInput = Vector2.ClampMagnitude(localInput, 1);
             if (avatars.TryGetValue(localId, out var ownedAvatar))
             {
@@ -786,7 +789,8 @@ namespace Sawada.Cordex
                     || script is PlayerSwapController || script is Player_Swap || script is Player_SwapIdle
                     || (script is StateMachine && (script.GetComponent<PlayerMoveController>() != null
                         || script.GetComponent<PlayerSwapController>() != null));
-                script.enabled = renderScript || (owned && cameraScript) || (hosting && movementScript);
+                script.enabled = renderScript || (owned && (cameraScript || script is JoyconInputBridge))
+                    || (hosting && movementScript);
             }
             if (owned && !hosting)
             {
@@ -830,6 +834,7 @@ namespace Sawada.Cordex
             {
                 input.defaultControlScheme = "";
                 input.enabled = true;
+                localPlayerInput = input;
             }
             return copy;
         }
@@ -877,6 +882,7 @@ namespace Sawada.Cordex
             swappers.Clear(); localSwapPress = appliedLocalSwapPress = 0;
             localSprintPress = appliedLocalSprintPress = localArmorStep = appliedLocalArmorStep = 0;
             localLook = null;
+            localPlayerInput = null;
             view = lobbyView;
             if (lobbyView != null) lobbyView.enabled = true;
             hosting = connecting = false;
