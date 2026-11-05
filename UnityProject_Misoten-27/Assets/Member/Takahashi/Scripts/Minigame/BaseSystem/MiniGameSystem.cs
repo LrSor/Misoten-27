@@ -274,6 +274,7 @@ public class MiniGameSystem : MonoBehaviour
         //プレイヤー本体のカメラを無効化し、ミニゲームのカメラを有効化
         m_playerCamera.gameObject.SetActive(false);
         m_miniGameCamera.gameObject.SetActive(true);
+        m_playerCanvas.gameObject.SetActive(false);
 
         //デバッグ用: キーボード操作が有効の場合、ジョイコンの初期化を停止
 #if UNITY_EDITOR
@@ -318,6 +319,7 @@ public class MiniGameSystem : MonoBehaviour
         //ミニゲーム用カメラを無効化し、プレイヤー用カメラを有効化
         m_miniGameCamera.gameObject.SetActive(false);
         m_playerCamera.gameObject.SetActive(true);
+        m_playerCanvas.gameObject.SetActive(true);
 
         //メンバ変数初期化
         m_currentNum = m_countNum;

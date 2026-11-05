@@ -187,8 +187,12 @@ public class CoffeeMill: MiniGameObject
 
 #endif
 
+        MoveOb();
+        return;
+
         //横持ちをして前後左右に傾ける事でオブジェクトを移動させるテスト
-        MoveBySlope();
+        //MoveBySlope();
+        MoveByAccelAndGyro();
         return;
         
         m_rotatedCount -= m_attenuationSpeed;
@@ -328,6 +332,7 @@ public class CoffeeMill: MiniGameObject
             transform.position = m_defaultPosition;
         }
 
+        Vector3 accel = m_joycon.GetAccel();
         Vector3 gyro = m_joycon.GetGyro();
         Vector3 move = Vector3.zero;
         if(gyro.y > m_gyroSensitivity)
@@ -338,6 +343,7 @@ public class CoffeeMill: MiniGameObject
         {
             move.z = -m_gyroMoveLange;
         }
+        
 
         if (gyro.z > m_gyroSensitivity)
         {
@@ -358,7 +364,6 @@ public class CoffeeMill: MiniGameObject
         // JoyCon の加速度取得（X軸は無視）
         //------------------------------------------------------------
         Vector3 accel = m_joycon.GetAccel();
-        var stick = m_joycon.GetStick();
 
         //ジョイコンがRの場合、加速度YとZの数値を反転
         if (!m_joycon.isLeft)
@@ -374,6 +379,51 @@ public class CoffeeMill: MiniGameObject
         movePosition.x = accelX * 5;
         movePosition.y = accelY * 5;
 
+        
         transform.position += movePosition;
+    }
+
+    private void MoveByAccelAndGyro()
+    {
+        //transform.position = m_defaultPosition;
+
+        //位置情報補正
+        Vector3 pos = transform.position;
+        pos.y = m_defaultPosition.y;
+
+        //------------------------------------------------------------
+        // JoyCon の加速度取得（X軸は無視）
+        //------------------------------------------------------------
+        Vector3 accel = m_joycon.GetAccel();
+        Vector3 gyro = m_joycon.GetGyro();
+
+        //ジョイコンがRの場合、加速度YとZの数値を反転
+        if (!m_joycon.isLeft)
+        {
+            accel.z = -accel.z;
+            accel.y = -accel.y;
+
+            gyro.y = -gyro.y;
+            
+        }
+
+        float accelX = accel.x;
+        float accelY = accel.y;
+
+        Vector3 movePosition = Vector3.zero;
+        movePosition.y = accelX * 5;
+
+        //Gyro移動
+        if (gyro.z > m_gyroSensitivity)
+        {
+            movePosition.x = m_gyroMoveLange;
+        }
+        else if (gyro.z < -m_gyroSensitivity)
+        {
+            movePosition.x = -m_gyroMoveLange;
+        }
+
+        pos += movePosition;
+        transform.position = pos;
     }
 }
