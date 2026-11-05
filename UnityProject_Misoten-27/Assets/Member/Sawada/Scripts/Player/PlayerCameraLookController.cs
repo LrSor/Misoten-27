@@ -67,7 +67,7 @@ public class PlayerCameraLookController : MonoBehaviour
 
         Vector2 lookInput = m_lookAction.ReadValue<Vector2>();
 
-        bool usingGamepad = m_playerInput.currentControlScheme == m_gamepadSchemeName;
+        bool usingGamepad = m_lookAction.activeControl?.device is Gamepad;
 
         if (usingGamepad)
         {
@@ -148,7 +148,8 @@ public class PlayerCameraLookController : MonoBehaviour
 
     private void HandleCursor()
     {
-        if (m_playerInput.currentControlScheme != m_keyboardMouseSchemeName)
+        if (m_playerInput.currentControlScheme != m_keyboardMouseSchemeName &&
+            m_playerInput.currentControlScheme != "Joycon")
             return;
 
         if (Keyboard.current != null &&

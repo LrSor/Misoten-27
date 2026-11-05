@@ -758,6 +758,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1149727398687965720}
   - component: {fileID: 3126517289341570151}
+  - component: {fileID: 854000000000000001}
   m_Layer: 6
   m_Name: Player_cordex
   m_TagString: Player
@@ -1396,3 +1397,21 @@ Transform:
   - {fileID: 799440418753121163}
   m_Father: {fileID: 1149727398687965720}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+
+--- !u!114 &854000000000000001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4811325795309357665}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 06d8b7bedad54cbeafe29021efbe2739, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::JoyconInputBridge
+  m_playerInput: {fileID: 3126517289341570151}
+  m_joyconIndex: -1
+  m_horizontalGrip: 1
+  m_sprintButton: 4
+  m_swapButton: 5
