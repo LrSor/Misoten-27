@@ -84,6 +84,7 @@ namespace Sawada.Cordex
         Camera lobbyView;
         TestPlayerCameraLookController localLook;
         PlayerInput localPlayerInput;
+        JoyconInputBridge localJoyconBridge;
         Transform inactivePlayers;
         string ip = "", portText = "7777", status = "Create an online room or enter a room code to join";
         string localAddresses = "";
@@ -686,6 +687,8 @@ namespace Sawada.Cordex
         {
             foreach (int id in avatars.Keys.Where(id => !states.ContainsKey(id)).ToArray())
             {
+                if (id == localId && localJoyconBridge != null)
+                    localJoyconBridge.SetPlayerInput(null);
                 avatars[id].SetActive(false);
                 Destroy(avatars[id]); avatars.Remove(id); bodies.Remove(id); movers.Remove(id); inventories.Remove(id); swappers.Remove(id);
             }
@@ -835,6 +838,17 @@ namespace Sawada.Cordex
                 input.defaultControlScheme = "";
                 input.enabled = true;
                 localPlayerInput = input;
+                // 本人の生成時だけ、同じ Scene の JoyconManager に入力先を設定します。
+                var manager = FindObjectsByType<JoyconManager>(FindObjectsSortMode.None)
+                    .FirstOrDefault(candidate => candidate.gameObject.scene == gameObject.scene);
+                localJoyconBridge = manager != null ? manager.GetComponent<JoyconInputBridge>() : null;
+                if (localJoyconBridge != null)
+                {
+                    // Prefab 側にも橋渡し処理がある場合は、Scene 側に一本化します。
+                    var prefabBridge = copy.GetComponent<JoyconInputBridge>();
+                    if (prefabBridge != null) prefabBridge.enabled = false;
+                    localJoyconBridge.SetPlayerInput(input);
+                }
             }
             return copy;
         }
@@ -875,6 +889,9 @@ namespace Sawada.Cordex
             connections.Clear(); states.Clear();
             world?.Reset();
             worldSendAt = localWorldActionAt = 0; worldRequest = 0;
+            // 破棄する前に入力先を解除し、仮想パッドを片付けます。
+            if (localJoyconBridge != null) localJoyconBridge.SetPlayerInput(null);
+            localJoyconBridge = null;
             foreach (var avatar in avatars.Values) { avatar.SetActive(false); Destroy(avatar); }
             avatars.Clear();
             bodies.Clear(); snapshots.Clear(); renderTimeReady = false;
