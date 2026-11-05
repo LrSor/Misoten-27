@@ -727,7 +727,15 @@ namespace Sawada.Cordex
                     {
                         var display = FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None)
                             .FirstOrDefault(c => c.gameObject.scene == gameObject.scene && c.name == "PlayerDisplay");
-                        if (display != null) inventory.GetComponent<PlayerInventoryUI>().ConfigureNetworkDisplay(display);
+                        if (display != null)
+                        {
+                            // 本人のスコア管理にも、インベントリ UI と同じ Canvas を設定します。
+                            var reference = avatar.GetComponent<PlayerReferenceController>();
+                            if (reference != null && reference.PlayerScore != null)
+                                reference.PlayerScore.SetPlayerCanvas(display);
+                            else Debug.LogWarning("[NetworkTest] PlayerReferenceController または PlayerScore が未設定です", avatar);
+                            inventory.GetComponent<PlayerInventoryUI>().ConfigureNetworkDisplay(display);
+                        }
                         else Debug.LogWarning("[NetworkTest] PlayerDisplay canvas is missing");
                     }
                     mover.SetNetworkInput(Vector2.zero, false, Vector3.forward);

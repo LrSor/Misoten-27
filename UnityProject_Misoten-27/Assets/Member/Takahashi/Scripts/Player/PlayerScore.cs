@@ -104,4 +104,9 @@ public class PlayerScore : MonoBehaviour
     {
         return m_canvas;
     }
+
+    public void SetPlayerCanvas(Canvas canvas)
+    {
+        m_canvas = canvas;
+    }
 }
