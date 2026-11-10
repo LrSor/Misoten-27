@@ -108,4 +108,31 @@ public class MiniGameZone : MonoBehaviour
             }
         }
     }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        // other がトリガーに入ったとき
+        if (other.gameObject.tag == "Player" && !m_isPlayingFlag && !m_playerObject)
+        {
+            //メンバ変数にプレイヤーオブジェクトを紐付け
+            m_playerObject = other.gameObject;
+        }
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        // other がトリガーから出たとき
+        if (other.gameObject.tag == "Player")
+        {
+            Debug.Log("ミニゲームゾーンから離脱");
+
+            if (other.gameObject == m_playerObject)
+            {
+                m_isPlayingFlag = false;
+
+                //メンバ変数に紐付けされたプレイヤーオブジェクトを解除
+                m_playerObject = null;
+            }
+        }
+    }
 }
