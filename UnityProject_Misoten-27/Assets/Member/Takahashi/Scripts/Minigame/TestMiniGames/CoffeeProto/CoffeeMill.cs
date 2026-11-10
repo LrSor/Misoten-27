@@ -343,6 +343,11 @@ public class CoffeeMill: MiniGameObject
         {
             move.z = -m_gyroMoveLange;
         }
+        else 
+        {
+
+        }  
+
         
 
         if (gyro.z > m_gyroSensitivity)
