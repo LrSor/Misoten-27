@@ -33,6 +33,9 @@ namespace Sawada.Cordex
         TestPlayerCameraLookController look;
         JoyconInputBridge joycon;
         readonly Dictionary<int, Avatar> avatars = new Dictionary<int, Avatar>();
+        readonly HashSet<int> seenAvatars = new HashSet<int>();
+        readonly List<int> removedAvatars = new List<int>(4);
+        NetworkRenderPerformance renderPerformance;
         readonly SortedDictionary<int, string[]> worldFragments = new SortedDictionary<int, string[]>();
         int outgoingWorldFrame;
         string address = "127.0.0.1", portText = "7777", code = "", status = "Netcode for Entities movement trial";
@@ -65,6 +68,8 @@ namespace Sawada.Cordex
             Active = this;
             started = Time.realtimeSinceStartup;
             var args = Environment.GetCommandLineArgs();
+            renderPerformance = new NetworkRenderPerformance(args);
+            renderPerformance.RegisterCamera(lobbyCamera);
             string Arg(string key, string fallback = "")
             { int index = Array.IndexOf(args, key); return index >= 0 && index + 1 < args.Length ? args[index + 1] : fallback; }
             address = Arg("--net-ip", address); portText = Arg("--net-port", portText); code = Arg("--net-code");
@@ -190,6 +195,7 @@ namespace Sawada.Cordex
 
         void Update()
         {
+            renderPerformance?.Tick(Time.unscaledDeltaTime);
             float now = Time.realtimeSinceStartup;
             if (exitAfter > 0 && now - started >= exitAfter) { Application.Quit(); return; }
             if (ClientWorld == null) return;
@@ -350,11 +356,11 @@ namespace Sawada.Cordex
             var em = ClientWorld.EntityManager;
             using var query = em.CreateEntityQuery(typeof(TrialMotion), typeof(GhostOwner));
             using var entities = query.ToEntityArray(Allocator.Temp);
-            var seen = new HashSet<int>();
+            seenAvatars.Clear();
             foreach (var entity in entities)
             {
                 int id = em.GetComponentData<GhostOwner>(entity).NetworkId;
-                seen.Add(id);
+                seenAvatars.Add(id);
                 var motion = em.GetComponentData<TrialMotion>(entity);
                 if (!avatars.TryGetValue(id, out var avatar)) avatars.Add(id, avatar = CreateAvatar(id));
                 Vector3 position = motion.Position;
@@ -380,7 +386,10 @@ namespace Sawada.Cordex
                         x = position.x, y = position.y, z = position.z, sprint = motion.Sprinting,
                         corrections = id == localId ? correctionCount : 0, visualOffset = avatar.Offset.magnitude }));
             }
-            foreach (int id in avatars.Keys.Where(id => !seen.Contains(id)).ToArray())
+            removedAvatars.Clear();
+            foreach (int id in avatars.Keys)
+                if (!seenAvatars.Contains(id)) removedAvatars.Add(id);
+            foreach (int id in removedAvatars)
             { Destroy(avatars[id].Root); avatars.Remove(id); }
             if (Time.realtimeSinceStartup >= traceAt)
             {
@@ -419,7 +428,12 @@ namespace Sawada.Cordex
             foreach (var camera in copy.GetComponentsInChildren<Camera>(true))
             {
                 camera.enabled = owned && camera.name == "PlayerCamera";
-                if (camera.enabled) { camera.targetDisplay = 0; camera.targetTexture = null; view = camera; if (lobbyCamera != null) lobbyCamera.enabled = false; }
+                if (camera.enabled)
+                {
+                    camera.targetDisplay = 0; camera.targetTexture = null; view = camera;
+                    renderPerformance?.RegisterCamera(camera);
+                    if (lobbyCamera != null) lobbyCamera.enabled = false;
+                }
             }
             foreach (var listener in copy.GetComponentsInChildren<AudioListener>(true)) listener.enabled = owned && listener.name == "PlayerCamera";
             var bodyTransform = copy.GetComponentInChildren<Rigidbody>(true).transform;
@@ -457,6 +471,7 @@ namespace Sawada.Cordex
         public void Stop(string reason = "Disconnected")
         {
             generation++; busy = false;
+            if (view != lobbyCamera) renderPerformance?.UnregisterCamera(view);
             if (joycon != null) joycon.SetPlayerInput(null);
             joycon = null; playerInput = null; look = null;
             foreach (var avatar in avatars.Values) { avatar.Root.SetActive(false); Destroy(avatar.Root); }
@@ -480,7 +495,7 @@ namespace Sawada.Cordex
 
         void OnGUI()
         {
-            GUILayout.BeginArea(new Rect(12, 12, 450, 400));
+            GUILayout.BeginArea(new Rect(12, 12, 450, 460));
             GUILayout.BeginVertical(GUI.skin.box);
             GUILayout.Label("NETCODE FOR ENTITIES | MOVEMENT TRIAL");
             GUI.enabled = !busy && ClientWorld == null;
@@ -495,6 +510,14 @@ namespace Sawada.Cordex
             GUILayout.Label(status);
             GUILayout.Label($"Players: {avatars.Count}/4  You: P{localId}  Simulation: 50Hz / snapshots: 25Hz");
             GUILayout.Label("Prediction corrections: " + correctionCount);
+            if (renderPerformance != null)
+            {
+                GUI.enabled = renderPerformance.CanConfigure;
+                bool lightweight = GUILayout.Toggle(renderPerformance.Lightweight, "Lightweight graphics (reduce rendering load)");
+                if (lightweight != renderPerformance.Lightweight) renderPerformance.SetLightweight(lightweight);
+                GUI.enabled = true;
+                GUILayout.Label(renderPerformance.Status);
+            }
             GUILayout.Label("WASD / left stick: Move | Shift: Sprint\nTrial: static map collision. Equipment / theft / dynamic contacts pending migration.");
             if ((busy || ClientWorld != null) && GUILayout.Button("Stop / Disconnect")) Stop();
             GUILayout.EndVertical(); GUILayout.EndArea();
@@ -503,6 +526,7 @@ namespace Sawada.Cordex
         void OnDestroy()
         {
             Stop("Session closed");
+            renderPerformance?.Dispose(); renderPerformance = null;
             trace?.Dispose(); trace = null;
             if (Active == this) Active = null;
         }

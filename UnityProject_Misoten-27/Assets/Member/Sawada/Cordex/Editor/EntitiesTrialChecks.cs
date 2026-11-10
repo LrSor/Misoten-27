@@ -35,6 +35,7 @@ namespace Sawada.Cordex.Editor
                 }
                 CheckMotor();
                 CheckStaticCollision();
+                CheckRenderPerformance();
                 NetworkTestBuild.Build();
                 Directory.CreateDirectory("Logs");
                 File.WriteAllText("Logs/EntitiesTrial-validation.txt", "PASS: two scene references, Missing Script checks, replayable motor, Windows development build\n");
@@ -58,6 +59,44 @@ namespace Sawada.Cordex.Editor
                 throw new Exception("Sprint state is not restorable");
             for (int i = 0; i < 100; i++) TrialMotor.Step(ref second, command, .02f);
             if (second.Sprinting) throw new Exception("Sprint did not finish");
+        }
+
+        static void CheckRenderPerformance()
+        {
+            var originalQuality = QualitySettings.renderPipeline;
+            var original = UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline as UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset;
+            using var performance = new NetworkRenderPerformance(new[] { "--net-render-profile", "standard" });
+            if (!performance.CanConfigure)
+            {
+                Debug.Log("[EntitiesTrialChecks] Rendering profile check skipped: graphics device or URP unavailable");
+                return;
+            }
+            float scale = original.renderScale, distance = original.shadowDistance;
+            int cascades = original.shadowCascadeCount;
+            var cameraObject = new GameObject("Runtime render profile validation camera");
+            try
+            {
+                var camera = cameraObject.AddComponent<Camera>();
+                var data = cameraObject.AddComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
+                data.renderPostProcessing = true;
+                performance.RegisterCamera(camera);
+                performance.SetLightweight(true);
+                var lightweight = QualitySettings.renderPipeline as UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset;
+                if (lightweight == null || lightweight == original || lightweight.renderScale > .8f ||
+                    lightweight.shadowDistance > 20f || lightweight.shadowCascadeCount != 1 || data.renderPostProcessing)
+                    throw new Exception("Runtime lightweight profile did not apply");
+                if (original.renderScale != scale || original.shadowDistance != distance || original.shadowCascadeCount != cascades)
+                    throw new Exception("Runtime profile changed the shared URP asset");
+                performance.SetLightweight(false);
+                if (QualitySettings.renderPipeline != originalQuality || !data.renderPostProcessing)
+                    throw new Exception("Standard render settings were not restored");
+                performance.SetLightweight(true);
+                performance.Dispose();
+                if (QualitySettings.renderPipeline != originalQuality || !data.renderPostProcessing)
+                    throw new Exception("Render settings were not restored on dispose");
+                Debug.Log("[EntitiesTrialChecks] Runtime render profile isolation and restoration PASS");
+            }
+            finally { UnityEngine.Object.DestroyImmediate(cameraObject); }
         }
 
         static void CheckStaticCollision()

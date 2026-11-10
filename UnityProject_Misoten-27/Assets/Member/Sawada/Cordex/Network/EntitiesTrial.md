@@ -62,6 +62,16 @@
 - 結果は生成物の `Logs/EntitiesTrial-final-results.json`、詳細トレースは `Builds/NetworkTest/Verification/entities-verified-*.jsonl`／`.log` に保存。
 - 補正時間や距離の閾値は試験用の初期値。実際の操作感・見た目の調整、異なるPCと回線での試験は継続する。
 
+## FPS安定化（描画負荷の軽減）
+
+- Entities試験の起動時は軽量描画を有効にする。HostとClientそれぞれのローカル描画だけに適用する。
+- URPアセットの実行時コピーで描画スケールを最大0.8、影の距離を最大20m、カスケードを1、MSAAを1にする。プレイヤーカメラとロビーカメラのポストプロセスを無効にする。UIの解像度・マップ形状・衝突判定は変えない。
+- 通信画面の `Lightweight graphics` をオフにすると標準画質へ戻る。Sceneを終了した際も元の設定を復元する。共有URPアセットやProjectSettingsは保存・変更しない。
+- FPS、直近約1秒のフレーム時間P95、33.3msを超えたフレーム数を表示する。P95は95%のフレームが収まる時間。FPSは描画待ちも含む実際の更新頻度で、GPU単体の処理時間ではない。
+- 比較試験は `--net-render-profile standard` / `--net-render-profile lightweight` を指定する。省略時はlightweight。
+- `--net-performance-trace ABSOLUTE_PATH` で約1秒ごとのフレーム統計と実際の描画設定をJSON Linesへ記録する。描画なし実行は `rendering: false` と記録されるため、FPS性能の比較には使わない。
+- 60FPS上限、VSync、入力タイミング、移動50Hz、スナップショット25Hz、補間時間、接続方式は変更していない。軽量化しても60FPSを保証するものではなく、ノートPC側で標準・軽量の両方を比較する。
+
 ## 旧経路へ戻す場合
 
 停止中に対象Sceneの `Use Entities Trial` を無効にすると既存の独自通信経路を使用する。他のSceneの設定は変更していない。試験中に切り替えず、一度停止して再起動する。
