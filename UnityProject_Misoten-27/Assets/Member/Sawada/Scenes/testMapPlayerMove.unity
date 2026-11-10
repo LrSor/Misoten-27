@@ -8669,7 +8669,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 51ff75ee76fd4aea9a41a8fbe6c8c289, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  useEntitiesTrial: 1
   playerPrefab: {fileID: 4026893428455149443, guid: 8f6ad4f0a8b7f39488c75d5843617181, type: 3}
   initialArmorSlots: []
   worldPrefabs: []
