@@ -18,21 +18,20 @@ public class Axe : MiniGameObject
 
     [SerializeField] MiniGame m_miniGame;
     [SerializeField] GameObject m_gameClearObject;
-#if UNITY_EDITOR
+
+    //キーボード操作用
     private Vector3 m_shamAccel;
-#endif
+
 
 
     public override void Activate()
     {
         //デバッグ用: キーボード操作が有効の場合、ジョイコンの初期化を停止
-#if UNITY_EDITOR
         JoyconManager joyconManager = GameObject.FindFirstObjectByType<JoyconManager>();
         if (joyconManager.GetIsKeyboardPlay())
         {
             return;
         }
-#endif
 
         //============================================================
         // JoyCon初期化
@@ -55,7 +54,7 @@ public class Axe : MiniGameObject
 
     public override void UpdateObject()
     {
-#if UNITY_EDITOR
+        //========================================================================================
         bool hasJoycon = (m_joycon != null);
         //ジョイコンが接続されている場合、キーボード操作処理を飛ばしジョイコン操作を行う
         if(!hasJoycon)
@@ -96,8 +95,7 @@ public class Axe : MiniGameObject
 
             return;
         }
-
-#endif
+        //========================================================================================
 
         //--------------------------------------------
         // JoyConの加速度を取得
@@ -138,7 +136,7 @@ public class Axe : MiniGameObject
             //ミニゲームクリアフラグ
             m_miniGame.FinishMiniGame();
 
-#if UNITY_EDITOR
+            //========================================================================================
             bool hasJoycon = (m_joycon != null);
             if (!hasJoycon)
             {
@@ -158,7 +156,7 @@ public class Axe : MiniGameObject
 
                 return;
             }
-#endif
+            //========================================================================================
 
             //--------------------------------------------
             // JoyCon の加速度を取得（振り下ろし強さ）

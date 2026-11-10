@@ -36,7 +36,7 @@ public class CowboyRope : MiniGameObject
     [Header("毎フレーム下がるパワー")]
     [SerializeField] float m_powerDown = 1;
 
-    private bool m_buttonDownFlag = false;
+    private bool m_throwFlag = false;
 
 
     [Header("現在溜まっているパワーを表示するUI")]
@@ -65,7 +65,7 @@ public class CowboyRope : MiniGameObject
         //メンバ変数の初期化などは、ジョイコンの初期化より先に行う
         m_power = 0;
         m_accumulatedRotationZ = 0;
-        m_buttonDownFlag = false;
+        m_throwFlag = false;
 
         m_powerText.gameObject.SetActive(true);
         m_powerText.text = m_power.ToString("Power: 00");
@@ -168,6 +168,14 @@ public class CowboyRope : MiniGameObject
         m_notEnoughSpeed.gameObject.SetActive(false);
         m_pleasePressButton.gameObject.SetActive(false);
 
+        //投げた際は専用の関数で更新
+        if(m_throwFlag)
+        {
+            Thrown();
+            return;
+        }
+
+
         //現在のパワーを表示
         m_powerText.text = m_power.ToString("Power: 00");
         Debug.Log("現在のpower -> " + m_power);
@@ -180,9 +188,9 @@ public class CowboyRope : MiniGameObject
         }
 
         //投げた際の処理
-        if (m_joycon.GetButtonUp(Joycon.Button.SHOULDER_1) && m_buttonDownFlag)
+        if (m_joycon.GetButtonUp(Joycon.Button.SHOULDER_1) && m_power >= m_throwPower)
         {
-
+            m_throwFlag = true;
             return;
         }
 
@@ -195,11 +203,11 @@ public class CowboyRope : MiniGameObject
         }
 
         //パワーが足りない場合、もっと回すよう促す
-        //if(m_power < m_throwPower)
-        //{
-        //    //UI表示
-        //    m_notEnoughSpeed.gameObject.SetActive(true);
-        //}
+        if(m_power < m_throwPower)
+        {
+            //UI表示
+            m_notEnoughSpeed.gameObject.SetActive(true);
+        }
 
         //------------------------------------------------------------
         // ジャイロ値（角速度）を取得
@@ -235,5 +243,10 @@ public class CowboyRope : MiniGameObject
             // カウント後は積算角度をリセット
             m_accumulatedRotationZ = 0f;
         }
+    }
+
+    private void Thrown()
+    {
+
     }
 }

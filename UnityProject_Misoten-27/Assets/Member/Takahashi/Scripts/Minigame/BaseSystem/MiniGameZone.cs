@@ -60,7 +60,6 @@ public class MiniGameZone : MonoBehaviour
         }
 
         // デバッグ用にエディタ上のみキーボード操作を受け付ける
-#if UNITY_EDITOR
         bool hasJoycon = (m_joycon != null);
         if(!hasJoycon )
         {
@@ -71,7 +70,6 @@ public class MiniGameZone : MonoBehaviour
             }
             return;
         }
-#endif
 
         //L2ボタン入力でゲーム開始
         if (m_playerObject && m_joycon.GetButtonDown(Joycon.Button.SHOULDER_2))

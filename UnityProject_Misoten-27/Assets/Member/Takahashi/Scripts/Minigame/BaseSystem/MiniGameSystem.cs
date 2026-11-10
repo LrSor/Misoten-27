@@ -76,7 +76,7 @@ public class MiniGameSystem : MonoBehaviour
         }
 
         //デバッグ用にジョイコンが接続されていない場合の処理をここで受け付ける
-#if UNITY_EDITOR
+        //====================================================================================
         bool hasJoycon = (m_joycon != null);
         //ジョイコンが接続されている場合、キーボード操作処理を飛ばしジョイコン操作を行う
         if(!hasJoycon)
@@ -164,7 +164,8 @@ public class MiniGameSystem : MonoBehaviour
             }
             return;
         }
-#endif
+
+    //===========================================================================================
 
         switch (m_state)
         {
@@ -277,13 +278,11 @@ public class MiniGameSystem : MonoBehaviour
         m_playerCanvas.gameObject.SetActive(false);
 
         //デバッグ用: キーボード操作が有効の場合、ジョイコンの初期化を停止
-#if UNITY_EDITOR
         JoyconManager joyconManager = GameObject.FindFirstObjectByType<JoyconManager>();
         if (joyconManager.GetIsKeyboardPlay())
         {
             return;
         }
-#endif
 
         //============================================================
         // JoyCon初期化
