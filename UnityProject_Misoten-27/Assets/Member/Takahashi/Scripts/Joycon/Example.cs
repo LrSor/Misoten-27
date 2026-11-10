@@ -60,19 +60,19 @@ public class Example : MonoBehaviour
 
         if (m_joycons == null || m_joycons.Count <= 0)
         {
-            GUILayout.Label("Joy-Con ‚ªÚ‘±‚³‚ê‚Ä‚¢‚Ü‚¹‚ñ");
+            GUILayout.Label("Joy-Con ãŒæ¥ç¶šã•ã‚Œã¦ã„ã¾ã›ã‚“");
             return;
         }
 
         if (!m_joycons.Any(c => c.isLeft))
         {
-            GUILayout.Label("Joy-Con (L) ‚ªÚ‘±‚³‚ê‚Ä‚¢‚Ü‚¹‚ñ");
-            return;
+            GUILayout.Label("Joy-Con (L) ãŒæ¥ç¶šã•ã‚Œã¦ã„ã¾ã›ã‚“");
+            //return;
         }
 
         if (!m_joycons.Any(c => !c.isLeft))
         {
-            GUILayout.Label("Joy-Con (R) ‚ªÚ‘±‚³‚ê‚Ä‚¢‚Ü‚¹‚ñ");
+            GUILayout.Label("Joy-Con (R) ãŒæ¥ç¶šã•ã‚Œã¦ã„ã¾ã›ã‚“");
             //return;
         }
 
@@ -82,7 +82,7 @@ public class Example : MonoBehaviour
         {
             var isLeft = joycon.isLeft;
             var name = isLeft ? "Joy-Con (L)" : "Joy-Con (R)";
-            var key = isLeft ? "Z ƒL[" : "X ƒL[";
+            var key = isLeft ? "Z ã‚­ãƒ¼" : "X ã‚­ãƒ¼";
             var button = isLeft ? m_pressedButtonL : m_pressedButtonR;
             var stick = joycon.GetStick();
             var gyro = joycon.GetGyro();
@@ -91,12 +91,12 @@ public class Example : MonoBehaviour
 
             GUILayout.BeginVertical(GUILayout.Width(480));
             GUILayout.Label(name);
-            GUILayout.Label(key + "FU“®");
-            GUILayout.Label("‰Ÿ‚³‚ê‚Ä‚¢‚éƒ{ƒ^ƒ“F" + button);
-            GUILayout.Label(string.Format("ƒXƒeƒBƒbƒNF({0}, {1})", stick[0], stick[1]));
-            GUILayout.Label("ƒWƒƒƒCƒF" + gyro);
-            GUILayout.Label("‰Á‘¬“xF" + accel);
-            GUILayout.Label("ŒX‚«F" + orientation);
+            GUILayout.Label(key + "ï¼šæŒ¯å‹•");
+            GUILayout.Label("æŠ¼ã•ã‚Œã¦ã„ã‚‹ãƒœã‚¿ãƒ³ï¼š" + button);
+            GUILayout.Label(string.Format("ã‚¹ãƒ†ã‚£ãƒƒã‚¯ï¼š({0}, {1})", stick[0], stick[1]));
+            GUILayout.Label("ã‚¸ãƒ£ã‚¤ãƒ­ï¼š" + gyro);
+            GUILayout.Label("åŠ é€Ÿåº¦ï¼š" + accel);
+            GUILayout.Label("å‚¾ãï¼š" + orientation);
             GUILayout.EndVertical();
         }
 
