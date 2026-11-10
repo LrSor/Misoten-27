@@ -5,6 +5,9 @@ using Unity.Mathematics;
 
 public class TestPlayerCameraLookController : MonoBehaviour
 {
+    private const float MaxSplineDistance = 3.0f;
+    private const float MoveInputDirectionDot = 0.85f;
+
     [Header("Target")]
     [SerializeField] private Transform m_cameraTarget;
     [SerializeField] private Transform m_player;
@@ -45,6 +48,10 @@ public class TestPlayerCameraLookController : MonoBehaviour
 
     private Vector3 m_previousPlayerPosition;
     private Vector2 m_previousMoveInput;
+    private Vector2 m_freeMoveInput;
+    private Vector3 m_freeMoveForward;
+    private float? m_freeTargetYaw;
+    private int m_lastLookFrame = -2;
 
     private bool m_directionLocked;
     private bool m_isReverseDirection;
@@ -65,11 +72,36 @@ public class TestPlayerCameraLookController : MonoBehaviour
         m_splinesParent = splinesParent;
     }
 
+    public bool TryGetMovementForward(Vector2 moveInput, Vector3 cameraForward, out Vector3 forward)
+    {
+        forward = cameraForward;
+        if (!isActiveAndEnabled || m_currentSpline != null ||
+            Time.frameCount - m_lastLookFrame > 1 || moveInput == Vector2.zero)
+        {
+            m_freeMoveInput = Vector2.zero;
+            return false;
+        }
+
+        // 同じ入力中にカメラが回っても、プレイヤーの進行方向を回さない。
+        Vector2 inputDirection = moveInput.normalized;
+        if (Vector2.Dot(m_freeMoveInput, inputDirection) < MoveInputDirectionDot)
+        {
+            m_freeMoveInput = inputDirection;
+            m_freeMoveForward = cameraForward;
+        }
+
+        forward = m_freeMoveForward;
+        return true;
+    }
+
 
     private void Awake()
     {
         if (m_player == null)
             m_player = transform;
+
+        if (m_player.TryGetComponent(out PlayerMoveController mover))
+            mover.SetMovementCamera(this, m_cameraTarget);
 
         if (m_playerInput == null)
             m_playerInput = m_player.GetComponent<PlayerInput>();
@@ -89,7 +121,6 @@ public class TestPlayerCameraLookController : MonoBehaviour
         else
         {
             m_splineContainers = System.Array.Empty<SplineContainer>();
-            Debug.LogWarning("Splinesの親オブジェクトが未設定です。");
         }
     }
 
@@ -109,7 +140,7 @@ public class TestPlayerCameraLookController : MonoBehaviour
         if (m_moveAction == null)
         {
             Debug.LogWarning(
-                "Move Actionが見つかりません。進行方向の判定にはMove Actionが必要です。",
+                "Move Actionが見つかりません。移動入力の変化を検出できません。",
                 this
             );
         }
@@ -121,6 +152,7 @@ public class TestPlayerCameraLookController : MonoBehaviour
         if (!m_initialized || m_cameraTarget == null || m_player == null)
             return;
 
+        m_lastLookFrame = Time.frameCount;
         Vector3 currentPosition = m_player.position;
 
         Vector3 movement =
@@ -129,14 +161,26 @@ public class TestPlayerCameraLookController : MonoBehaviour
         m_previousPlayerPosition = currentPosition;
         movement.y = 0.0f;
 
+        Vector2 moveInput = m_moveAction?.ReadValue<Vector2>() ?? Vector2.zero;
+
         // Listから最も近いSplineを取得
         if (!TryGetNearestSpline(
             currentPosition,
             out SplineContainer nearestSpline,
             out float t))
         {
+            m_currentSpline = null;
+            m_isRotating = false;
+            m_previousMoveInput = Vector2.zero;
+            if (moveInput == Vector2.zero)
+                m_freeMoveInput = Vector2.zero;
+
+            UpdateFreeRotation(movement);
             return;
         }
+
+        m_freeMoveInput = Vector2.zero;
+        m_freeTargetYaw = null;
 
         bool splineChanged = nearestSpline != m_currentSpline;
         m_currentSpline = nearestSpline;
@@ -155,7 +199,8 @@ public class TestPlayerCameraLookController : MonoBehaviour
         // 移動方向によるSplineの向き判定
         UpdateMovementDirection(
             direction,
-            splineChanged
+            splineChanged,
+            moveInput
         );
 
         if (m_isReverseDirection)
@@ -229,12 +274,13 @@ public class TestPlayerCameraLookController : MonoBehaviour
             }
         }
 
-        if (result == null)
+        if (result == null || minDistance > MaxSplineDistance)
             return false;
 
         // わずかな距離差ではSplineを切り替えない
         if (foundCurrentSpline &&
             result != m_currentSpline &&
+            currentDistance <= MaxSplineDistance &&
             currentDistance <= minDistance + m_splineSwitchMargin)
         {
             result = m_currentSpline;
@@ -247,8 +293,9 @@ public class TestPlayerCameraLookController : MonoBehaviour
 
     // Playerの移動方向とSplineの向きを比較
     private void UpdateMovementDirection(
-    Vector3 splineDirection,
-    bool splineChanged)
+        Vector3 splineDirection,
+        bool splineChanged,
+        Vector2 moveInput)
     {
         // 別Splineに切り替わった場合
         if (splineChanged)
@@ -265,11 +312,6 @@ public class TestPlayerCameraLookController : MonoBehaviour
             m_isReverseDirection =
                 Vector3.Dot(referenceDirection, splineDirection) < 0.0f;
         }
-
-        if (m_moveAction == null)
-            return;
-
-        Vector2 moveInput = m_moveAction.ReadValue<Vector2>();
 
         float deadZoneSqr =
             m_inputDeadZone * m_inputDeadZone;
@@ -290,7 +332,7 @@ public class TestPlayerCameraLookController : MonoBehaviour
                 m_previousMoveInput.normalized
             );
 
-            inputChanged = inputDot < 0.85f;
+            inputChanged = inputDot < MoveInputDirectionDot;
         }
 
         // 入力開始時、または入力方向が変化したとき
@@ -329,6 +371,29 @@ public class TestPlayerCameraLookController : MonoBehaviour
         }
 
         m_previousMoveInput = moveInput;
+    }
+
+
+    private void UpdateFreeRotation(Vector3 movement)
+    {
+        float deltaTime = Time.deltaTime;
+        if (deltaTime <= 0.0f)
+            return;
+
+        float minDistance = m_minMovementSpeed * deltaTime;
+        if (movement.sqrMagnitude > minDistance * minDistance)
+        {
+            Vector3 forward = m_player.forward;
+            m_freeTargetYaw = Mathf.Atan2(forward.x, forward.z) * Mathf.Rad2Deg;
+        }
+
+        if (!m_freeTargetYaw.HasValue)
+            return;
+
+        // 現在のカメラ角度から毎フレーム補間し、途中で向きが変わってもその場から追い直す。
+        float t = Mathf.Clamp01(deltaTime / Mathf.Max(0.0001f, m_rotationDuration));
+        m_yaw = Mathf.LerpAngle(m_yaw, m_freeTargetYaw.Value, EaseOutCubic(t));
+        m_cameraTarget.rotation = Quaternion.Euler(m_pitch, m_yaw, 0.0f);
     }
 
 
@@ -379,14 +444,10 @@ public class TestPlayerCameraLookController : MonoBehaviour
                 Mathf.Max(0.0001f, m_rotationDuration)
             );
 
-            // Ease Out Cubic
-            float easedT =
-                1.0f - Mathf.Pow(1.0f - t, 3.0f);
-
             m_yaw = Mathf.LerpAngle(
                 m_startYaw,
                 m_targetYaw,
-                easedT
+                EaseOutCubic(t)
             );
 
             if (t >= 1.0f)
@@ -401,6 +462,10 @@ public class TestPlayerCameraLookController : MonoBehaviour
             Quaternion.Euler(m_pitch, m_yaw, 0.0f);
     }
 
+    private static float EaseOutCubic(float t)
+    {
+        return 1.0f - Mathf.Pow(1.0f - t, 3.0f);
+    }
 
     private void StartRotation(float targetYaw)
     {

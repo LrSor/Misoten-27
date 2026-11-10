@@ -25,5 +25,10 @@ public class Player_Idle : BaseState
 
     public override void FixedUpdateState()
     {
+        if (m_controller.HasNetworkInput)
+        {
+            m_controller.Decelerate();
+            m_controller.Rotate();
+        }
     }
 }

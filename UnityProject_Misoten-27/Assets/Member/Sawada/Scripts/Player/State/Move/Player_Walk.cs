@@ -3,6 +3,7 @@ using UnityEngine;
 public class Player_Walk : BaseState
 {
     [SerializeField] float m_walkSpeed = 5.0f;
+    public float WalkSpeed => m_walkSpeed;
     PlayerMoveController m_controller;
     StateMachine m_stateMachine;
 
