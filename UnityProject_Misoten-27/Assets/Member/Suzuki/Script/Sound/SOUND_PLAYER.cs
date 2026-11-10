@@ -11,6 +11,10 @@ using UnityEngine.InputSystem;
 //   TRIGGER    : トリガーの範囲に何かが入ったとき
 //   NONE       : 自動では鳴らさない（ボタンの OnClick や UnityEvent から Play を呼ぶ）
 //
+// ・START のときは、シーン遷移（Liu さんのトランジション）が終わるのを待ってから鳴らす
+//   （遷移中は BGM が流れないようにするため。「遷移が終わってから鳴らす」で切り替えられる）
+// ・「すること」を「BGM を止める」にすると、音を鳴らす代わりに今の BGM をフェードアウトする
+//   （BGM がないシーンに置くと、前のシーンの BGM を止められる）
 // ・サウンドデータの種類が BGM なら、BGM の切り替えになる
 // ・サウンドデータが立体音なら、このオブジェクトの位置で鳴り、動くとついていく
 // ・Inspector の右上の︙（または右クリック）→「テスト再生」で、再生中に鳴らして確認できる
@@ -27,6 +31,16 @@ public class SOUND_PLAYER : MonoBehaviour
         TRIGGER,
     }
 
+    public enum ACTION
+    {
+        PLAY,       // 音を鳴らす
+        STOP_BGM,   // 今流れている BGM を止める（サウンドデータは空欄でよい）
+    }
+
+    [Tooltip("すること")]
+    [SerializeField]
+    private ACTION m_action = ACTION.PLAY;
+
     [Tooltip("鳴らす音")]
     [SerializeField]
     private SOUND_DATA m_sound;
@@ -34,6 +48,10 @@ public class SOUND_PLAYER : MonoBehaviour
     [Tooltip("いつ鳴らすか")]
     [SerializeField]
     private TIMING m_timing = TIMING.START;
+
+    [Tooltip("START のとき、シーン遷移が終わるのを待ってから鳴らす")]
+    [SerializeField]
+    private bool m_waitForTransition = true;
 
     [Tooltip("COLLISION / TRIGGER のとき、このタグのものだけに反応する（空欄なら何にでも反応）")]
     [SerializeField]
@@ -49,6 +67,9 @@ public class SOUND_PLAYER : MonoBehaviour
 
     private SOUND_HANDLE m_handle;
 
+    // シーン遷移が終わるのを待っている
+    private bool m_isWaitingStart;
+
     public SOUND_DATA Sound
     {
         get { return m_sound; }
@@ -57,10 +78,19 @@ public class SOUND_PLAYER : MonoBehaviour
 
     void Start()
     {
-        if (m_timing == TIMING.START)
+        if (m_timing != TIMING.START)
         {
-            Play();
+            return;
         }
+
+        if (m_waitForTransition &&
+            GAME_SCENE_LOADER.IsTransitioning)
+        {
+            m_isWaitingStart = true;
+            return;
+        }
+
+        Play();
     }
 
     void OnEnable()
@@ -79,9 +109,22 @@ public class SOUND_PLAYER : MonoBehaviour
         }
     }
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
     void Update()
     {
+        // シーン遷移が終わったら鳴らす
+        if (m_isWaitingStart &&
+            !GAME_SCENE_LOADER.IsTransitioning)
+        {
+            m_isWaitingStart = false;
+            Play();
+        }
+
+        UpdateTestKey();
+    }
+
+    void UpdateTestKey()
+    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
         if (m_testKey == Key.None ||
             Keyboard.current == null)
         {
@@ -96,8 +139,8 @@ public class SOUND_PLAYER : MonoBehaviour
 
             Play();
         }
-    }
 #endif
+    }
 
     void OnCollisionEnter(Collision collision)
     {
@@ -126,6 +169,12 @@ public class SOUND_PLAYER : MonoBehaviour
     // ボタンの OnClick や UnityEvent からも呼べる
     public void Play()
     {
+        if (m_action == ACTION.STOP_BGM)
+        {
+            SOUND_MANAGER.StopBGM();
+            return;
+        }
+
         if (m_sound == null)
         {
             return;

@@ -66,6 +66,9 @@ public class SOUND_MANAGER : MonoBehaviour
 
     private int m_nextId = 1;
 
+    // 前のフレームでシーン遷移中だったか（遷移が始まった瞬間を見つけるため）
+    private bool m_wasTransitioning;
+
     // シーンに耳がないときに使う、この係の耳
     private AudioListener m_listener;
     private int m_listenerCheckFrame;
@@ -326,6 +329,8 @@ public class SOUND_MANAGER : MonoBehaviour
 
     void Update()
     {
+        UpdateTransition();
+
         foreach (VOICE voice in m_voices)
         {
             if (voice.m_data == null)
@@ -333,8 +338,9 @@ public class SOUND_MANAGER : MonoBehaviour
                 continue;
             }
 
-            // 鳴り終わったら空ける
-            if (!voice.m_source.isPlaying)
+            // 鳴り終わったら空ける（音のデータを読み込み中のときは待つ）
+            if (!voice.m_source.isPlaying &&
+                !IsLoading(voice.m_source))
             {
                 Release(voice);
                 continue;
@@ -365,6 +371,27 @@ public class SOUND_MANAGER : MonoBehaviour
 
             voice.m_source.transform.position = voice.m_follow.position;
         }
+    }
+
+    // シーン遷移（Liu さんのトランジション）が始まったら BGM をフェードアウトする
+    void UpdateTransition()
+    {
+        bool isTransitioning = GAME_SCENE_LOADER.IsTransitioning;
+
+        if (isTransitioning &&
+            !m_wasTransitioning &&
+            m_settings.StopBgmOnTransition)
+        {
+            StopBGMInternal(-1f);
+        }
+
+        m_wasTransitioning = isTransitioning;
+    }
+
+    static bool IsLoading(AudioSource source)
+    {
+        return source.clip != null &&
+               source.clip.loadState == AudioDataLoadState.Loading;
     }
 
     VOICE GetFreeVoice()
@@ -669,9 +696,9 @@ public class SOUND_MANAGER : MonoBehaviour
 
         ApplyBgmVolume(track);
 
-        // フェードアウトし終わった、または 1 回だけの BGM が鳴り終わった
+        // フェードアウトし終わった、または 1 回だけの BGM が鳴り終わった（読み込み中は待つ）
         if ((track.m_fadeTarget <= 0f && track.m_fade <= 0f) ||
-            !track.m_source.isPlaying)
+            (!track.m_source.isPlaying && !IsLoading(track.m_source)))
         {
             track.m_source.Stop();
             track.m_source.clip = null;

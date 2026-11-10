@@ -16,7 +16,7 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 48486799ac3ed6e4592f06a81e805ed2, type: 3}
   m_category: 1
   m_volume: 1
-  m_volumeRandom: 0
+  m_volumeRandom: 0.215
   m_pitch: 1
   m_pitchRandom: 0.05
   m_loop: 0

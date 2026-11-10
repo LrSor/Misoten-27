@@ -37,6 +37,11 @@ public class SOUND_SETTINGS : ScriptableObject
     [SerializeField]
     private float m_bgmFadeTime = 1f;
 
+    [Tooltip("シーン遷移（Liu さんのトランジション）が始まったら BGM をフェードアウトする。"
+           + "次のシーンの BGM は、SOUND_PLAYER が遷移の終わりを待ってから流す")]
+    [SerializeField]
+    private bool m_stopBgmOnTransition = true;
+
     [Header("同時に鳴らせる音")]
     [Tooltip("BGM 以外で同時に鳴らせる音の数。超えると一番古い音を止めて鳴らす")]
     [SerializeField]
@@ -44,6 +49,7 @@ public class SOUND_SETTINGS : ScriptableObject
 
     public float BgmFadeTime { get { return m_bgmFadeTime; } }
     public int MaxSources { get { return m_maxSources; } }
+    public bool StopBgmOnTransition { get { return m_stopBgmOnTransition; } }
 
     // 種類ごとの音量 × 全体の音量
     public float GetVolume(SOUND_DATA.CATEGORY category)
