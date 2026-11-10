@@ -6440,7 +6440,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::JoyconManager
   EnableIMU: 1
   EnableLocalize: 1
-  m_isKeyboardPlay: 0
+  m_isKeyboardPlay: 1
 --- !u!114 &2110000003
 MonoBehaviour:
   m_ObjectHideFlags: 0
