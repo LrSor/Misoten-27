@@ -96,6 +96,29 @@ public class LiuQuestProximity : MonoBehaviour
         return false;
     }
 
+    // 指定プレイヤーが、このクエストの範囲内にいるか確認する。
+    public bool IsPlayerInRange(GameObject player)
+    {
+        if (!isActiveAndEnabled || player == null
+            || !player.activeInHierarchy)
+        {
+            return false;
+        }
+
+        foreach (Collider playerCollider in playerColliders)
+        {
+            if (playerCollider != null
+                && playerCollider.enabled
+                && playerCollider.gameObject.activeInHierarchy
+                && playerCollider.transform.IsChildOf(player.transform))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private void NotifyPanel()
     {
         if (ownerQuest != null && panelUI != null)

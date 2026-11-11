@@ -15,5 +15,5 @@ MonoBehaviour:
   questID: Liu_Test_B03
   questTitle: "\u843D\u66F8\u304D\u30AF\u30EA\u30FC\u30F3\u30A2\u30C3\u30D7"
   group: 1
-  recommendedPart: {fileID: 0}
+  recommendedPart: {fileID: 11400000, guid: c269b9d040226584dbcbf3253abb6680, type: 2}
   questPrefab: {fileID: 6371290645904024985, guid: 6879c3a020df3cd4c95278dd9adb5d0b, type: 3}
