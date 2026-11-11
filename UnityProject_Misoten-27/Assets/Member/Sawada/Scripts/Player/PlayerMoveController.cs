@@ -20,9 +20,23 @@ public class PlayerMoveController : MonoBehaviour
     [Header("Camera")]
     [SerializeField] private Transform m_movementReference;
     private TestPlayerCameraLookController m_movementCamera;
+    [SerializeField] private Unity.Cinemachine.CinemachineCamera m_tackleCamera;
+    [SerializeField] private Sawada.Cordex.TackleCameraEffects.Settings m_tackleCameraEffects = new();
+    private bool m_sprintCameraActive;
+    public bool SprintCameraActive => m_sprintCameraActive || NetworkSprinting;
+    public int TackleHitSequence { get; private set; }
+
+    public void SetNetworkTackleHitSequence(int sequence) => TackleHitSequence = sequence;
+    public void EndSprintCameraEffect() => m_sprintCameraActive = false;
 
     [Header("Inventory")]
     [SerializeField] private Inventory m_inventory;
+
+    [Header("Tackle Knockback")]
+    [SerializeField, Min(0f)] private float m_tackleImpulse = 10.0f;
+    [SerializeField, Min(0f)] private float m_knockbackDuration = 0.35f;
+    private float m_knockbackUntil;
+    private bool IsKnockedBack => Time.time < m_knockbackUntil;
 
     private Rigidbody m_rb;
     [SerializeField] private PlayerInput m_playerInput;
@@ -99,6 +113,15 @@ public class PlayerMoveController : MonoBehaviour
 
         m_moveAction = m_playerInput.actions.FindAction("Move", true);
         m_sprintAction = m_playerInput.actions.FindAction("Sprint", true);
+
+        if (m_tackleCamera == null)
+            m_tackleCamera = m_playerInput.GetComponentInChildren<Unity.Cinemachine.CinemachineCamera>(true);
+        if (m_tackleCamera != null)
+        {
+            var effects = m_tackleCamera.GetComponent<Sawada.Cordex.TackleCameraEffects>();
+            if (effects == null) effects = m_tackleCamera.gameObject.AddComponent<Sawada.Cordex.TackleCameraEffects>();
+            effects.Bind(this, m_tackleCameraEffects);
+        }
     }
 
     //private void OnTriggerEnter(Collider other)
@@ -117,6 +140,7 @@ public class PlayerMoveController : MonoBehaviour
     // =========================================================
     public void Move(float maxSpeed)
     {
+        if (IsKnockedBack) return;
         Vector2 input = MoveInput;
         SetHorizontalVelocity(StepWalkVelocity(m_rb.linearVelocity, input, GetMoveDirection(input), maxSpeed, Time.fixedDeltaTime));
     }
@@ -142,6 +166,7 @@ public class PlayerMoveController : MonoBehaviour
     }
     public void BeginSprint()
     {
+        m_sprintCameraActive = true;
         Vector3 forward = m_rb.rotation * Vector3.forward;
         if (m_networkInput)
             forward = m_networkForward;
@@ -153,6 +178,7 @@ public class PlayerMoveController : MonoBehaviour
 
     public void MoveSprint(float maxSpeed, float minSpeed, float time, float timer)
     {
+        if (IsKnockedBack) return;
         float steer = m_networkInput ? m_networkSprintSteer : MoveInput.x;
         if (Mathf.Abs(steer) > m_inputThreshold)
         {
@@ -166,6 +192,7 @@ public class PlayerMoveController : MonoBehaviour
 
     public void Decelerate()
     {
+        if (IsKnockedBack) return;
         Vector3 velocity = m_rb.linearVelocity;
 
         Vector3 horizontalVelocity = new Vector3(velocity.x, 0.0f, velocity.z);
@@ -186,7 +213,7 @@ public class PlayerMoveController : MonoBehaviour
     // CharacterかつAmor装備中なら取る
     public void RushCharacter(CharacterReferenceController reference)
     {
-        if (m_rushFlag == false) return;
+        if (m_rushFlag == false || IsKnockedBack || m_inventory == null) return;
         if (reference == null || reference.Inventory == null || reference.Inventory == m_inventory) return;
 
         // 装備中
@@ -195,8 +222,28 @@ public class PlayerMoveController : MonoBehaviour
 
         BaseArmorSO oldArmorSO = m_inventory.SwapArmor(armorSO);
         SetRushFlag(false);
+        var targetController = reference.GetComponentInParent<PlayerMoveController>();
+        if (targetController != null) targetController.TackleHitSequence++;
+        ApplyTackleKnockback(reference);
 
         Debug.Log($"強奪完了: {armorSO}->{oldArmorSO}");
+    }
+
+    private void ApplyTackleKnockback(CharacterReferenceController reference)
+    {
+        Rigidbody targetBody = reference.GetComponentInParent<Rigidbody>();
+        if (targetBody == null || targetBody == m_rb || targetBody.isKinematic || m_tackleImpulse <= 0f)
+            return;
+
+        // 強奪側の正面を中心とした水平180度（左右90度）から選ぶ。
+        Vector3 forward = Vector3.ProjectOnPlane(m_rb.rotation * Vector3.forward, Vector3.up).normalized;
+        if (forward.sqrMagnitude < 0.001f) forward = Vector3.forward;
+        Vector3 direction = Quaternion.AngleAxis(Random.Range(-90f, 90f), Vector3.up) * forward;
+
+        if (targetBody.TryGetComponent<PlayerMoveController>(out var targetController))
+            targetController.m_knockbackUntil = Time.time + Mathf.Max(m_knockbackDuration, Time.fixedDeltaTime);
+
+        targetBody.AddForce(direction * m_tackleImpulse, ForceMode.Impulse);
     }
 
     // =========================================================
@@ -204,6 +251,7 @@ public class PlayerMoveController : MonoBehaviour
     // =========================================================
     public void Rotate()
     {
+        if (IsKnockedBack) return;
         var rotation = StepWalkRotation(m_rb.rotation, m_rb.linearVelocity, Time.fixedDeltaTime);
         if (rotation != m_rb.rotation) m_rb.MoveRotation(rotation);
     }

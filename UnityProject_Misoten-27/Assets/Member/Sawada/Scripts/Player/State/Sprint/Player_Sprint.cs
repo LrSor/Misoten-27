@@ -24,6 +24,8 @@ public class Player_Sprint : BaseState
 
     public override void UnInitState()
     {
+        m_controller.SetRushFlag(false);
+        m_controller.EndSprintCameraEffect();
     }
 
     public override void UpdateState()

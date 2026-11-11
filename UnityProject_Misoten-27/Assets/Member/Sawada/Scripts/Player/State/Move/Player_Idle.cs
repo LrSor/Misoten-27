@@ -25,9 +25,10 @@ public class Player_Idle : BaseState
 
     public override void FixedUpdateState()
     {
+        // オフラインでもノックバック後の残速度を減速させる。
+        m_controller.Decelerate();
         if (m_controller.HasNetworkInput)
         {
-            m_controller.Decelerate();
             m_controller.Rotate();
         }
     }

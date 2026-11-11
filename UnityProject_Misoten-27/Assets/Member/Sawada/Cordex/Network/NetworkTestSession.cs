@@ -34,6 +34,7 @@ namespace Sawada.Cordex
             public Vector3 velocity;
             public int appliedMoveSequence;
             public bool sprinting;
+            public int tackleHitSequence;
             public int selectedArmor;
             public int[] armor;
         }
@@ -625,6 +626,7 @@ namespace Sawada.Cordex
                 state.yaw = pair.Value.rotation.eulerAngles.y;
                 state.velocity = pair.Value.linearVelocity;
                 state.sprinting = movers[pair.Key].GetComponent<StateMachine>().IsInState<Player_Sprint>();
+                state.tackleHitSequence = movers[pair.Key].TackleHitSequence;
                 var inventory = inventories[pair.Key];
                 state.selectedArmor = inventory.CurrentArmorIndex;
                 state.armor = Enumerable.Range(0, inventory.ArmorSlotCount)
@@ -710,7 +712,7 @@ namespace Sawada.Cordex
                     if (!Finite(m.time) || m.tick <= receivedTick ||
                         (snapshots.Count > 0 && m.time < snapshots[snapshots.Count - 1].time) ||
                         m.players.Any(p => p == null || p.id < 1 || p.id > 4 || !Finite(p.x) || !Finite(p.y) || !Finite(p.z) || !Finite(p.yaw)
-                            || !Finite(p.velocity.x) || !Finite(p.velocity.y) || !Finite(p.velocity.z) || p.appliedMoveSequence < 0
+                            || !Finite(p.velocity.x) || !Finite(p.velocity.y) || !Finite(p.velocity.z) || p.appliedMoveSequence < 0 || p.tackleHitSequence < 0
                             || (p.id == localId && (p.appliedMoveSequence < appliedMoveSequence || p.appliedMoveSequence > moveSequence))
                             || p.armor == null || p.armor.Length == 0 || p.armor.Length > 8
                             || p.selectedArmor < 0 || p.selectedArmor >= p.armor.Length
@@ -913,6 +915,8 @@ namespace Sawada.Cordex
                         else Debug.LogWarning("[NetworkTest] PlayerDisplay canvas is missing");
                     }
                     mover.SetNetworkInput(Vector2.zero, false, Vector3.forward, 0f);
+                    // Seed before Awake binds camera effects, so joining does not replay an old hit.
+                    mover.SetNetworkTackleHitSequence(p.tackleHitSequence);
                     inventory.ConfigureNetworkInventory(initialArmorSlots);
                     avatar.SetActive(true);
                     avatars.Add(p.id, avatar);
@@ -923,6 +927,7 @@ namespace Sawada.Cordex
                     Debug.Log($"[NetworkTest] VIEW P{p.id} owned={p.id == localId} cameras={avatar.GetComponentsInChildren<Camera>().Count(c => c.enabled)} listeners={avatar.GetComponentsInChildren<AudioListener>().Count(a => a.enabled)}");
                 }
                 // Host bodies are moved exclusively by physics. Clients render buffered poses.
+                if (!hosting) movers[p.id].SetNetworkTackleHitSequence(p.tackleHitSequence);
                 if (!hosting && p.armor != null)
                     inventories[p.id].ApplyNetworkInventory(p.selectedArmor,
                         p.armor.Select(a => a == 0 ? null : armorCatalog[a - 1]).ToArray());
@@ -1041,6 +1046,7 @@ namespace Sawada.Cordex
                 bool cameraScript = script is Unity.Cinemachine.CinemachineCamera ||
                     script is Unity.Cinemachine.CinemachineThirdPersonFollow ||
                     script is Unity.Cinemachine.CinemachineBrain ||
+                    script is TackleCameraEffects ||
                     script is TestPlayerCameraLookController;
                 bool renderScript = script is UnityEngine.Rendering.Universal.UniversalAdditionalCameraData;
                 bool movementScript = script is PlayerMoveController || script is Player_Idle
