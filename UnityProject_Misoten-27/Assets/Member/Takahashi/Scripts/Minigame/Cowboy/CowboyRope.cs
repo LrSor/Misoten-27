@@ -178,7 +178,6 @@ public class CowboyRope : MiniGameObject
 
         //現在のパワーを表示
         m_powerText.text = m_power.ToString("Power: 00");
-        Debug.Log("現在のpower -> " + m_power);
 
         //パワーダウン
         m_power -= m_powerDown;
@@ -190,6 +189,7 @@ public class CowboyRope : MiniGameObject
         //投げた際の処理
         if (m_joycon.GetButtonUp(Joycon.Button.SHOULDER_1) && m_power >= m_throwPower)
         {
+            
             m_throwFlag = true;
             return;
         }
@@ -245,8 +245,13 @@ public class CowboyRope : MiniGameObject
         }
     }
 
-    private void Thrown()
+    private void Catch()
     {
 
+    }
+
+    private void Thrown()
+    {
+        //投げた後数秒のクールタイムを挟む
     }
 }
