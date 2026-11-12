@@ -14,7 +14,7 @@ namespace Sawada.Cordex
     [DefaultExecutionOrder(-10000)]
     public sealed class NetworkTestSession : MonoBehaviour
     {
-        const string Protocol = "SawadaNetworkTest/6";
+        const string Protocol = "SawadaNetworkTest/7";
         const float Timeout = 10f;
         const float NetworkInterval = .05f;
         const float FastSnapshotInterval = 1f / 30f;
@@ -27,6 +27,14 @@ namespace Sawada.Cordex
         [SerializeField] GameObject[] worldPrefabs = Array.Empty<GameObject>();
         NetworkWorld world;
         float worldSendAt, localWorldActionAt;
+        readonly ScoreRankingCoordinator ranking = new ScoreRankingCoordinator();
+        readonly WorldSlowController rankingSlow = new WorldSlowController();
+        int rankingId, completedRankingId;
+        bool rankingWaiting, rankingScoreSent;
+        float rankingStartedAt, rankingRequestAt;
+        public IReadOnlyList<ScoreRankingCoordinator.Entry> LastRanking { get; private set; }
+            = Array.Empty<ScoreRankingCoordinator.Entry>();
+        public event Action RankingCompleted;
         [Serializable] public class PlayerState
         {
             public int id;
@@ -50,6 +58,9 @@ namespace Sawada.Cordex
             public float time;
             public int armorStep, swapPress;
             public PlayerState[] players;
+            public int rankingId, score;
+            public bool scoreAvailable;
+            public ScoreRankingCoordinator.Entry[] ranking;
         }
         [Serializable] public struct WalkCommand
         {
@@ -419,6 +430,7 @@ namespace Sawada.Cordex
             if (hosting) PollHost(now);
             else if (server != null) PollClient(now);
             UpdateAvatars();
+            UpdateRanking(now);
             // PositionConstraint evaluates before LateUpdate. Feed it the current rendered pose.
             RenderClientAvatars(now);
         }
@@ -470,11 +482,15 @@ namespace Sawada.Cordex
                 var sprint = actions.FindAction("Sprint", true);
                 localSprint = sprint.IsPressed();
                 if (sprint.WasPressedThisFrame()) localSprintPress++;
-                if (actions.FindAction("Swap", true).WasPressedThisFrame()) localSwapPress++;
+                // Reserve keyboard E for ranking; retain the Joy-Con/gamepad Swap action.
+                if (actions.FindAction("Swap", true).WasPressedThisFrame()
+                    && !(Keyboard.current?.eKey.isPressed ?? false)) localSwapPress++;
             }
             if (Keyboard.current != null)
             {
                 var k = Keyboard.current;
+                if (k.eKey.wasPressedThisFrame) RequestRanking();
+                if (k.gKey.wasPressedThisFrame) localSwapPress++;
                 if (k.fKey.wasPressedThisFrame && TryGetPlayerPosition(localId, out var position))
                 {
                     var door = world.Nearest(position);
@@ -566,12 +582,19 @@ namespace Sawada.Cordex
                         { Reject(c, "Protocol mismatch: " + Protocol + " required", now); break; }
                         if (m.catalog != world.Catalog)
                         { Reject(c, "World catalog mismatch: use the same map and build", now); break; }
+                        if (ranking.IsCollecting)
+                        { Reject(c, "Score collection in progress; join again after it finishes", now); break; }
                         int id = Enumerable.Range(2, 3).FirstOrDefault(n => !states.ContainsKey(n));
                         if (id == 0) { Reject(c, "Room full: maximum 4 players including Host", now); break; }
                         c.id = id;
                         states.Add(id, SpawnState(id));
                         Send(c.peer, new Message { kind = "welcome", id = id, protocol = Protocol });
                         Debug.Log("[NetworkTest] JOIN P" + id);
+                    }
+                    else if (m.kind == "ranking-request" || m.kind == "ranking-score")
+                    {
+                        // The peer owns c.id; ignore IDs supplied in the message.
+                        HandleRankingMessage(c.id, m, now);
                     }
                     else if (m.kind == "world-action" && m.request > c.lastRequest
                         && m.target > 0 && (m.action == "interact" || m.action == "delete"))
@@ -606,7 +629,11 @@ namespace Sawada.Cordex
                 {
                     c.peer.Dispose();
                     connections.Remove(c);
-                    if (c.id != 0) { states.Remove(c.id); Debug.Log("[NetworkTest] LEAVE P" + c.id); }
+                    if (c.id != 0)
+                    {
+                        ranking.RemoveDisconnected(c.id);
+                        states.Remove(c.id); Debug.Log("[NetworkTest] LEAVE P" + c.id);
+                    }
                 }
             }
             UpdateAvatars();
@@ -706,6 +733,19 @@ namespace Sawada.Cordex
                 else if (m.kind == "world-result" && localId > 0)
                 {
                     WorldActionCompleted?.Invoke(m.request, m.accepted, m.reason);
+                }
+                else if (m.kind == "ranking-begin" && localId > 0)
+                {
+                    if (m.rankingId > rankingId && m.rankingId > completedRankingId)
+                    {
+                        BeginLocalRanking(m.rankingId, now);
+                    }
+                }
+                else if (m.kind == "ranking-result" && localId > 0)
+                {
+                    if (!ValidRanking(m.ranking)) { StopSession("Invalid Host ranking"); return; }
+                    if (m.rankingId == rankingId && m.rankingId > completedRankingId)
+                        CompleteRanking(m.rankingId, m.ranking);
                 }
                 else if (m.kind == "state" && localId > 0 && m.players != null && m.players.Length <= 4)
                 {
@@ -808,6 +848,115 @@ namespace Sawada.Cordex
 
         int worldRequest;
         public bool IsHost => hosting;
+        void HandleRankingMessage(int playerId, Message message, float now)
+        {
+            if (message.kind == "ranking-request")
+            {
+                if (now >= rankingRequestAt && !ranking.IsCollecting) BeginRanking(now);
+            }
+            else if (message.scoreAvailable) ranking.Submit(message.rankingId, playerId, message.score);
+        }
+
+        public void RequestRanking()
+        {
+            float now = Time.realtimeSinceStartup;
+            if (localId == 0 || rankingWaiting || now < rankingRequestAt) return;
+            rankingRequestAt = now + .5f;
+            if (hosting) BeginRanking(now);
+            else if (server != null) Send(server, new Message { kind = "ranking-request" });
+        }
+
+        void BeginRanking(float now)
+        {
+            if (!ranking.Begin(new[] { 1 }.Concat(connections
+                .Where(c => c.id > 0 && c.closeAt == 0 && !c.peer.Closed).Select(c => c.id)), now)) return;
+            rankingRequestAt = now + ScoreRankingCoordinator.MinimumDuration + .5f;
+            BeginLocalRanking(ranking.RoundId, now);
+            if (TryGetLocalScore(out int score)) ranking.Submit(rankingId, localId, score);
+            BroadcastRanking(new Message { kind = "ranking-begin", rankingId = rankingId });
+        }
+
+        void BeginLocalRanking(int roundId, float now)
+        {
+            rankingId = roundId;
+            rankingStartedAt = now;
+            rankingWaiting = true;
+            rankingScoreSent = false;
+            rankingSlow.Begin();
+            Debug.Log("[ScoreRanking] BEGIN round=" + roundId + " (reflected total score)");
+        }
+
+        bool TryGetLocalScore(out int score)
+        {
+            score = 0;
+            if (avatars.TryGetValue(localId, out var avatar) && avatar != null)
+            {
+                var reference = avatar.GetComponentInChildren<PlayerReferenceController>(true);
+                var source = reference != null ? reference.PlayerScore : null;
+                if (source == null) source = avatar.GetComponentInChildren<PlayerScore>(true);
+                if (source != null) { score = source.GetTotalScore(); return true; }
+            }
+            Debug.LogWarning("[ScoreRanking] P" + localId + " PlayerScore missing; marked as not submitted.");
+            return false;
+        }
+
+        void UpdateRanking(float now)
+        {
+            // Welcome/begin may precede the first state snapshot. Wait for the local avatar.
+            if (!hosting && rankingWaiting && !rankingScoreSent && server != null
+                && (avatars.ContainsKey(localId) || now - rankingStartedAt >= 1f))
+            {
+                bool available = TryGetLocalScore(out int score);
+                Send(server, new Message { kind = "ranking-score", rankingId = rankingId,
+                    score = score, scoreAvailable = available });
+                rankingScoreSent = true;
+            }
+            if (hosting && ranking.TryFinish(now, out var result))
+            {
+                BroadcastRanking(new Message { kind = "ranking-result", rankingId = rankingId, ranking = result });
+                CompleteRanking(rankingId, result);
+            }
+            // A stalled Host must not leave the Client in slow motion indefinitely.
+            if (!hosting && rankingWaiting && now - rankingStartedAt > ScoreRankingCoordinator.SubmissionTimeout + 2f)
+            {
+                rankingWaiting = false;
+                rankingSlow.Restore();
+                Debug.LogWarning("[ScoreRanking] Timed out waiting for Host result; restored time scale.");
+            }
+        }
+
+        void BroadcastRanking(Message message)
+        {
+            foreach (var c in connections)
+                if (c.id > 0 && c.closeAt == 0 && !c.peer.Closed) Send(c.peer, message);
+        }
+
+        static bool ValidRanking(ScoreRankingCoordinator.Entry[] entries)
+        {
+            if (entries == null || entries.Length == 0 || entries.Length > 4
+                || entries.Any(e => e == null || e.id < 1 || e.id > 4 || e.score < 0)
+                || entries.Select(e => e.id).Distinct().Count() != entries.Length) return false;
+            for (int i = 0; i < entries.Length; i++)
+            {
+                var entry = entries[i];
+                if (!entry.submitted) { if (entry.rank != 0 || entry.score != 0) return false; continue; }
+                if (i > 0 && (!entries[i - 1].submitted || entry.score > entries[i - 1].score)) return false;
+                int rank = i > 0 && entry.score == entries[i - 1].score ? entries[i - 1].rank : i + 1;
+                if (entry.rank != rank) return false;
+            }
+            return true;
+        }
+
+        void CompleteRanking(int roundId, ScoreRankingCoordinator.Entry[] result)
+        {
+            completedRankingId = roundId;
+            LastRanking = result;
+            rankingWaiting = false;
+            rankingSlow.Restore();
+            Debug.Log("[ScoreRanking] RESULT round=" + roundId + "\n" + string.Join("\n", result.Select(e =>
+                e.submitted ? $"{e.rank}位: P{e.id} / {e.score}点" : $"未提出: P{e.id}")));
+            RankingCompleted?.Invoke();
+        }
         public event Action<int, bool, string> WorldActionCompleted;
         public NetworkWorldObject ServerSpawn(int prefabId, Vector3 position, Quaternion rotation)
             => world?.ServerSpawn(prefabId, position, rotation);
@@ -1135,6 +1284,12 @@ namespace Sawada.Cordex
 
         public void StopSession(string reason = "Disconnected by user")
         {
+            rankingSlow.Restore();
+            ranking.Reset();
+            rankingId = completedRankingId = 0;
+            rankingWaiting = rankingScoreSent = false;
+            rankingStartedAt = rankingRequestAt = 0f;
+            LastRanking = Array.Empty<ScoreRankingCoordinator.Entry>();
             relayGeneration++;
             relayStarting = relayConnecting = roomAnnounced = false;
             listener?.Stop(); listener = null;
@@ -1256,11 +1411,16 @@ namespace Sawada.Cordex
             }
             GUILayout.Label(status);
             GUILayout.Label($"Players: {states.Count}/4   You: {(localId == 0 ? "-" : "P" + localId)}   Role: {(hosting ? "Host" : localId > 0 ? "Client" : "Offline")}   Tick: {(hosting ? tick : receivedTick)}");
-            GUILayout.Label("WASD / left stick: move   Left Shift: Sprint\nE: equip overlapping field armor   Arrows: switch slot\nF: interact with nearest network door / spawn point\nClick a window to control it. Unfocused input stops.");
+            GUILayout.Label("WASD / left stick: move   Left Shift: Sprint\nE: collect scores / rank (Console)   G: equip field armor\nArrows: switch slot   F: interact with nearest network door / spawn point\nClick a window to control it. Unfocused input stops.");
             if (!idle && GUILayout.Button("Cancel / Disconnect / Stop Host")) StopSession();
             if (testMotion) GUILayout.Label("AUTOMATED MOVEMENT TEST MODE");
             GUILayout.EndVertical();
             GUILayout.EndArea();
+        }
+
+        void OnDisable()
+        {
+            if (rankingWaiting) StopSession("Session disabled during score collection");
         }
 
         void OnDestroy()
