@@ -14,20 +14,35 @@ namespace Sawada.Cordex
     [DefaultExecutionOrder(-10000)]
     public sealed class NetworkTestSession : MonoBehaviour
     {
-        const string Protocol = "SawadaNetworkTest/5";
+        const string Protocol = "SawadaNetworkTest/7";
         const float Timeout = 10f;
         const float NetworkInterval = .05f;
-        const float InterpolationDelay = .1f;
+        const float FastSnapshotInterval = 1f / 30f;
+        const float RemoteInterpolationDelay = .1f;
+        const float DefaultOwnerInterpolationDelay = .05f;
+        const int MaxMoveBatch = 16;
+        const int MaxQueuedMoves = 8;
         [SerializeField] GameObject playerPrefab;
         [SerializeField] BaseArmorSO[] initialArmorSlots = Array.Empty<BaseArmorSO>();
         [SerializeField] GameObject[] worldPrefabs = Array.Empty<GameObject>();
         NetworkWorld world;
         float worldSendAt, localWorldActionAt;
+        readonly ScoreRankingCoordinator ranking = new ScoreRankingCoordinator();
+        readonly WorldSlowController rankingSlow = new WorldSlowController();
+        int rankingId, completedRankingId;
+        bool rankingWaiting, rankingScoreSent;
+        float rankingStartedAt, rankingRequestAt;
+        public IReadOnlyList<ScoreRankingCoordinator.Entry> LastRanking { get; private set; }
+            = Array.Empty<ScoreRankingCoordinator.Entry>();
+        public event Action RankingCompleted;
         [Serializable] public class PlayerState
         {
             public int id;
             public float x, y, z, yaw;
+            public Vector3 velocity;
+            public int appliedMoveSequence;
             public bool sprinting;
+            public int tackleHitSequence;
             public int selectedArmor;
             public int[] armor;
         }
@@ -38,19 +53,38 @@ namespace Sawada.Cordex
             public int request, target, part, parts;
             public bool accepted;
             public NetworkWorld.State[] world;
-            public float x, z;
-            public bool sprint;
+            public int firstMoveSequence;
+            public WalkCommand[] moves;
             public float time;
-            public float forwardX, forwardZ;
-            public int sprintPress, armorStep, swapPress;
+            public int armorStep, swapPress;
             public PlayerState[] players;
+            public int rankingId, score;
+            public bool scoreAvailable;
+            public ScoreRankingCoordinator.Entry[] ranking;
         }
+        [Serializable] public struct WalkCommand
+        {
+            public Vector2 move, forward;
+            public float sprintSteer;
+            public bool sprint;
+            public int sprintPress;
+        }
+
+        struct MoveCommand
+        {
+            public int Sequence;
+            public WalkCommand Input;
+        }
+
         sealed class Connection
         {
             public INetworkTestPeer peer;
             public int id;
             public float lastReceive, lastInput, closeAt;
             public Vector2 input;
+            public float sprintSteer;
+            public readonly Queue<MoveCommand> moves = new Queue<MoveCommand>(MaxQueuedMoves);
+            public int lastReceivedMove, lastAppliedMove, lastReceivedSprintPress;
             public bool sprint;
             public Vector2 forward = Vector2.up;
             public int sprintPress, appliedSprintPress, armorStep, appliedArmorStep, swapPress, appliedSwapPress;
@@ -67,7 +101,8 @@ namespace Sawada.Cordex
         FieldArmorMachine[] fieldArmors;
         BaseArmorSO[] armorCatalog;
         readonly List<Message> snapshots = new List<Message>();
-        float renderTime;
+        float remoteRenderTime, ownerRenderTime;
+        float ownerInterpolationDelay = DefaultOwnerInterpolationDelay;
         float snapshotReceivedAt;
         bool renderTimeReady;
         TcpListener listener;
@@ -77,6 +112,7 @@ namespace Sawada.Cordex
         int relayGeneration;
         float relayStarted;
         string joinCodeInput = "";
+        string lanCodeInput = "", hostLanCode = "";
         bool Busy => hosting || connecting || server != null || relay != null;
         TcpClient connectingSocket;
         Task connectTask;
@@ -87,16 +123,43 @@ namespace Sawada.Cordex
         JoyconInputBridge localJoyconBridge;
         Transform inactivePlayers;
         string ip = "", portText = "7777", status = "Create an online room or enter a room code to join";
-        string localAddresses = "";
+        IPAddress[] localAddresses = Array.Empty<IPAddress>();
+        int lanAddressIndex;
         int localId, tick, receivedTick;
         bool hosting, connecting, testMotion, testGameplay, testPickup;
         float started, lastReceive, sendAt, snapshotAt, connectStarted, exitAfter;
         Vector2 localInput;
+        float localSprintSteer;
         bool localSprint;
         Vector2 localForward = Vector2.up;
         int localSprintPress, appliedLocalSprintPress, localArmorStep, appliedLocalArmorStep;
         int localSwapPress, appliedLocalSwapPress;
         StreamWriter trace;
+        readonly List<WalkCommand> unsentMoves = new List<WalkCommand>(MaxMoveBatch);
+        LocalWalkPrediction walkPrediction;
+        int moveSequence, reconciledTick, appliedMoveSequence;
+        bool disablePrediction, tracePrediction;
+        bool ownerPoseReady, ownerPosePredicted, ownerPoseTransition;
+        bool bufferedInput, fastSnapshots, testInputEdges, sampledMoving;
+        int unsentEdgeSequence;
+
+        [Serializable] sealed class PredictionSample
+        {
+            public string kind = "prediction";
+            public float time;
+            public float ownerRenderTime, remoteRenderTime, newestSnapshotTime, snapshotAge;
+            public Vector2 input;
+            public Vector3 position;
+            public int sequence, appliedSequence;
+            public bool predicted;
+        }
+
+        [Serializable] sealed class InputSendSample
+        {
+            public string kind = "input-sent";
+            public float time;
+            public int firstSequence, count, edgeSequence, bytes;
+        }
 
         void Awake()
         {
@@ -153,6 +216,12 @@ namespace Sawada.Cordex
             testMotion = args.Contains("--net-test-motion");
             testGameplay = args.Contains("--net-test-gameplay");
             testPickup = args.Contains("--net-test-pickup");
+            disablePrediction = args.Contains("--net-disable-prediction");
+            tracePrediction = args.Contains("--net-trace-prediction");
+            if (Arg("--net-owner-interpolation-ms") == "100") ownerInterpolationDelay = RemoteInterpolationDelay;
+            bufferedInput = args.Contains("--net-buffer-input");
+            fastSnapshots = Arg("--net-snapshot-rate") == "30";
+            testInputEdges = args.Contains("--net-test-input-edges");
             float.TryParse(Arg("--net-exit-after", "0"), System.Globalization.NumberStyles.Float,
                 System.Globalization.CultureInfo.InvariantCulture, out exitAfter);
             string tracePath = Arg("--net-trace");
@@ -162,9 +231,15 @@ namespace Sawada.Cordex
                 catch (Exception e) { Debug.LogWarning("Trace: " + e.Message); }
             }
             joinCodeInput = Arg("--net-code", joinCodeInput);
+            lanCodeInput = Arg("--net-lan-code", lanCodeInput);
             string mode = Arg("--net-mode");
             if (mode == "host") { internetMode = false; StartHost(); }
-            else if (mode == "client") { internetMode = false; StartClient(); }
+            else if (mode == "client")
+            {
+                internetMode = false;
+                if (lanCodeInput.Length > 0) StartLanCodeClient();
+                else StartClient();
+            }
             else if (mode == "relay-host") StartRelayHost();
             else if (mode == "relay-client") StartRelayClient();
         }
@@ -181,21 +256,28 @@ namespace Sawada.Cordex
             try
             {
                 // List candidates rather than choosing a VPN/virtual adapter as the Host address.
-                var addresses = NetworkInterface.GetAllNetworkInterfaces()
+                localAddresses = NetworkInterface.GetAllNetworkInterfaces()
                     .Where(n => n.OperationalStatus == OperationalStatus.Up
                         && n.NetworkInterfaceType != NetworkInterfaceType.Loopback)
                     .SelectMany(n => n.GetIPProperties().UnicastAddresses)
                     .Select(a => a.Address)
-                    .Where(a => a.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(a))
-                    .Select(a => a.ToString()).Distinct().OrderBy(a => a, StringComparer.Ordinal);
-                localAddresses = string.Join(", ", addresses);
-                if (localAddresses.Length == 0) localAddresses = "None found. Check Wi-Fi / Ethernet or run ipconfig.";
+                    .Where(a => LanRoomCode.CanEncodeAddress(a) && !IPAddress.IsLoopback(a))
+                    .Distinct().OrderBy(a => a.ToString(), StringComparer.Ordinal).ToArray();
             }
             catch (Exception e)
             {
-                localAddresses = "Unavailable. Run ipconfig to find this PC's IPv4.";
+                localAddresses = Array.Empty<IPAddress>();
                 Debug.LogWarning("[NetworkTest] IPv4 lookup: " + e.Message);
             }
+            lanAddressIndex = 0;
+            UpdateHostLanCode();
+        }
+
+        void UpdateHostLanCode()
+        {
+            hostLanCode = hosting && listener != null && localAddresses.Length > 0
+                ? LanRoomCode.Encode(localAddresses[lanAddressIndex], ((IPEndPoint)listener.LocalEndpoint).Port)
+                : "";
         }
 
         public void StartHost()
@@ -210,7 +292,8 @@ namespace Sawada.Cordex
                 world.SetHost(true);
                 localId = 1;
                 states.Add(1, SpawnState(1));
-                SetStatus("Host ready on TCP port " + port + ". Share this PC's LAN IPv4 with Clients.");
+                UpdateHostLanCode();
+                SetStatus("LAN Host ready on TCP port " + port + ". Share your LAN code with Clients.");
             }
             catch (Exception e) { StopSession("Host failed: " + e.Message); }
         }
@@ -224,6 +307,19 @@ namespace Sawada.Cordex
             { SetStatus("Invalid IPv4 address"); return; }
             if (address.Equals(IPAddress.Any) || address.Equals(IPAddress.Broadcast))
             { SetStatus("Enter a Host IPv4 address, not 0.0.0.0 or 255.255.255.255"); return; }
+            ConnectLan(address, port);
+        }
+
+        void StartLanCodeClient()
+        {
+            if (Busy) return;
+            if (!LanRoomCode.TryDecode(lanCodeInput, out var address, out int port))
+            { SetStatus("Invalid LAN code. Paste the full LAN-XXXX-XXXX-XXXX code from the Host."); return; }
+            ConnectLan(address, port);
+        }
+
+        void ConnectLan(IPAddress address, int port)
+        {
             connectingSocket = new TcpClient(AddressFamily.InterNetwork);
             try
             {
@@ -334,6 +430,7 @@ namespace Sawada.Cordex
             if (hosting) PollHost(now);
             else if (server != null) PollClient(now);
             UpdateAvatars();
+            UpdateRanking(now);
             // PositionConstraint evaluates before LateUpdate. Feed it the current rendered pose.
             RenderClientAvatars(now);
         }
@@ -341,6 +438,7 @@ namespace Sawada.Cordex
         void ReadLocalInput(float now)
         {
             localInput = Vector2.zero;
+            localSprintSteer = 0f;
             localSprint = false;
             if (localId == 0) return;
             if (testPickup)
@@ -355,6 +453,15 @@ namespace Sawada.Cordex
                 // Explicit verification mode only: alternate direction every 2 seconds.
                 float sign = ((int)((now - started) / 2) % 2 == 0) ? 1 : -1;
                 localInput = localId % 2 == 0 ? new Vector2(sign, 0) : new Vector2(0, sign);
+                return;
+            }
+            if (testInputEdges)
+            {
+                const float period = .73f;
+                float elapsed = now - started;
+                int cycle = Mathf.FloorToInt(elapsed / period);
+                if (elapsed - cycle * period < .34f)
+                    localInput = cycle % 2 == 0 ? Vector2.right : Vector2.left;
                 return;
             }
             if (testGameplay)
@@ -375,11 +482,15 @@ namespace Sawada.Cordex
                 var sprint = actions.FindAction("Sprint", true);
                 localSprint = sprint.IsPressed();
                 if (sprint.WasPressedThisFrame()) localSprintPress++;
-                if (actions.FindAction("Swap", true).WasPressedThisFrame()) localSwapPress++;
+                // Reserve keyboard E for ranking; retain the Joy-Con/gamepad Swap action.
+                if (actions.FindAction("Swap", true).WasPressedThisFrame()
+                    && !(Keyboard.current?.eKey.isPressed ?? false)) localSwapPress++;
             }
             if (Keyboard.current != null)
             {
                 var k = Keyboard.current;
+                if (k.eKey.wasPressedThisFrame) RequestRanking();
+                if (k.gKey.wasPressedThisFrame) localSwapPress++;
                 if (k.fKey.wasPressedThisFrame && TryGetPlayerPosition(localId, out var position))
                 {
                     var door = world.Nearest(position);
@@ -389,6 +500,7 @@ namespace Sawada.Cordex
                 else if (k.rightArrowKey.wasPressedThisFrame) localArmorStep++;
             }
             localInput = Vector2.ClampMagnitude(localInput, 1);
+            localSprintSteer = localInput.x;
             if (avatars.TryGetValue(localId, out var ownedAvatar))
             {
                 var reference = ownedAvatar.transform.Find("CameraTarget");
@@ -403,6 +515,10 @@ namespace Sawada.Cordex
                 Vector3 forward = Vector3.ProjectOnPlane(view.transform.forward, Vector3.up).normalized;
                 if (forward.sqrMagnitude > .001f)
                 {
+                    if (localLook != null &&
+                        localLook.TryGetMovementForward(localInput, forward, out Vector3 movementForward))
+                        forward = movementForward;
+
                     Vector3 direction = Vector3.Cross(Vector3.up, forward) * localInput.x + forward * localInput.y;
                     localInput = new Vector2(direction.x, direction.z);
                 }
@@ -466,12 +582,19 @@ namespace Sawada.Cordex
                         { Reject(c, "Protocol mismatch: " + Protocol + " required", now); break; }
                         if (m.catalog != world.Catalog)
                         { Reject(c, "World catalog mismatch: use the same map and build", now); break; }
+                        if (ranking.IsCollecting)
+                        { Reject(c, "Score collection in progress; join again after it finishes", now); break; }
                         int id = Enumerable.Range(2, 3).FirstOrDefault(n => !states.ContainsKey(n));
                         if (id == 0) { Reject(c, "Room full: maximum 4 players including Host", now); break; }
                         c.id = id;
                         states.Add(id, SpawnState(id));
                         Send(c.peer, new Message { kind = "welcome", id = id, protocol = Protocol });
                         Debug.Log("[NetworkTest] JOIN P" + id);
+                    }
+                    else if (m.kind == "ranking-request" || m.kind == "ranking-score")
+                    {
+                        // The peer owns c.id; ignore IDs supplied in the message.
+                        HandleRankingMessage(c.id, m, now);
                     }
                     else if (m.kind == "world-action" && m.request > c.lastRequest
                         && m.target > 0 && (m.action == "interact" || m.action == "delete"))
@@ -483,17 +606,18 @@ namespace Sawada.Cordex
                         Send(c.peer, new Message { kind = "world-result", request = m.request, target = m.target,
                             accepted = accepted, reason = accepted ? "" : "Out of range, unavailable or not permitted" });
                     }
-                    else if (m.kind == "input" && Finite(m.x) && Finite(m.z) && Mathf.Abs(m.x) <= 1.01f && Mathf.Abs(m.z) <= 1.01f
-                        && Finite(m.forwardX) && Finite(m.forwardZ) && Mathf.Abs(m.forwardX) <= 1.01f && Mathf.Abs(m.forwardZ) <= 1.01f
-                        && m.sprintPress >= c.sprintPress && (long)m.sprintPress - c.sprintPress <= 32
+                    else if (m.kind == "input" && ValidMoveBatch(c, m)
                         && m.swapPress >= c.swapPress && (long)m.swapPress - c.swapPress <= 32
                         && Math.Abs((long)m.armorStep - c.armorStep) <= 32)
                     {
                         // Ownership comes from the socket, never a client-supplied player ID.
-                        c.input = Vector2.ClampMagnitude(new Vector2(m.x, m.z), 1);
-                        c.sprint = m.sprint;
-                        c.forward = new Vector2(m.forwardX, m.forwardZ).normalized;
-                        c.sprintPress = m.sprintPress;
+                        for (int i = 0; i < m.moves.Length; i++)
+                        {
+                            if (c.moves.Count == MaxQueuedMoves) c.moves.Dequeue();
+                            c.lastReceivedMove = m.firstMoveSequence + i;
+                            c.lastReceivedSprintPress = m.moves[i].sprintPress;
+                            c.moves.Enqueue(new MoveCommand { Sequence = c.lastReceivedMove, Input = m.moves[i] });
+                        }
                         c.armorStep = m.armorStep;
                         c.swapPress = m.swapPress;
                         c.lastInput = now;
@@ -505,7 +629,11 @@ namespace Sawada.Cordex
                 {
                     c.peer.Dispose();
                     connections.Remove(c);
-                    if (c.id != 0) { states.Remove(c.id); Debug.Log("[NetworkTest] LEAVE P" + c.id); }
+                    if (c.id != 0)
+                    {
+                        ranking.RemoveDisconnected(c.id);
+                        states.Remove(c.id); Debug.Log("[NetworkTest] LEAVE P" + c.id);
+                    }
                 }
             }
             UpdateAvatars();
@@ -523,7 +651,9 @@ namespace Sawada.Cordex
                 Vector3 position = pair.Value.position;
                 state.x = position.x; state.y = position.y; state.z = position.z;
                 state.yaw = pair.Value.rotation.eulerAngles.y;
+                state.velocity = pair.Value.linearVelocity;
                 state.sprinting = movers[pair.Key].GetComponent<StateMachine>().IsInState<Player_Sprint>();
+                state.tackleHitSequence = movers[pair.Key].TackleHitSequence;
                 var inventory = inventories[pair.Key];
                 state.selectedArmor = inventory.CurrentArmorIndex;
                 state.armor = Enumerable.Range(0, inventory.ArmorSlotCount)
@@ -534,7 +664,15 @@ namespace Sawada.Cordex
             }
             if (now >= snapshotAt)
             {
-                snapshotAt = now + NetworkInterval;
+                if (fastSnapshots)
+                {
+                    // Keep the 30 Hz cadence through small frame timing variations without sending bursts.
+                    snapshotAt = snapshotAt <= 0 || now - snapshotAt >= FastSnapshotInterval
+                        ? now + FastSnapshotInterval : snapshotAt + FastSnapshotInterval;
+                }
+                else snapshotAt = now + NetworkInterval;
+                foreach (var c in connections)
+                    if (states.TryGetValue(c.id, out var state)) state.appliedMoveSequence = c.lastAppliedMove;
                 var m = new Message { kind = "state", tick = ++tick, time = Time.fixedUnscaledTime,
                     players = states.Values.OrderBy(p => p.id).ToArray() };
                 foreach (var c in connections) if (c.id > 0 && c.closeAt == 0) Send(c.peer, m);
@@ -550,6 +688,25 @@ namespace Sawada.Cordex
                 }
             }
         }
+
+        static bool ValidMoveBatch(Connection connection, Message message)
+        {
+            if (message.moves == null || message.moves.Length == 0 || message.moves.Length > MaxMoveBatch ||
+                message.firstMoveSequence <= connection.lastReceivedMove || (long)message.firstMoveSequence + message.moves.Length - 1 > int.MaxValue)
+                return false;
+            int sprintPress = connection.lastReceivedSprintPress;
+            foreach (var command in message.moves)
+            {
+                if (!ValidInputVector(command.move) || !ValidInputVector(command.forward) ||
+                    !Finite(command.sprintSteer) || Mathf.Abs(command.sprintSteer) > 1.01f ||
+                    command.sprintPress < sprintPress || (long)command.sprintPress - sprintPress > 32) return false;
+                sprintPress = command.sprintPress;
+            }
+            return true;
+        }
+
+        static bool ValidInputVector(Vector2 value)
+            => Finite(value.x) && Finite(value.y) && Mathf.Abs(value.x) <= 1.01f && Mathf.Abs(value.y) <= 1.01f;
 
         void Reject(Connection c, string reason, float now)
         {
@@ -577,11 +734,26 @@ namespace Sawada.Cordex
                 {
                     WorldActionCompleted?.Invoke(m.request, m.accepted, m.reason);
                 }
+                else if (m.kind == "ranking-begin" && localId > 0)
+                {
+                    if (m.rankingId > rankingId && m.rankingId > completedRankingId)
+                    {
+                        BeginLocalRanking(m.rankingId, now);
+                    }
+                }
+                else if (m.kind == "ranking-result" && localId > 0)
+                {
+                    if (!ValidRanking(m.ranking)) { StopSession("Invalid Host ranking"); return; }
+                    if (m.rankingId == rankingId && m.rankingId > completedRankingId)
+                        CompleteRanking(m.rankingId, m.ranking);
+                }
                 else if (m.kind == "state" && localId > 0 && m.players != null && m.players.Length <= 4)
                 {
                     if (!Finite(m.time) || m.tick <= receivedTick ||
                         (snapshots.Count > 0 && m.time < snapshots[snapshots.Count - 1].time) ||
                         m.players.Any(p => p == null || p.id < 1 || p.id > 4 || !Finite(p.x) || !Finite(p.y) || !Finite(p.z) || !Finite(p.yaw)
+                            || !Finite(p.velocity.x) || !Finite(p.velocity.y) || !Finite(p.velocity.z) || p.appliedMoveSequence < 0 || p.tackleHitSequence < 0
+                            || (p.id == localId && (p.appliedMoveSequence < appliedMoveSequence || p.appliedMoveSequence > moveSequence))
                             || p.armor == null || p.armor.Length == 0 || p.armor.Length > 8
                             || p.selectedArmor < 0 || p.selectedArmor >= p.armor.Length
                             || p.armor.Any(a => a < 0 || a > armorCatalog.Length)) ||
@@ -589,13 +761,15 @@ namespace Sawada.Cordex
                     { StopSession("Invalid Host state"); return; }
                     states.Clear();
                     foreach (var p in m.players) states.Add(p.id, p);
+                    if (states.TryGetValue(localId, out var owner)) appliedMoveSequence = owner.appliedMoveSequence;
                     receivedTick = m.tick;
                     snapshots.Add(m);
                     snapshotReceivedAt = now;
                     if (snapshots.Count > 32) snapshots.RemoveAt(0);
                     if (!renderTimeReady)
                     {
-                        renderTime = m.time - InterpolationDelay;
+                        remoteRenderTime = m.time - RemoteInterpolationDelay;
+                        ownerRenderTime = m.time - ownerInterpolationDelay;
                         renderTimeReady = true;
                     }
                     Trace(m);
@@ -605,38 +779,184 @@ namespace Sawada.Cordex
             if (server == null) return;
             if (server.Closed) { StopSession("Host disconnected: " + server.Error); return; }
             if (now - lastReceive > Timeout) { StopSession("Host timeout (10 seconds)"); return; }
-            if (localId > 0 && now >= sendAt)
+            if (localId > 0 && unsentMoves.Count > 0 && (now >= sendAt || (!bufferedInput && unsentEdgeSequence != 0)))
             {
                 sendAt = now + NetworkInterval;
-                Send(server, new Message { kind = "input", x = localInput.x, z = localInput.y, sprint = localSprint,
-                    forwardX = localForward.x, forwardZ = localForward.y,
-                    sprintPress = localSprintPress, armorStep = localArmorStep, swapPress = localSwapPress });
+                int firstSequence = moveSequence - unsentMoves.Count + 1;
+                var message = new Message { kind = "input", firstMoveSequence = firstSequence,
+                    moves = unsentMoves.ToArray(), armorStep = localArmorStep, swapPress = localSwapPress };
+                string payload = JsonUtility.ToJson(message);
+                server.Send(payload);
+                if (tracePrediction && trace != null)
+                    Trace(new InputSendSample { time = now - started, firstSequence = firstSequence, count = unsentMoves.Count,
+                        edgeSequence = unsentEdgeSequence, bytes = System.Text.Encoding.UTF8.GetByteCount(payload) });
+                unsentMoves.Clear();
+                unsentEdgeSequence = 0;
             }
         }
 
         void FixedUpdate()
         {
-            if (!hosting) return;
-            FeedMovement(1, localInput, localSprint || localSprintPress != appliedLocalSprintPress, localForward);
+            if (!hosting)
+            {
+                if (localId == 0 || server == null) return;
+                if (unsentMoves.Count == MaxMoveBatch) unsentMoves.RemoveAt(0);
+                unsentMoves.Add(new WalkCommand { move = localInput, forward = localForward,
+                    sprint = localSprint, sprintPress = localSprintPress, sprintSteer = localSprintSteer });
+                moveSequence++;
+                walkPrediction?.Record(moveSequence, localInput, Time.fixedDeltaTime);
+                // Flush the normal numbered batch as soon as it contains a start or stop tick.
+                // Analog movement within the same active state stays on the regular cadence.
+                bool moving = movers.TryGetValue(localId, out var mover)
+                    ? mover.IsMoveInput(localInput) : localInput != Vector2.zero;
+                if (moving != sampledMoving) unsentEdgeSequence = moveSequence;
+                sampledMoving = moving;
+                return;
+            }
+            FeedMovement(1, localInput, localSprint || localSprintPress != appliedLocalSprintPress,
+                localForward, localSprintSteer);
             appliedLocalSprintPress = localSprintPress;
             foreach (var c in connections)
                 if (c.id > 0 && c.closeAt == 0)
                 {
                     bool fresh = Time.realtimeSinceStartup - c.lastInput < .4f;
+                    if (!fresh) { c.moves.Clear(); c.input = Vector2.zero; c.sprint = false; }
+                    else if (c.moves.Count > 0)
+                    {
+                        var move = c.moves.Dequeue();
+                        c.input = Vector2.ClampMagnitude(move.Input.move, 1);
+                        c.forward = move.Input.forward.normalized;
+                        c.sprint = move.Input.sprint;
+                        c.sprintSteer = move.Input.sprintSteer;
+                        c.sprintPress = move.Input.sprintPress;
+                        c.lastAppliedMove = move.Sequence;
+                    }
                     FeedMovement(c.id, fresh ? c.input : Vector2.zero,
-                        fresh && (c.sprint || c.sprintPress != c.appliedSprintPress), c.forward);
+                        fresh && (c.sprint || c.sprintPress != c.appliedSprintPress), c.forward,
+                        fresh ? c.sprintSteer : 0f);
                     c.appliedSprintPress = c.sprintPress;
                 }
         }
 
-        void FeedMovement(int id, Vector2 input, bool sprint, Vector2 forward)
+        void FeedMovement(int id, Vector2 input, bool sprint, Vector2 forward, float sprintSteer)
         {
-            if (movers.TryGetValue(id, out var mover))
-                mover.SetNetworkInput(input, sprint, new Vector3(forward.x, 0, forward.y));
+            if (!movers.TryGetValue(id, out var mover)) return;
+            mover.SetNetworkInput(input, sprint, new Vector3(forward.x, 0, forward.y), sprintSteer);
+            var movementState = mover.GetComponent<StateMachine>();
+            if (mover.HasMoveInput && movementState.IsInState<Player_Idle>()) movementState.ChangeState<Player_Walk>();
         }
 
         int worldRequest;
         public bool IsHost => hosting;
+        void HandleRankingMessage(int playerId, Message message, float now)
+        {
+            if (message.kind == "ranking-request")
+            {
+                if (now >= rankingRequestAt && !ranking.IsCollecting) BeginRanking(now);
+            }
+            else if (message.scoreAvailable) ranking.Submit(message.rankingId, playerId, message.score);
+        }
+
+        public void RequestRanking()
+        {
+            float now = Time.realtimeSinceStartup;
+            if (localId == 0 || rankingWaiting || now < rankingRequestAt) return;
+            rankingRequestAt = now + .5f;
+            if (hosting) BeginRanking(now);
+            else if (server != null) Send(server, new Message { kind = "ranking-request" });
+        }
+
+        void BeginRanking(float now)
+        {
+            if (!ranking.Begin(new[] { 1 }.Concat(connections
+                .Where(c => c.id > 0 && c.closeAt == 0 && !c.peer.Closed).Select(c => c.id)), now)) return;
+            rankingRequestAt = now + ScoreRankingCoordinator.MinimumDuration + .5f;
+            BeginLocalRanking(ranking.RoundId, now);
+            if (TryGetLocalScore(out int score)) ranking.Submit(rankingId, localId, score);
+            BroadcastRanking(new Message { kind = "ranking-begin", rankingId = rankingId });
+        }
+
+        void BeginLocalRanking(int roundId, float now)
+        {
+            rankingId = roundId;
+            rankingStartedAt = now;
+            rankingWaiting = true;
+            rankingScoreSent = false;
+            rankingSlow.Begin();
+            Debug.Log("[ScoreRanking] BEGIN round=" + roundId + " (reflected total score)");
+        }
+
+        bool TryGetLocalScore(out int score)
+        {
+            score = 0;
+            if (avatars.TryGetValue(localId, out var avatar) && avatar != null)
+            {
+                var reference = avatar.GetComponentInChildren<PlayerReferenceController>(true);
+                var source = reference != null ? reference.PlayerScore : null;
+                if (source == null) source = avatar.GetComponentInChildren<PlayerScore>(true);
+                if (source != null) { score = source.GetTotalScore(); return true; }
+            }
+            Debug.LogWarning("[ScoreRanking] P" + localId + " PlayerScore missing; marked as not submitted.");
+            return false;
+        }
+
+        void UpdateRanking(float now)
+        {
+            // Welcome/begin may precede the first state snapshot. Wait for the local avatar.
+            if (!hosting && rankingWaiting && !rankingScoreSent && server != null
+                && (avatars.ContainsKey(localId) || now - rankingStartedAt >= 1f))
+            {
+                bool available = TryGetLocalScore(out int score);
+                Send(server, new Message { kind = "ranking-score", rankingId = rankingId,
+                    score = score, scoreAvailable = available });
+                rankingScoreSent = true;
+            }
+            if (hosting && ranking.TryFinish(now, out var result))
+            {
+                BroadcastRanking(new Message { kind = "ranking-result", rankingId = rankingId, ranking = result });
+                CompleteRanking(rankingId, result);
+            }
+            // A stalled Host must not leave the Client in slow motion indefinitely.
+            if (!hosting && rankingWaiting && now - rankingStartedAt > ScoreRankingCoordinator.SubmissionTimeout + 2f)
+            {
+                rankingWaiting = false;
+                rankingSlow.Restore();
+                Debug.LogWarning("[ScoreRanking] Timed out waiting for Host result; restored time scale.");
+            }
+        }
+
+        void BroadcastRanking(Message message)
+        {
+            foreach (var c in connections)
+                if (c.id > 0 && c.closeAt == 0 && !c.peer.Closed) Send(c.peer, message);
+        }
+
+        static bool ValidRanking(ScoreRankingCoordinator.Entry[] entries)
+        {
+            if (entries == null || entries.Length == 0 || entries.Length > 4
+                || entries.Any(e => e == null || e.id < 1 || e.id > 4 || e.score < 0)
+                || entries.Select(e => e.id).Distinct().Count() != entries.Length) return false;
+            for (int i = 0; i < entries.Length; i++)
+            {
+                var entry = entries[i];
+                if (!entry.submitted) { if (entry.rank != 0 || entry.score != 0) return false; continue; }
+                if (i > 0 && (!entries[i - 1].submitted || entry.score > entries[i - 1].score)) return false;
+                int rank = i > 0 && entry.score == entries[i - 1].score ? entries[i - 1].rank : i + 1;
+                if (entry.rank != rank) return false;
+            }
+            return true;
+        }
+
+        void CompleteRanking(int roundId, ScoreRankingCoordinator.Entry[] result)
+        {
+            completedRankingId = roundId;
+            LastRanking = result;
+            rankingWaiting = false;
+            rankingSlow.Restore();
+            Debug.Log("[ScoreRanking] RESULT round=" + roundId + "\n" + string.Join("\n", result.Select(e =>
+                e.submitted ? $"{e.rank}位: P{e.id} / {e.score}点" : $"未提出: P{e.id}")));
+            RankingCompleted?.Invoke();
+        }
         public event Action<int, bool, string> WorldActionCompleted;
         public NetworkWorldObject ServerSpawn(int prefabId, Vector3 position, Quaternion rotation)
             => world?.ServerSpawn(prefabId, position, rotation);
@@ -689,6 +1009,11 @@ namespace Sawada.Cordex
             {
                 if (id == localId && localJoyconBridge != null)
                     localJoyconBridge.SetPlayerInput(null);
+                if (id == localId)
+                {
+                    walkPrediction = null;
+                    ownerPoseReady = ownerPoseTransition = false;
+                }
                 avatars[id].SetActive(false);
                 Destroy(avatars[id]); avatars.Remove(id); bodies.Remove(id); movers.Remove(id); inventories.Remove(id); swappers.Remove(id);
             }
@@ -738,13 +1063,20 @@ namespace Sawada.Cordex
                         }
                         else Debug.LogWarning("[NetworkTest] PlayerDisplay canvas is missing");
                     }
-                    mover.SetNetworkInput(Vector2.zero, false, Vector3.forward);
+                    mover.SetNetworkInput(Vector2.zero, false, Vector3.forward, 0f);
+                    // Seed before Awake binds camera effects, so joining does not replay an old hit.
+                    mover.SetNetworkTackleHitSequence(p.tackleHitSequence);
                     inventory.ConfigureNetworkInventory(initialArmorSlots);
                     avatar.SetActive(true);
                     avatars.Add(p.id, avatar);
+                    if (!hosting && p.id == localId && !disablePrediction &&
+                        physicsBody.TryGetComponent<CapsuleCollider>(out var capsule) && capsule.direction == 1 &&
+                        physicsBody.TryGetComponent<Player_Walk>(out var walk))
+                        walkPrediction = new LocalWalkPrediction(capsule, mover, walk.WalkSpeed);
                     Debug.Log($"[NetworkTest] VIEW P{p.id} owned={p.id == localId} cameras={avatar.GetComponentsInChildren<Camera>().Count(c => c.enabled)} listeners={avatar.GetComponentsInChildren<AudioListener>().Count(a => a.enabled)}");
                 }
                 // Host bodies are moved exclusively by physics. Clients render buffered poses.
+                if (!hosting) movers[p.id].SetNetworkTackleHitSequence(p.tackleHitSequence);
                 if (!hosting && p.armor != null)
                     inventories[p.id].ApplyNetworkInventory(p.selectedArmor,
                         p.armor.Select(a => a == 0 ? null : armorCatalog[a - 1]).ToArray());
@@ -754,32 +1086,102 @@ namespace Sawada.Cordex
         void RenderClientAvatars(float now)
         {
             if (hosting || snapshots.Count == 0) return;
-            // Advance the target between packets too: packet arrival is not a render clock.
-            float targetTime = snapshots[snapshots.Count - 1].time
-                + (now - snapshotReceivedAt) - InterpolationDelay;
+            float latest = snapshots[snapshots.Count - 1].time;
+            float estimatedHostTime = latest + (now - snapshotReceivedAt);
+            remoteRenderTime = AdvanceRenderTime(remoteRenderTime, estimatedHostTime - RemoteInterpolationDelay, latest);
+            // A short buffer needs to recover its lead after both clocks reach the newest sample.
+            ownerRenderTime = ownerInterpolationDelay == RemoteInterpolationDelay ? remoteRenderTime :
+                AdvanceRenderTime(ownerRenderTime, estimatedHostTime - ownerInterpolationDelay, latest,
+                    tolerance: .01f, speedAdjustment: .12f);
+            // Keep the pair needed by the older clock. Each clock can sample a different pair.
+            float oldestRenderTime = Mathf.Min(remoteRenderTime, ownerRenderTime);
+            while (snapshots.Count > 2 && snapshots[1].time <= oldestRenderTime) snapshots.RemoveAt(0);
+            var remoteBlend = FindSnapshotBlend(remoteRenderTime);
+            var ownerBlend = FindSnapshotBlend(ownerRenderTime);
+            foreach (var pair in bodies)
+            {
+                if (pair.Key == localId && walkPrediction != null && states.TryGetValue(localId, out var owner))
+                {
+                    if (reconciledTick != receivedTick)
+                    {
+                        walkPrediction.Reconcile(new LocalWalkPrediction.Pose
+                        {
+                            Position = new Vector3(owner.x, owner.y, owner.z),
+                            Velocity = owner.velocity,
+                            Rotation = Quaternion.Euler(0, owner.yaw, 0)
+                        }, owner.appliedMoveSequence, owner.sprinting);
+                        reconciledTick = receivedTick;
+                    }
+                    if (walkPrediction.CanDisplay && now - snapshotReceivedAt <= .25f)
+                    {
+                        movers[pair.Key].NetworkSprinting = false;
+                        float remainder = Mathf.Clamp((float)(Time.timeAsDouble - Time.fixedTimeAsDouble), 0, Time.fixedDeltaTime);
+                        var pose = walkPrediction.Render(localInput, remainder, Time.unscaledDeltaTime);
+                        RenderOwnerPose(pair.Value.transform, pose.Position, pose.Rotation, true, now);
+                        continue;
+                    }
+                }
+                var blend = pair.Key == localId ? ownerBlend : remoteBlend;
+                var a = blend.from.players.FirstOrDefault(p => p.id == pair.Key);
+                var b = blend.to.players.FirstOrDefault(p => p.id == pair.Key);
+                // A newly joined player has no previous sample yet.
+                if (a == null || b == null) continue;
+                movers[pair.Key].NetworkSprinting = blend.weight < 1f ? a.sprinting : b.sprinting;
+                var position = Vector3.Lerp(new Vector3(a.x, a.y, a.z), new Vector3(b.x, b.y, b.z), blend.weight);
+                var rotation = Quaternion.Euler(0, Mathf.LerpAngle(a.yaw, b.yaw, blend.weight), 0);
+                if (pair.Key == localId) RenderOwnerPose(pair.Value.transform, position, rotation, false, now);
+                else pair.Value.transform.SetPositionAndRotation(position, rotation);
+            }
+        }
+
+        static float AdvanceRenderTime(float renderTime, float targetTime, float latestSnapshotTime,
+            float tolerance = NetworkInterval, float speedAdjustment = .02f)
+        {
             float error = targetTime - renderTime;
             if (Mathf.Abs(error) > .5f) renderTime = targetTime;
             else
             {
                 // Absorb ordinary arrival jitter without changing playback speed every frame.
-                float rate = error > NetworkInterval ? 1.02f : error < -NetworkInterval ? .98f : 1f;
+                float rate = error > tolerance ? 1f + speedAdjustment : error < -tolerance ? 1f - speedAdjustment : 1f;
                 renderTime += Time.unscaledDeltaTime * rate;
             }
-            renderTime = Mathf.Min(renderTime, snapshots[snapshots.Count - 1].time);
-            while (snapshots.Count > 2 && snapshots[1].time <= renderTime) snapshots.RemoveAt(0);
-            var from = snapshots[0];
-            var to = snapshots.Count > 1 ? snapshots[1] : from;
-            float t = to.time > from.time ? Mathf.InverseLerp(from.time, to.time, renderTime) : 1;
-            foreach (var pair in bodies)
+            return Mathf.Min(renderTime, latestSnapshotTime);
+        }
+
+        (Message from, Message to, float weight) FindSnapshotBlend(float time)
+        {
+            int index = 0;
+            while (index + 2 < snapshots.Count && snapshots[index + 1].time <= time) index++;
+            var from = snapshots[index];
+            var to = index + 1 < snapshots.Count ? snapshots[index + 1] : from;
+            float weight = to.time > from.time ? Mathf.InverseLerp(from.time, to.time, time) : 1;
+            return (from, to, weight);
+        }
+
+        void RenderOwnerPose(Transform body, Vector3 position, Quaternion rotation, bool predicted, float now)
+        {
+            // The buffered pose is older than the predicted one. Limit the catch-up only
+            // when switching between them so a missing snapshot does not cause a visible jump.
+            if (ownerPoseReady && predicted != ownerPosePredicted) ownerPoseTransition = true;
+            ownerPoseReady = true;
+            ownerPosePredicted = predicted;
+            if (ownerPoseTransition)
             {
-                var a = from.players.FirstOrDefault(p => p.id == pair.Key);
-                var b = to.players.FirstOrDefault(p => p.id == pair.Key);
-                // A newly joined player has no previous sample yet.
-                if (a == null || b == null) continue;
-                pair.Value.transform.SetPositionAndRotation(
-                    Vector3.Lerp(new Vector3(a.x, a.y, a.z), new Vector3(b.x, b.y, b.z), t),
-                    Quaternion.Euler(0, Mathf.LerpAngle(a.yaw, b.yaw, t), 0));
+                var next = Vector3.MoveTowards(body.position, position, 12f * Mathf.Min(Time.unscaledDeltaTime, .025f));
+                ownerPoseTransition = (next - position).sqrMagnitude > .000001f;
+                position = next;
             }
+            body.SetPositionAndRotation(position, rotation);
+            TracePrediction(now, position, predicted);
+        }
+
+        void TracePrediction(float now, Vector3 position, bool predicted)
+        {
+            if (!tracePrediction || trace == null) return;
+            Trace(new PredictionSample { time = now - started, input = localInput, position = position,
+                ownerRenderTime = ownerRenderTime, remoteRenderTime = remoteRenderTime,
+                newestSnapshotTime = snapshots[snapshots.Count - 1].time, snapshotAge = now - snapshotReceivedAt,
+                sequence = moveSequence, appliedSequence = appliedMoveSequence, predicted = predicted });
         }
 
         GameObject CreateAvatar(int id)
@@ -793,6 +1195,7 @@ namespace Sawada.Cordex
                 bool cameraScript = script is Unity.Cinemachine.CinemachineCamera ||
                     script is Unity.Cinemachine.CinemachineThirdPersonFollow ||
                     script is Unity.Cinemachine.CinemachineBrain ||
+                    script is TackleCameraEffects ||
                     script is TestPlayerCameraLookController;
                 bool renderScript = script is UnityEngine.Rendering.Universal.UniversalAdditionalCameraData;
                 bool movementScript = script is PlayerMoveController || script is Player_Idle
@@ -872,7 +1275,7 @@ namespace Sawada.Cordex
             Debug.Log("[NetworkTest] " + text);
         }
 
-        void Trace(Message message)
+        void Trace(object message)
         {
             if (trace == null) return;
             try { trace.WriteLine(JsonUtility.ToJson(message)); }
@@ -881,9 +1284,16 @@ namespace Sawada.Cordex
 
         public void StopSession(string reason = "Disconnected by user")
         {
+            rankingSlow.Restore();
+            ranking.Reset();
+            rankingId = completedRankingId = 0;
+            rankingWaiting = rankingScoreSent = false;
+            rankingStartedAt = rankingRequestAt = 0f;
+            LastRanking = Array.Empty<ScoreRankingCoordinator.Entry>();
             relayGeneration++;
             relayStarting = relayConnecting = roomAnnounced = false;
             listener?.Stop(); listener = null;
+            hostLanCode = "";
             server?.Dispose(); server = null;
             connectingSocket?.Close(); connectingSocket = null;
             if (connectTask != null)
@@ -903,6 +1313,12 @@ namespace Sawada.Cordex
             foreach (var avatar in avatars.Values) { avatar.SetActive(false); Destroy(avatar); }
             avatars.Clear();
             bodies.Clear(); snapshots.Clear(); renderTimeReady = false;
+            walkPrediction = null;
+            unsentMoves.Clear();
+            unsentEdgeSequence = 0;
+            sampledMoving = false;
+            moveSequence = reconciledTick = appliedMoveSequence = 0;
+            ownerPoseReady = ownerPoseTransition = false;
             movers.Clear(); inventories.Clear();
             swappers.Clear(); localSwapPress = appliedLocalSwapPress = 0;
             localSprintPress = appliedLocalSprintPress = localArmorStep = appliedLocalArmorStep = 0;
@@ -924,7 +1340,7 @@ namespace Sawada.Cordex
             GUILayout.Label("ONLINE / LAN PLAY | Host + 3 Clients");
             bool idle = !Busy;
             GUI.enabled = idle;
-            internetMode = GUILayout.Toolbar(internetMode ? 0 : 1, new[] { "Internet (room code)", "LAN (IP address)" }) == 0;
+            internetMode = GUILayout.Toolbar(internetMode ? 0 : 1, new[] { "Internet (room code)", "LAN (code / IP)" }) == 0;
             if (internetMode)
             {
                 GUILayout.BeginHorizontal();
@@ -939,6 +1355,11 @@ namespace Sawada.Cordex
             else
             {
                 GUILayout.BeginHorizontal();
+                GUILayout.Label("LAN code", GUILayout.Width(70));
+                lanCodeInput = GUILayout.TextField(lanCodeInput, 40);
+                if (GUILayout.Button("Join LAN code", GUILayout.Width(115))) StartLanCodeClient();
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
                 GUILayout.Label("Host IPv4", GUILayout.Width(70));
                 ip = GUILayout.TextField(ip, 45, GUILayout.Width(190));
                 GUILayout.Label("Port", GUILayout.Width(35));
@@ -946,7 +1367,7 @@ namespace Sawada.Cordex
                 GUILayout.EndHorizontal();
                 GUILayout.BeginHorizontal();
                 if (GUILayout.Button("Start Host", GUILayout.Height(30))) StartHost();
-                if (GUILayout.Button("Connect Client", GUILayout.Height(30))) StartClient();
+                if (GUILayout.Button("Connect by IP", GUILayout.Height(30))) StartClient();
                 GUILayout.EndHorizontal();
             }
             GUI.enabled = true;
@@ -964,18 +1385,42 @@ namespace Sawada.Cordex
             }
             else
             {
-                GUILayout.Label("This PC's IPv4 candidates (use the Host PC's Wi-Fi / Ethernet address):");
-                GUILayout.TextField(localAddresses);
-                if (idle && GUILayout.Button("Refresh this PC's IP addresses")) RefreshLocalAddresses();
-                GUILayout.Label("Other PCs: enter the Host's LAN IPv4 above and use the same port.\n127.0.0.1 is for same-PC tests only. Allow Host TCP on the private LAN firewall.");
+                if (hosting && listener != null)
+                {
+                    if (hostLanCode.Length > 0)
+                    {
+                        GUILayout.BeginHorizontal();
+                        GUILayout.Label("Share IPv4", GUILayout.Width(75));
+                        GUILayout.Label(localAddresses[lanAddressIndex].ToString());
+                        if (localAddresses.Length > 1 && GUILayout.Button($"Next IP ({lanAddressIndex + 1}/{localAddresses.Length})"))
+                        {
+                            lanAddressIndex = (lanAddressIndex + 1) % localAddresses.Length;
+                            UpdateHostLanCode();
+                        }
+                        GUILayout.EndHorizontal();
+                        GUILayout.BeginHorizontal();
+                        GUILayout.Label("Your LAN code", GUILayout.Width(100));
+                        GUILayout.TextField(hostLanCode);
+                        if (GUILayout.Button("Copy", GUILayout.Width(60))) GUIUtility.systemCopyBuffer = hostLanCode;
+                        GUILayout.EndHorizontal();
+                    }
+                    else GUILayout.Label("No active IPv4 found. Check Wi-Fi or Ethernet.");
+                    if (GUILayout.Button("Refresh this PC's IP addresses")) RefreshLocalAddresses();
+                }
+                GUILayout.Label("Share the LAN code with players who can reach the selected IPv4. The code includes the Host's TCP port.");
             }
             GUILayout.Label(status);
             GUILayout.Label($"Players: {states.Count}/4   You: {(localId == 0 ? "-" : "P" + localId)}   Role: {(hosting ? "Host" : localId > 0 ? "Client" : "Offline")}   Tick: {(hosting ? tick : receivedTick)}");
-            GUILayout.Label("WASD / left stick: move   Left Shift: Sprint\nE: equip overlapping field armor   Arrows: switch slot\nF: interact with nearest network door / spawn point\nClick a window to control it. Unfocused input stops.");
+            GUILayout.Label("WASD / left stick: move   Left Shift: Sprint\nE: collect scores / rank (Console)   G: equip field armor\nArrows: switch slot   F: interact with nearest network door / spawn point\nClick a window to control it. Unfocused input stops.");
             if (!idle && GUILayout.Button("Cancel / Disconnect / Stop Host")) StopSession();
             if (testMotion) GUILayout.Label("AUTOMATED MOVEMENT TEST MODE");
             GUILayout.EndVertical();
             GUILayout.EndArea();
+        }
+
+        void OnDisable()
+        {
+            if (rankingWaiting) StopSession("Session disabled during score collection");
         }
 
         void OnDestroy()

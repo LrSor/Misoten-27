@@ -33,7 +33,12 @@ namespace Sawada.Cordex.Editor
             Build();
         }
         [MenuItem("Sawada/Cordex/Build Windows Network Test")]
-        public static void Build()
+        public static void Build() => BuildScene(ScenePath, "Builds/NetworkTest");
+
+        [MenuItem("Sawada/Cordex/Build Joy-Con Map Prediction Test")]
+        public static void BuildJoyconPrediction() => BuildScene("Assets/Member/Sawada/Scenes/joyconMapTest.unity", "Builds/NetworkPrediction");
+
+        static void BuildScene(string scenePath, string outputDirectory)
         {
             var previous = EditorSceneManager.GetSceneManagerSetup();
             for (int i = 0; i < UnityEngine.SceneManagement.SceneManager.sceneCount; i++)
@@ -50,7 +55,7 @@ namespace Sawada.Cordex.Editor
             var settingsBefore = generatedSettings.Where(File.Exists).ToDictionary(p => p, File.ReadAllBytes);
             try
             {
-                var scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+                var scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
                 int missing = scene.GetRootGameObjects().Sum(root => root.GetComponentsInChildren<Transform>(true)
                     .Sum(t => GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(t.gameObject)));
                 if (missing != 0) throw new Exception("Target scene contains missing scripts: " + missing);
@@ -60,18 +65,19 @@ namespace Sawada.Cordex.Editor
                 if (prefab == null || prefab.GetComponentsInChildren<Transform>(true)
                     .Any(t => GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(t.gameObject) != 0))
                     throw new Exception("Player prefab reference or scripts invalid");
-                string path = Path.GetFullPath("Builds/NetworkTest/NetworkTest.exe");
+                string path = Path.GetFullPath(Path.Combine(outputDirectory, "NetworkTest.exe"));
                 Directory.CreateDirectory(Path.GetDirectoryName(path));
-                Directory.CreateDirectory("Builds/NetworkTest/Verification");
+                string verification = Path.Combine(outputDirectory, "Verification");
+                Directory.CreateDirectory(verification);
                 var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
                 {
-                    scenes = new[] { ScenePath },
+                    scenes = new[] { scenePath },
                     locationPathName = path,
                     target = BuildTarget.StandaloneWindows64,
                     options = BuildOptions.Development
                 });
-                File.WriteAllText("Builds/NetworkTest/Verification/build-result.txt",
-                    report.summary.result + "\nErrors: " + report.summary.totalErrors + "\nWarnings: " + report.summary.totalWarnings + "\n" + path);
+                File.WriteAllText(Path.Combine(verification, "build-result.txt"),
+                    report.summary.result + "\nErrors: " + report.summary.totalErrors + "\nWarnings: " + report.summary.totalWarnings + "\n" + path + "\nScene: " + scenePath);
                 if (report.summary.result != BuildResult.Succeeded) throw new Exception("Build failed: " + report.summary.result);
                 Debug.Log("[NetworkTest] BUILD SUCCEEDED " + path);
             }

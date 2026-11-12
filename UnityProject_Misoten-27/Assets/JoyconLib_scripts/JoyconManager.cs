@@ -32,6 +32,10 @@ public class JoyconManager: MonoBehaviour
 
     void Awake()
     {
+        if (instance != null) Destroy(gameObject);
+        instance = this;
+        j = new List<Joycon>();
+
         //キーボード操作有効の場合、JoyconManagerの停止
         if (m_isKeyboardPlay)
         {
@@ -43,11 +47,8 @@ public class JoyconManager: MonoBehaviour
         {
             Debug.Log("デバッグ用キーボード操作無効: JoyconManagerを実行");
         }
-        if (instance != null) Destroy(gameObject);
-        instance = this;
 		int i = 0;
 
-		j = new List<Joycon>();
 		bool isLeft = false;
 		HIDapi.hid_init();
 
@@ -122,10 +123,8 @@ public class JoyconManager: MonoBehaviour
     }
 
     //デバッグ用
-#if UNITY_EDITOR
     public bool GetIsKeyboardPlay()
     {
         return m_isKeyboardPlay;
     }
-#endif
 }

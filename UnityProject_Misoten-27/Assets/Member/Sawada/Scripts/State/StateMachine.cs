@@ -69,6 +69,6 @@ public class StateMachine : MonoBehaviour
         m_currentState = nextState;
         m_currentState?.InitState();
 
-        Debug.Log($"{m_stateMachineName}: {typeof(T).Name}");
+        //Debug.Log($"{m_stateMachineName}: {typeof(T).Name}");
     }
 }

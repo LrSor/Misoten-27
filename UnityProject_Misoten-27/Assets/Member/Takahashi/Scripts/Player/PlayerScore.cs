@@ -96,6 +96,11 @@ public class PlayerScore : MonoBehaviour
         m_scoreText.text = m_totalScore.ToString("Total Score: 0000");
     }
 
+    public int GetTotalScore()
+    {
+        return m_totalScore;
+    }
+
     public Camera GetPlayerCamera()
     {
         return m_camera;

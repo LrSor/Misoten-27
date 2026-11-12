@@ -18,11 +18,14 @@ public class Player_Sprint : BaseState
     public override void InitState()
     {
         m_sprintTimer = 0f;
+        m_controller.BeginSprint();
         m_controller.SetRushFlag(true);
     }
 
     public override void UnInitState()
     {
+        m_controller.SetRushFlag(false);
+        m_controller.EndSprintCameraEffect();
     }
 
     public override void UpdateState()
@@ -31,7 +34,7 @@ public class Player_Sprint : BaseState
 
     public override void FixedUpdateState()
     {
-        m_controller.AutoMove(m_sprintMaxSpeed, m_sprintMinSpeed, m_sprintTime, m_sprintTimer);
+        m_controller.MoveSprint(m_sprintMaxSpeed, m_sprintMinSpeed, m_sprintTime, m_sprintTimer);
         m_controller.Rotate();
 
         m_sprintTimer += Time.fixedDeltaTime;
