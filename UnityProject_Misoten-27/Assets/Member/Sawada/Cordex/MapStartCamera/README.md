@@ -1,52 +1,51 @@
-# MapStartCamera テスト（Unity 標準コンポーネント）
+# MapStartCamera（Spline Dolly）
 
-`MapStartCamera.unity` を開いて Play すると、回転中心 `(0, 30, 0)` の周りを3台のカメラが回転し、地上のマップ中央 `(0, 0, 0)` を注視します。独自 C# スクリプトは使用していません。
+MapStartCamera.unity を開いて Play すると、3台のカメラが各Splineに沿って移動し、マップ中央を注視します。Unity標準コンポーネントのみを使用し、独自の実行時スクリプトはありません。
 
-## 使用している標準機能
+## 構成
 
-- Cinemachine Camera: 撮影カメラの設定。
-- Cinemachine Orbital Follow (Position Control): Tracking Target を中心にした回転位置。
-- Cinemachine Hard Look At (Rotation Control): Look At Target への注視。
-- Animator と Timeline の Animation Track: Orbital Follow の Horizontal Axis > Value をアニメーション。
-- Cinemachine Brain と Timeline の Cinemachine Track: カメラの選択とブレンド。
-- Playable Director: シーン開始時に自動再生。Wrap Mode = Hold で終了構図を保持。
+- Cinemachine Spline Dolly：各カメラのPosition Control。NormalizedのPositionを0から1へ動かします。
+- Spline Container：Orbit Center (0, 30, 0) 配下の Dolly Path 01/02/03 - Edit Spline。各カメラ専用の経路です。
+- Cinemachine Hard Look At：Map LookAt (0, 0, 0) を注視します。
+- AnimatorとTimelineのAnimation Track：Spline DollyのPositionをアニメーションします。
+- Cinemachine BrainとCinemachine Track：ショットの切り替えとブレンド。
+- Playable Director：開始時に自動再生し、19秒で最後の構図を保持します。
 
-## 切り替えを編集する
+## 移動経路を編集する
 
-1. Hierarchy の `MapStartCamera - Select for Timeline` を選択。
-2. `Window > Sequencing > Timeline` を開く。
-3. `Camera Sequence - overlap to blend` のショットを移動して切り替え時刻を変更。端をドラッグして長さを変更。
-4. ショット同士を重ねるとブレンド、隙間なく並べるとカット。空白区間では優先度で選ばれたカメラに戻るため、連続した演出では隙間を作らないでください。
-5. 再生ヘッドを動かすと Game ビューでプレビューできます。
+1. Hierarchyで Dolly Path 01/02/03 - Edit Spline を選択します。
+2. SceneビューのSpline編集ツールでノット（制御点）と接線ハンドルを動かします。
+3. 高さや曲がり方もノットの位置で調整できます。経路全体を動かす場合は親の Orbit Center (0, 30, 0) を動かします。
+4. Timelineの再生ヘッドを動かし、Gameビューで構図を確認してSceneを保存します。
 
-初期設定は 01 が 0–7 秒、02 が 6–13 秒、03 が 12–19 秒。6–7 秒と 12–13 秒でブレンドし、19 秒で最後の構図を保持します。
+初期の経路は以前の円周移動を引き継いだ、9ノットの開いた円弧です。経路をカメラの子にするとカメラの移動で経路も動くため、現在の親子関係を保ってください。
 
-## 回転と構図を編集する
+## 移動速度を編集する
 
-- 回転中心: `Orbit Center (0, 30, 0)` の Transform。各カメラの Tracking Target に指定。
-- 注視点: `Map LookAt (0, 0, 0)` の Transform。各カメラの Look At Target に指定。
-- 距離: 各カメラの Orbital Follow > Radius。Sphere モードでは水平半径ではなく、中心からカメラまでの直線距離です。
-- 仰角: Orbital Follow > Vertical Axis > Value。Radius と合わせて高さ・水平距離を調整。
-- ズーム: Cinemachine Camera > Lens > Field Of View。
+Timelineの Dolly 01/02/03 - Spline Position のクリップをAnimationウィンドウで開き、Cinemachine Spline DollyのPosition（内部名 m_SplineSettings.Position）のキーを編集します。
 
-回転速度と開始角度は Timeline の `Orbit 01/02/03 - Horizontal Axis` の Animation Clip（`Orbit_01.anim` など）に記録しています。Animation ウィンドウで `Cinemachine Orbital Follow > Horizontal Axis.Value` のキーフレームを編集してください。値の変化量 ÷ 時間が回転速度で、逆回転は値を減らします。クリップを伸縮すると速度が変わります。
+- 既存の Orbit_01.anim、Orbit_02.anim、Orbit_03.anim を継続使用しています。ファイル名は残していますが、内容はSpline Positionのアニメーションです。
+- 初期値は0秒で0、19秒で1。Normalizedの0が経路の始点、1が終点です。
+- キーの時間とカーブで速度、停止、逆方向への移動を調整できます。
+- Automatic DollyとDampingは無効です。Timelineが位置を制御します。
+- 演出を延長する場合は、ショットと移動クリップの長さ、終端キーの時刻を合わせて変更してください。
 
-| カメラ | 水平半径 | 中心からの高さ | Sphere Radius | Vertical Axis | 水平軸キー（0秒 → 19秒） |
-| --- | --- | --- | --- | --- | --- |
-| 01 Wide Orbit | 125 | 65 | 約140.89 | 約27.47度 | 180 → 294度 |
-| 02 Closer Orbit | 90 | 40 | 約98.49 | 約23.96度 | 220 → 372度 |
-| 03 Reverse Orbit | 115 | 80 | 約140.09 | 約34.82度 | 380 → 285度 |
+## ショット・注視点・画角を編集する
 
-標準 Orbital Follow の水平軸は 0 度で -Z 側、180 度で +Z 側です。アニメーション中の水平軸は Animation Clip が制御するため、Inspector で開始値だけを変えてもアニメーションの値に戻ります。自動リセンタリングと入力制御は無効にしています。
+1. MapStartCamera - Select for Timeline を選び、Window > Sequencing > Timeline を開きます。右上の鍵をロックすると選択を変えても表示を維持できます。
+2. Camera Sequence - overlap to blend のショット本体を動かすと開始時刻、端を動かすと長さが変わります。
+3. ショットを重ねるとブレンド、隙間なく並べるとカットです。空白は作らないでください。
 
-演出時間を延長する場合は、Cinemachine のショットだけでなく3本の回転 Animation Clip も延長し、必要なキーフレームを追加してください。回転 Animation Track の終端以降は最後の角度を保持します。
+初期設定は01が0–7秒、02が6–13秒、03が12–19秒。6–7秒と12–13秒でブレンドします。ブレンド中の出力位置は2台の補間位置であり、各Spline上に限定されません。
 
-カメラを増やす場合は既存カメラを複製し、Cinemachine Track にショットを追加して Virtual Camera を指定します。対応する Animation Track を作り、複製したカメラの Animator にバインドします。個別の動きが必要なら Animation Clip も複製してください。
+注視点は各カメラのLook At Target、画角はLens > Field Of Viewで編集します。経路から独立した注視設定です。
+
+カメラを増やす場合はカメラと経路をそれぞれ複製し、Spline DollyのSplineを複製した経路へ割り当てます。Cinemachine Trackにショット、Animation Trackに複製したAnimatorと移動クリップを割り当てます。個別に速度を変える場合はアニメーションも複製してください。新規アセットは Assets/Member/Sawada/Cordex/ 配下に保存します。
+
+プレイヤーカメラへの受け渡しは未実装です。
 
 ## 公式資料
 
-- Orbital Follow: https://docs.unity3d.com/Packages/com.unity.cinemachine@3.1/manual/CinemachineOrbitalFollow.html
-- Hard Look At: https://docs.unity3d.com/Packages/com.unity.cinemachine@3.1/manual/CinemachineHardLookAt.html
-- Timeline: https://docs.unity3d.com/Packages/com.unity.cinemachine@3.1/manual/setup-timeline.html
-
-今回の対象は独立したテスト Scene です。`testMapPlayerMove` 本体への組み込みと、演出後のプレイヤーカメラへの受け渡しは未実装です。既存 Scene、Prefab、Packages、ProjectSettings は変更していません。
+- Spline Dolly：https://docs.unity3d.com/Packages/com.unity.cinemachine@3.1/manual/CinemachineSplineDolly.html
+- Hard Look At：https://docs.unity3d.com/Packages/com.unity.cinemachine@3.1/manual/CinemachineHardLookAt.html
+- Timeline：https://docs.unity3d.com/Packages/com.unity.cinemachine@3.1/manual/setup-timeline.html
