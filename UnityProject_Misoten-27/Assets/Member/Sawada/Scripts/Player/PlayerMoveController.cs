@@ -210,23 +210,25 @@ public class PlayerMoveController : MonoBehaviour
     // =========================================================
     // Sprint
     // =========================================================
-    // CharacterかつAmor装備中なら取る
+    // アーマーの有無にかかわらず吹き飛ばし、装備中の場合だけ強奪する。
     public void RushCharacter(CharacterReferenceController reference)
     {
         if (m_rushFlag == false || IsKnockedBack || m_inventory == null) return;
-        if (reference == null || reference.Inventory == null || reference.Inventory == m_inventory) return;
+        if (reference == null || reference.Inventory == m_inventory ||
+            reference.GetComponentInParent<Rigidbody>() == m_rb) return;
 
-        // 装備中
-        BaseArmorSO armorSO = reference.Inventory.SwapArmor(null);
-        if (armorSO == null) return;
+        // 空スロットやInventory未設定のNPCでは装備交換を行わない。
+        if (reference.Inventory != null && reference.Inventory.GetCurrentArmor() != null)
+        {
+            BaseArmorSO armorSO = reference.Inventory.SwapArmor(null);
+            BaseArmorSO oldArmorSO = m_inventory.SwapArmor(armorSO);
+            Debug.Log($"強奪完了: {armorSO}->{oldArmorSO}");
+        }
 
-        BaseArmorSO oldArmorSO = m_inventory.SwapArmor(armorSO);
         SetRushFlag(false);
         var targetController = reference.GetComponentInParent<PlayerMoveController>();
         if (targetController != null) targetController.TackleHitSequence++;
         ApplyTackleKnockback(reference);
-
-        Debug.Log($"強奪完了: {armorSO}->{oldArmorSO}");
     }
 
     private void ApplyTackleKnockback(CharacterReferenceController reference)

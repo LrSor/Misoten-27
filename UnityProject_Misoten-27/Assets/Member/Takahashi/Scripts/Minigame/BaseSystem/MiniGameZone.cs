@@ -122,7 +122,7 @@ public class MiniGameZone : MonoBehaviour
         // other がトリガーから出たとき
         if (other.gameObject.tag == "Player")
         {
-            Debug.Log("ミニゲームゾーンから離脱");
+            //Debug.Log("ミニゲームゾーンから離脱");
 
             if (other.gameObject == m_playerObject)
             {
