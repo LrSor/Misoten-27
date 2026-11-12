@@ -20,6 +20,7 @@ public class MiniGame : MonoBehaviour
     private bool m_isActiveFlag = false;
     private bool m_isFinishFlag = false;
     private int m_score = 0;
+    private bool m_isGameClearFlag = true;
 
     [SerializeField] MiniGameObject[] m_objects;
 
@@ -63,10 +64,13 @@ public class MiniGame : MonoBehaviour
         }
     }
 
-    public void FinishMiniGame()
+    public void FinishMiniGame(bool isClear = true) //引数でゲームクリアの成否を取得
     {
         //ミニゲーム終了フラグ
         m_isFinishFlag = true;
+
+        //ゲームクリアフラグ
+        m_isGameClearFlag = isClear;
     }
 
     public bool GetIsFinish()
@@ -82,6 +86,11 @@ public class MiniGame : MonoBehaviour
     public void SetScore(int score)
     {
         m_score = score;
+    }
+
+    public bool GetIsGameClear()
+    {
+        return m_isGameClearFlag;
     }
 
     void Update()

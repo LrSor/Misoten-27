@@ -9,6 +9,10 @@
 /UnityProject_Misoten-27/[Mm]emoryCaptures/
 /UnityProject_Misoten-27/[Rr]ecordings/
 
+# Unity が強制終了したときに自動で作る復元用シーン
+/UnityProject_Misoten-27/Assets/_Recovery/
+/UnityProject_Misoten-27/Assets/_Recovery.meta
+
 # Unity builds
 /UnityProject_Misoten-27/[Bb]uild/
 /UnityProject_Misoten-27/[Bb]uilds/

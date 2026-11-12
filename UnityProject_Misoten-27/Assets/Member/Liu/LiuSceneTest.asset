@@ -26,6 +26,10 @@ MonoBehaviour:
     m_path: Assets/Member/Liu/Scene/LiuGameScene.unity
   - m_enabled: 1
     m_path: Assets/Member/Liu/Scene/LiuResultScene.unity
+  - m_enabled: 1
+    m_path: Assets/Member/Liu/Scene/LiuMainScene.unity
+  - m_enabled: 1
+    m_path: Assets/Member/Liu/Scene/LiuMiniGameScene.unity
   m_HasScriptingDefines: 0
   m_ScriptingDefines: []
   m_PlayerSettingsYaml:
