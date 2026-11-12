@@ -45,6 +45,8 @@ public class MiniGameSystem : MonoBehaviour
     [SerializeField] private float m_countNum;
     [Header("スコア表示用のテキスト")]
     [SerializeField] private Text m_score;
+    [Header("ゲームオーバー用イラスト")]
+    [SerializeField] private Image m_gameOver;
     private float m_currentNum;
     private int m_scoreNum = 0;
     private bool m_isActiveFlag = false;
@@ -63,6 +65,7 @@ public class MiniGameSystem : MonoBehaviour
         m_pose.gameObject.SetActive(false);
         m_count.gameObject.SetActive(false);
         m_score.gameObject.SetActive(false);
+        m_gameOver.gameObject.SetActive(false);
         m_currentNum = m_countNum;
         m_state = STATE_MINIGAME.STATE_DEACTIVE;
     }
@@ -226,17 +229,29 @@ public class MiniGameSystem : MonoBehaviour
                 //ミニゲーム終了フラグが立った場合、終了処理を行う
                 if (m_minigame.GetIsFinish())
                 {
-                    //スコア取得
-                    m_scoreNum = m_minigame.GetScore();
-                    Debug.Log(m_scoreNum.ToString());
-                    m_score.gameObject.SetActive(true);
+                    if(m_minigame.GetIsGameClear())
+                    {
+                        //スコア取得
+                        m_scoreNum = m_minigame.GetScore();
+                        Debug.Log(m_scoreNum.ToString());
+                        m_score.gameObject.SetActive(true);
 
-                    //ミニゲーム終了処理
-                    m_minigame.Deactivate();
+                        //ミニゲーム終了処理
+                        m_minigame.Deactivate();
 
-                    //スコア表示
-                    m_score.text = m_scoreNum.ToString("000");
-                    m_state = STATE_MINIGAME.STATE_RESULT;
+                        //スコア表示
+                        m_score.text = m_scoreNum.ToString("000");
+                        m_state = STATE_MINIGAME.STATE_RESULT;
+                    }
+                    else
+                    {
+                        //ミニゲーム終了処理
+                        m_minigame.Deactivate();
+
+                        //ゲームオーバー表示
+                        m_gameOver.gameObject.SetActive(true);
+                        m_state = STATE_MINIGAME.STATE_RESULT;
+                    }
                 }
                 break;
 
@@ -310,6 +325,7 @@ public class MiniGameSystem : MonoBehaviour
 
         //スコアUIの非表示
         m_score.gameObject.SetActive(false);
+        m_gameOver.gameObject.SetActive(false);
 
         //カメラをプレイヤー本体用へ切り替え
         //ミニゲーム用カメラ、Canvasのターゲットディスプレイをデフォルトへ変更

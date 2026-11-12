@@ -91,5 +91,8 @@ public class SensorObject : MonoBehaviour
         transform.localEulerAngles = m_currentEuler;
 
 
+        //Quaternion v = m_joycon.GetVector();
+        //gameObject.transform.rotation = v;
+
     }
 }

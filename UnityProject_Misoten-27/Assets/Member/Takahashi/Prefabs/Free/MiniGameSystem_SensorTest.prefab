@@ -975,6 +975,7 @@ MonoBehaviour:
   m_count: {fileID: 2377017587132498053}
   m_countNum: 3
   m_score: {fileID: 7118219662641315961}
+  m_gameOver: {fileID: 0}
 --- !u!114 &515071877450302758
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -988,7 +989,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SensorMinigameTest
   m_objects:
-  - {fileID: 7636208236868107674}
+  - {fileID: 0}
 --- !u!1 &7183718760118085975
 GameObject:
   m_ObjectHideFlags: 0
