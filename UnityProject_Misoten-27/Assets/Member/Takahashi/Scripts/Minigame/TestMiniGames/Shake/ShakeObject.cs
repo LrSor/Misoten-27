@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using System.Linq;
 
 public class ShakeObject : MiniGameObject
 {
@@ -12,8 +13,7 @@ public class ShakeObject : MiniGameObject
         Enum.GetValues(typeof(Joycon.Button)) as Joycon.Button[];
 
     private List<Joycon> m_joycons;
-    private Joycon m_joyconL;
-    //private Joycon m_joyconR;
+    private Joycon m_joycon;
     //============================================================
 
     //============================================================
@@ -52,8 +52,7 @@ public class ShakeObject : MiniGameObject
 
         if (m_joycons == null || m_joycons.Count <= 0) return;
 
-        m_joyconL = m_joycons.Find(c => !c.isLeft);
-        //m_joyconR = m_joycons.Find(c => !c.isLeft);
+        m_joycon = m_joycons.First();
         //============================================================
     }
 
@@ -61,7 +60,7 @@ public class ShakeObject : MiniGameObject
     public override void Deactivate()
     {
         //メンバ変数の初期化をここでも行う
-        m_joyconL = null;
+        m_joycon = null;
         m_isDownSwingFlag = false;
         m_shakedCount = 0;
     }
@@ -69,8 +68,7 @@ public class ShakeObject : MiniGameObject
     //オブジェクト更新関数
     public override void UpdateObject()
     {
-#if UNITY_EDITOR
-        bool hasJoycon = (m_joyconL != null);
+        bool hasJoycon = (m_joycon != null);
         if (!hasJoycon)
         {
             //デバッグ用キーボード操作を以下に記載
@@ -86,10 +84,9 @@ public class ShakeObject : MiniGameObject
 
             return;
         }
-#endif
 
         //ジョイコンを用いた操作を記載
-        Vector3 accel = m_joyconL.GetAccel();  // 加速度取得（縦持ち前提）
+        Vector3 accel = m_joycon.GetAccel();  // 加速度取得（縦持ち前提）
 
         // 下方向の振りを検知
         if (!m_isDownSwingFlag && accel.x < accelThresholdDown)
