@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using System.Linq;
 
 public class SpinObject : MiniGameObject
 {
@@ -12,8 +13,7 @@ public class SpinObject : MiniGameObject
         Enum.GetValues(typeof(Joycon.Button)) as Joycon.Button[];
 
     private List<Joycon> m_joycons;
-    private Joycon m_joyconL;
-    //private Joycon m_joyconR;
+    private Joycon m_joycon;
     //============================================================
 
     [SerializeField] MiniGame m_miniGame;
@@ -48,25 +48,26 @@ public class SpinObject : MiniGameObject
 
         if (m_joycons == null || m_joycons.Count <= 0) return;
 
-        m_joyconL = m_joycons.Find(c => c.isLeft);
-        //m_joyconR = m_joycons.Find(c => !c.isLeft);
+        m_joycon = m_joycons.First();
         //============================================================
     }
 
     public override void Deactivate()
     {
-        m_joyconL = null;
+        m_joycon = null;
 
         m_rotatedCount = 0;
         m_accumulatedRotationZ = 0f;
         transform.localEulerAngles = Vector3.zero;
+#if UNITY_EDITOR
         m_keyboardStep = 0;
+#endif
     }
 
     public override void UpdateObject()
     {
 #if UNITY_EDITOR
-        bool hasJoycon = (m_joyconL != null);
+        bool hasJoycon = (m_joycon != null);
         //ジョイコンが接続されている場合、キーボード操作処理を飛ばしジョイコン操作を行う
         if (!hasJoycon)
         {
@@ -129,7 +130,13 @@ public class SpinObject : MiniGameObject
         // GetGyro() は「角速度(rad/s)」を返す。
         // 角速度を時間で積分すると「角度(rad)」になるため、
         // Time.deltaTime を掛けて角度に変換する。
-        Vector3 gyro = m_joyconL.GetGyro();
+        Vector3 gyro = m_joycon.GetGyro();
+
+        if (!m_joycon.isLeft)
+        {
+            gyro.y = -gyro.y;
+            gyro.z = -gyro.z;
+        }
 
         //------------------------------------------------------------
         // Z軸の角速度を積分して回転角度を推定

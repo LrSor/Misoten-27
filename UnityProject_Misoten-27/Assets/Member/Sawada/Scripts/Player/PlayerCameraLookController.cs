@@ -32,6 +32,13 @@ public class PlayerCameraLookController : MonoBehaviour
     private PlayerInput m_playerInput;
     private InputAction m_lookAction;
 
+    [Header("Camera Rotation")]
+    private float m_rotationDuration = 1.0f; // 回転にかける秒数
+    private float m_startYaw;       // 回転開始時の角度
+    private float m_targetYaw;      // 回転終了時の角度
+    private float m_rotationTimer;  // 経過時間
+    private bool m_isRotating;      // 回転中かどうか
+
     private float m_yaw;
     private float m_pitch;
 
@@ -60,7 +67,7 @@ public class PlayerCameraLookController : MonoBehaviour
 
         Vector2 lookInput = m_lookAction.ReadValue<Vector2>();
 
-        bool usingGamepad = m_playerInput.currentControlScheme == m_gamepadSchemeName;
+        bool usingGamepad = m_lookAction.activeControl?.device is Gamepad;
 
         if (usingGamepad)
         {
@@ -84,9 +91,65 @@ public class PlayerCameraLookController : MonoBehaviour
         HandleCursor();
     }
 
+    public void Look_ver2()
+    {
+        if (!m_playerInput.enabled) return;
+
+        // 回転中でなければ入力を受け付ける
+        if (!m_isRotating && Keyboard.current != null)
+        {
+            float rotationAmount = 0.0f;
+
+            if (Keyboard.current.rightArrowKey.wasReleasedThisFrame)
+            {
+                rotationAmount = 90.0f;
+            }
+            else if (Keyboard.current.leftArrowKey.wasReleasedThisFrame)
+            {
+                rotationAmount = -90.0f;
+            }
+
+            // 回転開始
+            if (rotationAmount != 0.0f)
+            {
+                m_startYaw = m_yaw;
+                m_targetYaw = m_yaw + rotationAmount;
+
+                m_rotationTimer = 0.0f;
+                m_isRotating = true;
+            }
+        }
+
+        // 回転処理
+        if (m_isRotating)
+        {
+            m_rotationTimer += Time.deltaTime;
+
+            // Ease Out（最初が速く、最後が遅い）
+            float t = Mathf.Clamp01(m_rotationTimer / Mathf.Max(0.0001f, m_rotationDuration));
+            t = 1.0f - Mathf.Pow(1.0f - t, 3.0f);
+
+            m_yaw = Mathf.Lerp(m_startYaw, m_targetYaw, t);
+
+            // 回転終了
+            if (t >= 1.0f)
+            {
+                m_yaw = m_targetYaw;
+                m_isRotating = false;
+            }
+        }
+
+        m_pitch = Mathf.Clamp(m_pitch, m_minPitch, m_maxPitch);
+
+        m_cameraTarget.rotation = Quaternion.Euler(m_pitch, m_yaw, 0.0f);
+
+        HandleCursor();
+    }
+
     private void HandleCursor()
     {
-        if (m_playerInput.currentControlScheme != m_keyboardMouseSchemeName)
+        if (m_playerInput.currentControlScheme != m_keyboardMouseSchemeName &&
+            m_playerInput.currentControlScheme != "Joycon")
             return;
 
         if (Keyboard.current != null &&

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System;
 using UnityEngine;
+using System.Linq;
 
 //ジョイコンを使用するミニゲーム用オブジェクトのテンプレート
 public class Template_UseJoycon_MiniGameObject : MiniGameObject
@@ -12,8 +13,7 @@ public class Template_UseJoycon_MiniGameObject : MiniGameObject
         Enum.GetValues(typeof(Joycon.Button)) as Joycon.Button[];
 
     private List<Joycon> m_joycons;
-    private Joycon m_joyconL;
-    //private Joycon m_joyconR;
+    private Joycon m_joycon;
     //============================================================
 
     //============================================================
@@ -45,22 +45,21 @@ public class Template_UseJoycon_MiniGameObject : MiniGameObject
 
         if (m_joycons == null || m_joycons.Count <= 0) return;
 
-        m_joyconL = m_joycons.Find(c => c.isLeft);
-        //m_joyconR = m_joycons.Find(c => !c.isLeft);
+        m_joycon = m_joycons.First();
         //============================================================
     }
 
     //オブジェクト終了関数
     public override void Deactivate()
     {
-        m_joyconL = null;
+        m_joycon = null;
     }
 
     //オブジェクト更新関数
     public override void UpdateObject()
     {
 #if UNITY_EDITOR
-        bool hasJoycon = (m_joyconL != null);
+        bool hasJoycon = (m_joycon != null);
         if(!hasJoycon)
         {
             //デバッグ用キーボード操作を以下に記載

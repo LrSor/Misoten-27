@@ -6,9 +6,17 @@ public class PlayerSwapController : MonoBehaviour
 {
     [SerializeField] private PlayerInput m_playerInput;
     private InputAction m_swapAction;
+    private bool m_networkInput;
+    private bool m_networkSwapPending;
+
+    public void SetNetworkSwapInput(bool pressed)
+    {
+        m_networkInput = true;
+        m_networkSwapPending |= pressed;
+    }
 
     [Header("Inventory")]
-    [SerializeField] private PlayerInventory m_inventory;
+    [SerializeField] private Inventory m_inventory;
 
     // swap可能一覧
     private List<FieldArmorMachine> m_canSwapArmor = new();
@@ -20,6 +28,12 @@ public class PlayerSwapController : MonoBehaviour
     {
         get
         {
+            if (m_networkInput)
+            {
+                bool pressed = m_networkSwapPending;
+                m_networkSwapPending = false;
+                return pressed;
+            }
             return m_swapAction.WasPressedThisFrame();
         }
     }

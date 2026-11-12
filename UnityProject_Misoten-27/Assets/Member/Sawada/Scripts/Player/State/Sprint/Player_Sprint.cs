@@ -9,12 +9,16 @@ public class Player_Sprint : BaseState
     PlayerMoveController m_controller;
     StateMachine m_stateMachine;
 
-    public override void InitState()
+    private void Awake()
     {
         m_controller = GetComponent<PlayerMoveController>();
         m_stateMachine = GetComponent<StateMachine>();
+    }
 
+    public override void InitState()
+    {
         m_sprintTimer = 0f;
+        m_controller.SetRushFlag(true);
     }
 
     public override void UnInitState()

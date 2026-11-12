@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -34,11 +35,16 @@ public class PlayerScore : MonoBehaviour
                 m_score = newScore;
             }
         }
-
     }
 
     //ミニゲーム結果保存用リスト
+    [Header("スコア管理リスト")]
     [SerializeField] private List<Result> m_results;
+
+    [Header("プレイヤーのカメラを取得")]
+    [SerializeField] private Camera m_camera;
+    [Header("プレイヤーのCanvasを取得")]
+    [SerializeField] private Canvas m_canvas;
 
     [Header("スコア表示用テキストUI")]
     [SerializeField] private Text m_scoreText;
@@ -48,9 +54,9 @@ public class PlayerScore : MonoBehaviour
     void Start()
     {
         //リストのダミーデータを作成
-        MiniGame dummyGame = new MiniGame();
-        Result dummyResult = new Result(dummyGame, 0);
-        m_results.Add(dummyResult);
+        //MiniGame dummyGame = new MiniGame();
+        //Result dummyResult = new Result(dummyGame, 0);
+        //m_results.Add(dummyResult);
     }
 
     // Update is called once per frame
@@ -88,5 +94,26 @@ public class PlayerScore : MonoBehaviour
 
         //スコア表示UIを更新
         m_scoreText.text = m_totalScore.ToString("Total Score: 0000");
+    }
+
+    public Camera GetPlayerCamera()
+    {
+        return m_camera;
+    }
+
+    public Canvas GetPlayerCanvas()
+    {
+        return m_canvas;
+    }
+
+    public void SetPlayerCanvas(Canvas canvas)
+    {
+        m_canvas = canvas;
+        Transform scoreTransform = m_canvas.transform.Find("PlayerScore");
+
+        if (scoreTransform != null)
+        {
+            m_scoreText = scoreTransform.GetComponent<Text>();
+        }
     }
 }

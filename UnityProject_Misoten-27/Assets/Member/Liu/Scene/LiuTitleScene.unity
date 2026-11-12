@@ -150,6 +150,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::LIU_SCENE_CONTROLLER
   m_transitionImage: {fileID: 21300000, guid: 8401fb8568292a74cbe677bdbc2b3f3b, type: 3}
   m_moveDuration: 2
+  m_gameScene: LiuGameScene
+  m_resultScene: LiuResultScene
+  m_titleScene: LiuTitleScene
 --- !u!4 &3622429
 Transform:
   m_ObjectHideFlags: 0
