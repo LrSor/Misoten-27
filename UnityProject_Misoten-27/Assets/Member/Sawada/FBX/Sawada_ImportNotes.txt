@@ -1,0 +1,30 @@
+書き出し元: Manekin_CommonRig_Uwagi_01_Rigged_Face_v01.blend（最終保存状態）
+
+Sawada_Base_20261116.fbx = Head_UV + Body_UV + Common_Rig
+Sawada_Uwagi_Red_20261116.fbx = Uwagi_01_CommonRig + 同じCommon_Rig
+頭と体は独立したメッシュ・マテリアルです。服も完全に別FBXです。
+画像は ../Texture/ に保存しています。体は画像を使わず元の肌色マテリアルです。
+
+Unityで別FBXの服を切り替える手順:
+1. 両FBXのRig設定でOptimize Game Objectsを無効にします。最初はGenericで確認してください。
+2. BaseのFBXをシーンに配置し、そのモデル最上位にModularCharacterを追加します。
+3. commonRigにBase内のCommon_Rig、headRendererにHead_UVを設定します。
+4. Outfit Prefabs配列に服FBXまたは服FBXのPrefab Variantを登録します。
+5. ゲーム用コードから component.EquipPrefab(0) を呼びます。
+   服のメッシュを生成し、ボーン参照をキャラクターのCommon_Rigへ再割り当てします。
+   他の服FBXを配列に入れ、EquipPrefab(1)等で別オブジェクトへ交換できます。
+6. SelectEmbeddedOutfit(-1)で服を外せます。
+
+服FBXをそのままBaseへ親子付けするだけでは、同じRigのアニメーションに追従しません。
+このスクリプトは服側の骨を新しく生成せず、素体側の骨を参照させます。
+別の服も同じボーン名・階層・レスト姿勢・単位・モデル内の変換を使ってください。
+服は独立したSkinnedMeshRendererとして交換し、頭と体には触れません。
+
+マテリアルは使用中のURP/Built-in/HDRPに合わせてUnityで設定してください。
+頭: Sawada_Head_BaseColor_20261116.png、Materialのベースカラーは白。
+服: Sawada_Uwagi_Red_BaseColor_20261116.png、Materialのベースカラーは白。
+体: 元の肌色 #FFEADB。
+頭画像だけを変える場合はSetHeadTexture(texture)も使用できます。
+
+FBXの再読込で骨・ウェイト・UV・画像参照・マテリアル分離を検査済みです。
+Unity Editor上でのコンパイル・アニメーション動作は未検証です。アニメーションは同梱していません。
