@@ -23,6 +23,9 @@ public class FindCat : MiniGame
 
         //以下に必要な処理を追加
         m_limitText.gameObject.SetActive(false);
+
+        m_backGround.gameObject.SetActive(false);
+        m_frame.gameObject.SetActive(false);
     }
 
     protected override void UpdateMiniGame()
@@ -56,6 +59,9 @@ public class FindCat : MiniGame
         m_limitText.text = m_limitCount.ToString("Time Limit: 00");
 
         m_limitText.gameObject.SetActive(true);
+
+        m_backGround.gameObject.SetActive(true);
+        m_frame.gameObject.SetActive(true);
     }
 
     public override void Deactivate()
@@ -65,5 +71,8 @@ public class FindCat : MiniGame
 
         //以下に必要な処理を追加
         m_limitText.gameObject.SetActive(false);
+
+        m_backGround.gameObject.SetActive(false);
+        m_frame.gameObject.SetActive(false);
     }
 }
