@@ -105,6 +105,11 @@ public class PlayerInventoryUI : MonoBehaviour
             GameObject itemPreview = Instantiate(armor.m_modelPrefab, m_itemPreviewCameraList[index].transform);
             itemPreview.transform.localPosition = new Vector3(0, 0, 5);
 
+            int previewLayer = LayerMask.NameToLayer("ItemPreview");
+            if (previewLayer >= 0)
+                foreach (var renderer in itemPreview.GetComponentsInChildren<Renderer>(true))
+                    renderer.gameObject.layer = previewLayer;
+
             // カメラ表示設定
             ItemPreviewCameraVisibility camVisibility = itemPreview.AddComponent<ItemPreviewCameraVisibility>();
             camVisibility.SetTargetCamera(m_itemPreviewCameraList[index]);
