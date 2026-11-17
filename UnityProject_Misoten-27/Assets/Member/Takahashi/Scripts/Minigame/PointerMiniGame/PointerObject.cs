@@ -46,6 +46,9 @@ public class PointerObject : MiniGameObject
 
         m_joycon = m_joycons.First();
         //============================================================
+
+        //ポインターの初期化
+        m_joycon.Recenter();
     }
 
     //オブジェクト終了関数
