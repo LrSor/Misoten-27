@@ -45,4 +45,4 @@ WardrobeをModel直下へ置く場合は、AutoRigWardrobeのCommon Rigに素体
 
 ## Player_ver3のアニメーション
 
-表示モデルは`Assets/Member/Sawada/FBX/Sawada_Base_20261116.fbx`のHead・Body・Rigです。Animatorには`PlayerVer3Humanoid.asset`と`TripoLocomotion.controller`を使用し、Root Motionは無効にしています。移動・カメラ・当たり判定・インベントリ・Swapなどの既存設定は維持しています。
+表示モデルは`Assets/Member/Sawada/FBX/Player/Sawada_Base_20261116.fbx`のHead・Body・Rigに統一しています。Player_ver3・Player_cordex・CordexSceneはこのFBXを参照します。FBXのGeneric設定は維持し、モデル上のAnimatorには`Assets/Member/Sawada/Avatar/PlayerVer3Humanoid.asset`と`TripoLocomotion.controller`を使用します。Root Motionは無効です。移動・カメラ・当たり判定・インベントリ・Swapなどの既存設定は維持しています。

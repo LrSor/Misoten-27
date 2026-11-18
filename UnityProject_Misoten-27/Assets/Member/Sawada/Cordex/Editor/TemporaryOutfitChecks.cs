@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -24,6 +26,7 @@ namespace Sawada.Cordex
         public static void RunBatch()
         {
             if (!Application.isBatchMode) throw new InvalidOperationException("Run in Unity batch mode.");
+            CheckUnifiedReferences();
             EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             SessionState.SetBool(Pending, true);
             EditorApplication.playModeStateChanged += OnPlayModeChanged;
@@ -38,7 +41,9 @@ namespace Sawada.Cordex
             {
                 CheckReplacement();
                 CheckImportedOutfits();
+                CheckUnifiedAnimation();
                 Debug.Log("[TemporaryOutfitChecks] PASS: replacement, same-frame switching, null/empty entries, unequip, explicit target, player isolation, FBX rig binding, missing scripts");
+                Debug.Log("[TemporaryOutfitChecks] PASS: unified FBX references, CordexScene, prefab materials, humanoid animation");
                 EditorApplication.Exit(0);
             }
             catch (Exception error)
@@ -107,7 +112,7 @@ namespace Sawada.Cordex
         static void CheckImportedOutfits()
         {
             var player = Player("RiggedPlayer");
-            var source = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Member/Sawada/Cordex/PlayerModel/Sawada_Base_20261116.fbx");
+            var source = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Member/Sawada/FBX/Player/Sawada_Base_20261116.fbx");
             Check(source != null, "base FBX exists");
             var body = Object.Instantiate(source, player.target.parent.parent, false);
             var rig = body.GetComponentsInChildren<Transform>(true).First(t => t.name == "Common_Rig");
@@ -130,6 +135,67 @@ namespace Sawada.Cordex
                 var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
                 Check(prefab != null && prefab.GetComponentsInChildren<Transform>(true)
                     .All(t => GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(t.gameObject) == 0), "prefab missing scripts: " + path);
+            }
+        }
+
+        static void CheckUnifiedReferences()
+        {
+            const string modelPath = "Assets/Member/Sawada/FBX/Player/Sawada_Base_20261116.fbx";
+            var model = AssetDatabase.LoadAssetAtPath<GameObject>(modelPath);
+            Check(model != null, "unified FBX exists");
+            string guid = AssetDatabase.AssetPathToGUID(modelPath);
+            var ids = new HashSet<long>();
+            foreach (var asset in AssetDatabase.LoadAllAssetsAtPath(modelPath)
+                .Concat(model.GetComponentsInChildren<Component>(true).Cast<Object>())
+                .Concat(model.GetComponentsInChildren<Transform>(true).Select(t => (Object)t.gameObject)))
+            {
+                if (asset != null && AssetDatabase.TryGetGUIDAndLocalFileIdentifier(asset, out string assetGuid, out long id)
+                    && assetGuid == guid) ids.Add(id);
+            }
+            foreach (string file in new[] { "Assets/Member/Sawada/Prefab/Player/Player_cordex.prefab", "Assets/Member/Sawada/Scenes/CordexScene.unity" })
+                foreach (Match match in Regex.Matches(File.ReadAllText(file), @"\{fileID: (-?\d+), guid: " + guid))
+                {
+                    long id = long.Parse(match.Groups[1].Value);
+                    Check(id == 100100000 || ids.Contains(id), "FBX fileID " + id + " in " + file);
+                }
+            var scene = EditorSceneManager.OpenPreviewScene("Assets/Member/Sawada/Scenes/CordexScene.unity");
+            try
+            {
+                var transforms = scene.GetRootGameObjects().SelectMany(r => r.GetComponentsInChildren<Transform>(true)).ToArray();
+                Check(transforms.All(t => GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(t.gameObject) == 0), "scene missing scripts");
+                var models = transforms.Where(t => t.name == "Sawada_Base_HeadBodyRig").ToArray();
+                Check(models.Length > 0, "scene base model");
+                foreach (var item in models) CheckModel(item.gameObject, modelPath);
+            }
+            finally { EditorSceneManager.ClosePreviewScene(scene); }
+        }
+
+        static void CheckModel(GameObject model, string expectedPath)
+        {
+            Check(AssetDatabase.GetAssetPath(PrefabUtility.GetCorrespondingObjectFromOriginalSource(model)) == expectedPath,
+                "model source: " + model.name);
+            var animator = model.GetComponent<Animator>();
+            Check(animator != null && animator.avatar != null && animator.avatar.isValid && animator.avatar.isHuman,
+                "humanoid avatar: " + model.name);
+            Check(animator.runtimeAnimatorController != null && !animator.applyRootMotion, "animation settings");
+            var skins = model.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+            Check(skins.Length >= 2 && skins.All(s => s.sharedMesh != null
+                && s.sharedMaterials.All(m => m != null && m.shader != null)), "model meshes and materials");
+        }
+
+        static void CheckUnifiedAnimation()
+        {
+            foreach (string file in new[] { "Assets/Member/Sawada/Prefab/Player/Player_ver3.prefab", "Assets/Member/Sawada/Prefab/Player/Player_cordex.prefab" })
+            {
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(file);
+                var model = prefab.GetComponentsInChildren<Transform>(true).Single(t => t.name == "Sawada_Base_HeadBodyRig");
+                CheckModel(model.gameObject, "Assets/Member/Sawada/FBX/Player/Sawada_Base_20261116.fbx");
+                var copy = Object.Instantiate(model.gameObject);
+                var animator = copy.GetComponent<Animator>();
+                animator.Rebind();
+                animator.Update(0);
+                Check(animator.isHuman && animator.GetBoneTransform(HumanBodyBones.Hips) != null, "runtime humanoid binding: " + file);
+                Object.Destroy(copy);
             }
         }
     }
