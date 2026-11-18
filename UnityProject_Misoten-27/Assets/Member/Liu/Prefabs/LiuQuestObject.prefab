@@ -194,6 +194,8 @@ GameObject:
   - component: {fileID: 5666504892919843520}
   - component: {fileID: 5165933106222947748}
   - component: {fileID: 7272796224418544117}
+  - component: {fileID: 321718192661140399}
+  - component: {fileID: 2311158799758542410}
   m_Layer: 0
   m_Name: LiuQuestObject
   m_TagString: Untagged
@@ -308,6 +310,32 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 23e911d219e97224c975194e9499d16e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Quest
+--- !u!114 &321718192661140399
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6371290645904024985}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ea7652b10ccdad640a3340a9978f3aec, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LiuQuestGroupColor
+  questMark: {fileID: 2329372034182422479}
+--- !u!114 &2311158799758542410
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6371290645904024985}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f23260dcb321b514b97dd7b7c552a0e2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LIU_QUEST_STATUS
+  m_acceptFlag: 0
 --- !u!1 &7468717344337161513
 GameObject:
   m_ObjectHideFlags: 0

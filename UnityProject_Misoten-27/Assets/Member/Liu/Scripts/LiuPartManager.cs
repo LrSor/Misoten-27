@@ -11,12 +11,13 @@ public class LiuPartManager : BaseManager<LiuPartManager>
         public Transform[] spawnPoints;       // そのグループ用パーツの出現候補地点（複数）
     }
 
-    [Header("グループごとのパーツ設定 (GroupA ~ GroupE の5つ)")]
+    [Header("グループごとの運動データ設定")]
     [SerializeField] private List<GroupPartSpawnSet> groupPartSpawnSets;
 
     private HashSet<Transform> usedSpawnPoints = new HashSet<Transform>();
     private Dictionary<Part, Transform> activePartPointMap = new Dictionary<Part, Transform>();
-    private Dictionary<GroupType, Transform> lastFreedPointMap = new Dictionary<GroupType, Transform>();
+    // 出現中の運動データを外部から読み取れるようにする。
+    public IEnumerable<Part> ActiveParts => activePartPointMap.Keys;
 
     protected override void OnAwake()
     {
@@ -39,80 +40,168 @@ public class LiuPartManager : BaseManager<LiuPartManager>
         SpawnAllGroupParts();
     }
 
+    // 各グループに登録された運動データを、種類ごとに1個生成する。
     public void SpawnAllGroupParts()
     {
-        foreach (var set in groupPartSpawnSets)
+        if (groupPartSpawnSets == null)
         {
+            return;
+        }
 
-            // 各グループの運動データを開始時に3個生成する
-            for (int i = 0; i < 3; i++) { 
-                SpawnSinglePartForGroup(set.group);
+        foreach (GroupPartSpawnSet set in groupPartSpawnSets)
+        {
+            // 運動データが未設定のグループは読み飛ばす。
+            if (set.partPool == null || set.partPool.Count == 0)
+            {
+                Debug.LogWarning(
+                    $"[LiuPartManager] {set.group} の運動データが未設定です。");
+                continue;
+            }
+
+            // ランダムに種類を選ばず、登録された種類を順番に生成する。
+            foreach (PartData data in set.partPool)
+            {
+                TrySpawnPart(set, data);
             }
         }
     }
 
-    private void SpawnSinglePartForGroup(GroupType group)
-    {
-        GroupPartSpawnSet set = groupPartSpawnSets.Find(s => s.group == group);
-        if (set.partPool == null || set.partPool.Count == 0 || set.spawnPoints == null || set.spawnPoints.Length == 0) return;
+   
 
-        lastFreedPointMap.TryGetValue(group, out Transform lastFreedPoint);
+    // 指定した種類の運動データを、空いている地点に生成する。
+    private bool TrySpawnPart(
+        GroupPartSpawnSet set,
+        PartData data,
+        Transform excludedPoint = null)
+    {
+        // データ、グループ、Prefab、出現地点の設定を確認する。
+        if (data == null
+            || data.group != set.group
+            || data.partPrefab == null
+            || set.spawnPoints == null)
+        {
+            Debug.LogWarning(
+                "[LiuPartManager] 運動データの設定を確認してください。");
+            return false;
+        }
+
+        // PrefabのルートにはPartコンポーネントが必要。
+        if (data.partPrefab.GetComponent<Part>() == null)
+        {
+            Debug.LogWarning(
+                "[LiuPartManager] PrefabにPartがありません："
+                + data.partName);
+            return false;
+        }
+
+        // 同じ種類が出現中の場合は、重複して生成しない。
+        foreach (var pair in activePartPointMap)
+        {
+            if (pair.Key != null && pair.Key.Data == data)
+            {
+                return false;
+            }
+        }
 
         List<Transform> availablePoints = new List<Transform>();
-        foreach (var pt in set.spawnPoints)
+
+        foreach (Transform point in set.spawnPoints)
         {
-            if (pt != null && !usedSpawnPoints.Contains(pt) && pt != lastFreedPoint)
+            // 使用中の地点と、取得直前の地点を候補から除外する。
+            if (point == null
+                || point == excludedPoint
+                || usedSpawnPoints.Contains(point))
             {
-                availablePoints.Add(pt);
+                continue;
+            }
+
+            // 同じ地点の重複登録を除く。
+            if (!availablePoints.Contains(point))
+            {
+                availablePoints.Add(point);
             }
         }
 
+        // 別の空き地点がなければ、設定を見直せるように警告する。
         if (availablePoints.Count == 0)
         {
-            foreach (var pt in set.spawnPoints)
-            {
-                if (pt != null && !usedSpawnPoints.Contains(pt))
-                {
-                    availablePoints.Add(pt);
-                }
-            }
+            Debug.LogWarning(
+                "[LiuPartManager] 空きスポーン地点がありません："
+                + data.partName);
+            return false;
         }
 
-        Transform chosenSpawnPoint = (availablePoints.Count > 0)
-            ? availablePoints[Random.Range(0, availablePoints.Count)]
-            : set.spawnPoints[Random.Range(0, set.spawnPoints.Length)];
+        Transform chosenPoint =
+            availablePoints[Random.Range(0, availablePoints.Count)];
 
-        if (chosenSpawnPoint == null) return;
+        GameObject partObject = Instantiate(
+            data.partPrefab,
+            chosenPoint.position,
+            chosenPoint.rotation);
 
-        usedSpawnPoints.Add(chosenSpawnPoint);
+        Part part = partObject.GetComponent<Part>();
+        part.Initialize(data);
 
-        PartData selectedData = set.partPool[Random.Range(0, set.partPool.Count)];
+        // 使用中の地点と、生成したオブジェクトの対応を記録する。
+        usedSpawnPoints.Add(chosenPoint);
+        activePartPointMap[part] = chosenPoint;
 
-        GameObject partObj = Instantiate(selectedData.partPrefab, chosenSpawnPoint.position, chosenSpawnPoint.rotation);
-        Part part = partObj.GetComponent<Part>();
-        if (part != null)
-        {
-            part.Initialize(selectedData);
-            activePartPointMap[part] = chosenSpawnPoint;
-        }
+        Debug.Log(
+            $"[LiuPartManager] [{data.group}] {data.partName} を "
+            + $"{chosenPoint.name} に生成しました。");
+
+        return true;
     }
 
+    // 取得された運動データを、同じ種類のまま別の地点に再生成する。
     private void HandlePartPickedUp(Part pickedPart)
     {
-        if (pickedPart == null) return;
-
-        GroupType group = pickedPart.Data.group;
-
-        if (activePartPointMap.TryGetValue(pickedPart, out Transform usedPoint))
+        if (pickedPart == null || pickedPart.Data == null)
         {
-            if (usedPoint != null)
-            {
-                usedSpawnPoints.Remove(usedPoint);
-                lastFreedPointMap[group] = usedPoint;
-            }
-            activePartPointMap.Remove(pickedPart);
+            return;
         }
 
-        SpawnSinglePartForGroup(group);
+        // このManagerが生成したオブジェクトだけを処理する。
+        if (!activePartPointMap.TryGetValue(
+            pickedPart, out Transform usedPoint))
+        {
+            return;
+        }
+
+        // 取得された種類を保存する。
+        PartData data = pickedPart.Data;
+
+        // 古い登録を解除してから、新しいオブジェクトを生成する。
+        activePartPointMap.Remove(pickedPart);
+
+        if (usedPoint != null)
+        {
+            usedSpawnPoints.Remove(usedPoint);
+        }
+
+        if (groupPartSpawnSets == null)
+        {
+            Debug.LogWarning(
+                "[LiuPartManager] グループ設定がありません。");
+            return;
+        }
+
+        // この運動データが登録されているグループ設定を探す。
+        int setIndex = groupPartSpawnSets.FindIndex(
+            set => set.group == data.group
+                && set.partPool != null
+                && set.partPool.Contains(data)
+        );
+
+        if (setIndex < 0)
+        {
+            Debug.LogWarning(
+                "[LiuPartManager] 再生成するデータの設定がありません："
+                + data.partName);
+            return;
+        }
+
+        // 取得直前の地点を除外し、同じ種類を再生成する。
+        TrySpawnPart(groupPartSpawnSets[setIndex], data, usedPoint);
     }
 }
