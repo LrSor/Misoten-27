@@ -525,7 +525,6 @@ MonoBehaviour:
   m_explanationUI: {fileID: 0}
   m_playingUI: {fileID: 0}
   m_resultUI: {fileID: 0}
-  m_explanationSeconds: 5
   m_resultSeconds: 5
   m_playerControls: []
   m_onPlayerControlChanged:
@@ -586,6 +585,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d3f260dd33be44fc88dddfa18502cf00, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MiniGameUIExplanationState
+  m_callIcon: {fileID: 1713091587}
+  m_speechBubble: {fileID: 1271196073}
 --- !u!114 &984985900
 MonoBehaviour:
   m_ObjectHideFlags: 0

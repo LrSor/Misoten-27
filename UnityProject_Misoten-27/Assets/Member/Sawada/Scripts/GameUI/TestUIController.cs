@@ -38,7 +38,8 @@ public class TestUIController : MiniGameUIBase
     // 本番 UI は基底クラスの表示参照と OnPhaseChanged を使って実装する。
     private void OnGUI()
     {
-        if (!IsRunning) return;
+        // 説明中は Canvas の CallIcon / SpeechBubble を見せる。
+        if (!IsRunning || CurrentPhase == Phase.Explanation) return;
         float width = Mathf.Min(560f, Screen.width - 20f);
         Rect panel = new Rect((Screen.width - width) * 0.5f, 30f, width, 340f);
         GUI.Box(panel, "MINI GAME / UI BASE TEST");

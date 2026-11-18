@@ -2,12 +2,33 @@
 
 `BaseState` と `StateMachine` を利用する共通フロー。
 
-1. `BeginMiniGame()` → 説明（既定5秒、操作不可）
+1. `BeginMiniGame()` → 説明アニメーション（合計4.6秒、操作不可）
 2. 自動でプレイ（操作可）
 3. ミニゲームの終了条件から `FinishMiniGame()` → 終了表示（既定5秒、操作不可）
 4. UI を閉じ、開始前の Player 操作状態へ復帰
 
 時間には `Time.unscaledTime` を使う。プレイ時間・勝敗判定は継承先に実装する。
+
+## 説明アニメーション
+
+`MiniGameUIExplanationState` の Call Icon に Image、Speech Bubble に RectTransform を指定する。
+GameUI Scene は既存の CallIcon / SpeechBubble に接続済み。配置・画像設定は維持する。
+以下を順番に実行し、吹き出しを閉じ終わってからプレイへ移行する。
+
+| 開始からの時間 | 動作 |
+| --- | --- |
+| 0～0.2秒 | CallIcon の Scale を 0→1 |
+| 0.2～0.6秒 | CallIcon の α を 1→0.5→1（1回目） |
+| 0.6～1.0秒 | CallIcon の α を 1→0.5→1（2回目） |
+| 1.0～1.4秒 | CallIcon の α を 1→0 |
+| 1.4～1.5秒 | SpeechBubble の Scale を 0→1 |
+| 1.5～4.5秒 | SpeechBubble を3秒表示 |
+| 4.5～4.6秒 | SpeechBubble の Scale を 1→0 |
+
+点滅の「0.4秒」は1往復の時間。3回目は同じ0.4秒で透明にする。
+Scale は XYZ を同じ値にする。経過時間から値を計算するため、低フレームレート時も各区間を累積遅延させない。
+中断・終了時には両方の Scale を0、CallIcon の α を1に戻し、次回開始時も初期化する。
+従来の説明5秒タイマーは、このアニメーションの所要時間に置き換えた。終了表示は引き続き5秒。
 
 ## 入力の渡し方
 
@@ -47,7 +68,7 @@ StateMachine の Initial State は `MiniGameUIClosedState`。同じ GameObject �
 継承先でも Unity の `Awake` / `OnDisable` を override する場合は `base` を呼ぶ。
 
 GameUI Scene の TestUIController は F で開始、Escape でテストを終了する。
-説明中は入力例のアニメーション、プレイ中は関数経由で受信した Vector2・ボタン状態・押下回数を表示する。
+説明中は CallIcon / SpeechBubble のアニメーション、プレイ中は関数経由で受信した Vector2・ボタン状態・押下回数を表示する。
 ミニゲーム本体や本番用の UI デザインはまだ含まない。
 
 実際の Player を接続するときは Player Controls にその Player 専用の操作コンポーネントを指定するか、
@@ -60,7 +81,9 @@ GameUI Scene には本体の Player がないため、現在はテスト入力�
 Unity の `Tools > Sawada > Check MiniGame UI Base` から、タイマー境界・入力の受け渡し・中断復帰・Scene 参照を保存せずに確認できる。
 この検査は Edit Mode で実行する。実機 Joycon や Play Mode の見た目は別途確認する。
 
-## 今回の変更ファイル（プロジェクトルート相対）
+## 基底作成時の変更ファイル（プロジェクトルート相対）
+
+以下は基底作成時点の報告。説明アニメーション追加後の検査結果は末尾に記載する。
 
 編集：
 
@@ -101,3 +124,30 @@ Scene の追加 fileID の重複・コンポーネント接続・追加スクリ
 未実施：Unity バッチ起動がライセンス初期化付近で終了コード1となり、Editor 検査・Play Mode・
 実機 Joycon・Unity 内での Missing Script 検査・実 Player の動作は未確認。
 生成したコンパイル出力・起動ログは Temp / Logs 配下に置き、成果物に含めない。
+
+## 説明アニメーション追加時の変更と確認
+
+フェッチ・早送りプルで `8789f85` まで取り込み、配置済みの画像を接続した。
+
+編集ファイル（プロジェクトルート相対）：
+
+- `Assets/Member/Sawada/Cordex/GameUI/MiniGameUIExplanationState.cs`：CallIcon の拡大・点滅・消失、SpeechBubble の拡大・3秒待機・縮小と完了後のプレイ遷移。
+- `Assets/Member/Sawada/Cordex/GameUI/MiniGameUIBase.cs`：経過時間を State と共有し、説明の残り時間を4.6秒の演出に合わせる。
+- `Assets/Member/Sawada/Cordex/GameUI/Editor/MiniGameUIBaseChecks.cs`：各演出時刻の Scale・α、操作禁止、遷移、中断復帰、Scene の画像参照を検査。
+- `Assets/Member/Sawada/Scripts/GameUI/TestUIController.cs`：説明中のテスト用 OnGUI を非表示にし、Scene の画像を表示。
+- `Assets/Member/Sawada/Scenes/GameUI.unity`：説明 State に既存の CallIcon / SpeechBubble を接続し、従来の説明5秒設定を削除。配置・画像・GUID を維持。
+- `Assets/Member/Sawada/Cordex/GameUI/README.md`：演出仕様と今回の報告を追記。
+
+追加・削除・移動したファイルなし。既存 meta の変更なし。
+
+確認結果：
+
+- Unity の実 DLL を参照した関連10ソースの C# コンパイル：エラー0（Inspector 設定フィールドの CS0649 警告あり）。
+- Unity 6000.3.14f1 のバッチで `MiniGameUIBaseChecks.Run`：PASS、終了コード0。
+- 12時点の拡大率・透明度、閉じる途中までの操作禁止、演出完了後のプレイ遷移、入力制限、中断・再開、Player 操作状態の復帰を確認。
+- GameUI Scene の Missing Script なし、State と両画像の参照を確認。
+- 見た目の目視確認、Play Mode の実時間再生、実機 Joycon と実 Player の確認は未実施。
+
+プロジェクト既存の Cinemachine サンプル asmref 警告は起動時に出るが、検査は通過した。
+Unity 起動による `Assets/Member/Liu/Fonts/LiuQuestFont SDF.asset` の自動更新は、
+起動前に変更がなかったことを確認したうえで元の内容に復元し、成果物から除外した。

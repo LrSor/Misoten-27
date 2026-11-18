@@ -3,6 +3,7 @@ using System.Reflection;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>UI の遷移・操作復帰・Scene 参照を、Scene を保存せずに確認する。</summary>
 public static class MiniGameUIBaseChecks
@@ -23,6 +24,15 @@ public static class MiniGameUIBaseChecks
             GameObject root = new GameObject("UI root");
             root.transform.SetParent(owner.transform);
             SetField(ui, "m_uiRoot", root);
+            var callObject = new GameObject("CallIcon", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            callObject.transform.SetParent(root.transform);
+            Image callIcon = callObject.GetComponent<Image>();
+            var bubbleObject = new GameObject("SpeechBubble", typeof(RectTransform));
+            bubbleObject.transform.SetParent(root.transform);
+            var bubble = bubbleObject.GetComponent<RectTransform>();
+            var explanation = owner.GetComponent<MiniGameUIExplanationState>();
+            SetField(explanation, "m_callIcon", callIcon);
+            SetField(explanation, "m_speechBubble", bubble);
             SetField(ui, "m_playerControls", new Behaviour[] { control, disabledControl, control, machine });
             SetField(machine, "m_initialState", nameof(MiniGameUIClosedState));
             Invoke(ui, "Awake");
@@ -39,18 +49,29 @@ public static class MiniGameUIBaseChecks
                 "Explanation locks game controls");
             Require(!control.enabled && !disabledControl.enabled && machine.enabled && root.activeSelf,
                 "Only configured player controls are suspended");
-            Require(ui.RemainingSeconds > 4.9f && ui.RemainingSeconds <= 5f, "Default explanation is five seconds");
+            Require(Mathf.Abs(ui.RemainingSeconds - 4.6f) < 0.01f, "Explanation sequence is 4.6 seconds");
+            Require(callIcon.rectTransform.localScale == Vector3.zero && bubble.localScale == Vector3.zero,
+                "Explanation starts with both scales at zero");
             ui.BeginMiniGame();
             ui.FinishMiniGame();
             ui.ReceiveVector2Input(Vector2.one);
             ui.ReceiveButtonInput(true);
             Require(playingState.Vector2Input == Vector2.zero && !playingState.IsButtonPressed, "Explanation ignores input");
             Require(ui.CurrentPhase == MiniGameUIBase.Phase.Explanation, "Repeated start and early finish are ignored");
-            SetField(ui, "m_phaseStartedAt", Time.unscaledTime - 4f);
-            owner.GetComponent<MiniGameUIExplanationState>().UpdateState();
-            Require(!ui.CanControlPlayer, "Explanation stays locked before five seconds");
-            SetField(ui, "m_phaseStartedAt", Time.unscaledTime - 5f);
-            owner.GetComponent<MiniGameUIExplanationState>().UpdateState();
+            CheckAnimation(ui, explanation, callIcon, bubble, 0.1f, 0.5f, 1f, 0f);
+            CheckAnimation(ui, explanation, callIcon, bubble, 0.2f, 1f, 1f, 0f);
+            CheckAnimation(ui, explanation, callIcon, bubble, 0.4f, 1f, 0.5f, 0f);
+            CheckAnimation(ui, explanation, callIcon, bubble, 0.6f, 1f, 1f, 0f);
+            CheckAnimation(ui, explanation, callIcon, bubble, 0.8f, 1f, 0.5f, 0f);
+            CheckAnimation(ui, explanation, callIcon, bubble, 1.0f, 1f, 1f, 0f);
+            CheckAnimation(ui, explanation, callIcon, bubble, 1.2f, 1f, 0.5f, 0f);
+            CheckAnimation(ui, explanation, callIcon, bubble, 1.4f, 1f, 0f, 0f);
+            CheckAnimation(ui, explanation, callIcon, bubble, 1.45f, 1f, 0f, 0.5f);
+            CheckAnimation(ui, explanation, callIcon, bubble, 1.5f, 1f, 0f, 1f);
+            CheckAnimation(ui, explanation, callIcon, bubble, 4.49f, 1f, 0f, 1f);
+            CheckAnimation(ui, explanation, callIcon, bubble, 4.55f, 1f, 0f, 0.5f);
+            SetField(ui, "m_phaseStartedAt", Time.unscaledTime - 4.61f);
+            explanation.UpdateState();
             Require(ui.CanControlPlayer && control.enabled && !disabledControl.enabled, "Play restores previous controls");
             // 値を丸めずに渡すため、マウス delta など 1 を超える入力も受け取れる。
             Vector2 sample = new Vector2(12f, -3f);
@@ -78,6 +99,8 @@ public static class MiniGameUIBaseChecks
             ui.BeginMiniGame();
             Invoke(ui, "OnDisable");
             Require(!ui.IsRunning && control.enabled, "Interruption restores controls");
+            Require(callIcon.rectTransform.localScale == Vector3.zero && bubble.localScale == Vector3.zero &&
+                Mathf.Approximately(callIcon.color.a, 1f), "Interruption resets animation");
             ui.BeginMiniGame();
             Require(ui.CurrentPhase == MiniGameUIBase.Phase.Explanation, "Can restart after interruption");
             ui.CancelMiniGame();
@@ -89,6 +112,19 @@ public static class MiniGameUIBaseChecks
             UnityEngine.Object.DestroyImmediate(owner);
             UnityEngine.Object.DestroyImmediate(player);
         }
+    }
+
+    private static void CheckAnimation(MiniGameUIBase ui, MiniGameUIExplanationState state,
+        Image callIcon, RectTransform bubble, float elapsed, float callScale, float alpha, float bubbleScale)
+    {
+        SetField(ui, "m_phaseStartedAt", Time.unscaledTime - elapsed);
+        state.UpdateState();
+        Require(ui.CurrentPhase == MiniGameUIBase.Phase.Explanation && !ui.CanControlPlayer,
+            "Controls locked until bubble has closed at " + elapsed);
+        Require(Vector3.Distance(callIcon.rectTransform.localScale, Vector3.one * callScale) < 0.002f &&
+            Mathf.Abs(callIcon.color.a - alpha) < 0.002f &&
+            Vector3.Distance(bubble.localScale, Vector3.one * bubbleScale) < 0.002f,
+            "Animation values at " + elapsed);
     }
 
     private static void CheckScene()
@@ -113,6 +149,9 @@ public static class MiniGameUIBaseChecks
             Require(machine != null, "Scene contains StateMachine");
             Require((string)GetField(machine, "m_initialState") == nameof(MiniGameUIClosedState), "Scene starts closed");
             Require(GetField(testUI, "m_uiRoot") != null, "Scene UI root reference resolves");
+            var explanation = testUI.GetComponent<MiniGameUIExplanationState>();
+            Require(GetField(explanation, "m_callIcon") is Image, "Scene CallIcon reference resolves");
+            Require(GetField(explanation, "m_speechBubble") is RectTransform, "Scene SpeechBubble reference resolves");
         }
         finally { if (openedForCheck) EditorSceneManager.CloseScene(scene, true); }
     }

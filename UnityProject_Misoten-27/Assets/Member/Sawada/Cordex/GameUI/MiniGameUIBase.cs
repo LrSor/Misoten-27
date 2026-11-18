@@ -17,7 +17,6 @@ public class MiniGameUIBase : MonoBehaviour
     [SerializeField] private GameObject m_resultUI;
 
     [Header("表示時間（実時間・秒）")]
-    [SerializeField, Min(0f)] private float m_explanationSeconds = 5f;
     [SerializeField, Min(0f)] private float m_resultSeconds = 5f;
 
     [Header("説明・終了表示中に停止する Player の操作コンポーネント")]
@@ -33,9 +32,10 @@ public class MiniGameUIBase : MonoBehaviour
     public Phase CurrentPhase { get; private set; }
     public bool IsRunning => CurrentPhase != Phase.Closed;
     public bool CanControlPlayer => CurrentPhase == Phase.Playing;
+    internal float PhaseElapsedSeconds => Mathf.Max(0f, Time.unscaledTime - m_phaseStartedAt);
     public float RemainingSeconds => Mathf.Max(0f,
-        (CurrentPhase == Phase.Explanation ? m_explanationSeconds :
-         CurrentPhase == Phase.Result ? m_resultSeconds : 0f) - (Time.unscaledTime - m_phaseStartedAt));
+        (CurrentPhase == Phase.Explanation ? MiniGameUIExplanationState.Duration :
+         CurrentPhase == Phase.Result ? m_resultSeconds : 0f) - PhaseElapsedSeconds);
 
     protected virtual void Awake()
     {
