@@ -102,8 +102,13 @@ public class PlayerInventoryUI : MonoBehaviour
         if (armor != null)
         {
             // 位置調整
-            GameObject itemPreview = Instantiate(armor.m_modelPrefab, m_itemPreviewCameraList[index].transform);
+            GameObject itemPreview = Instantiate(armor.m_KARI_icon, m_itemPreviewCameraList[index].transform);
             itemPreview.transform.localPosition = new Vector3(0, 0, 5);
+
+            int previewLayer = LayerMask.NameToLayer("ItemPreview");
+            if (previewLayer >= 0)
+                foreach (var renderer in itemPreview.GetComponentsInChildren<Renderer>(true))
+                    renderer.gameObject.layer = previewLayer;
 
             // カメラ表示設定
             ItemPreviewCameraVisibility camVisibility = itemPreview.AddComponent<ItemPreviewCameraVisibility>();

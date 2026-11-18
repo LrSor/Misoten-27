@@ -1197,7 +1197,8 @@ namespace Sawada.Cordex
                     script is Unity.Cinemachine.CinemachineBrain ||
                     script is TackleCameraEffects ||
                     script is TestPlayerCameraLookController;
-                bool renderScript = script is UnityEngine.Rendering.Universal.UniversalAdditionalCameraData;
+                bool renderScript = script is UnityEngine.Rendering.Universal.UniversalAdditionalCameraData
+                    || script is AutoRigWardrobe || script is AutoRigSlot;
                 bool movementScript = script is PlayerMoveController || script is Player_Idle
                     || script is Player_Walk || script is Player_Sprint
                     || script is PlayerSwapController || script is Player_Swap || script is Player_SwapIdle
