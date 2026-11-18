@@ -495,6 +495,12 @@ GameObject:
   m_Component:
   - component: {fileID: 984985896}
   - component: {fileID: 984985895}
+  - component: {fileID: 984985897}
+  - component: {fileID: 984985898}
+  - component: {fileID: 984985899}
+  - component: {fileID: 984985900}
+  - component: {fileID: 984985901}
+  - component: {fileID: 984985902}
   m_Layer: 0
   m_Name: MiniGameUI_Base
   m_TagString: Untagged
@@ -514,6 +520,92 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a2664faff3a7bd940ae5f919f1662cde, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TestUIController
+  m_uiRoot: {fileID: 106486389}
+  m_explanationUI: {fileID: 0}
+  m_playingUI: {fileID: 0}
+  m_resultUI: {fileID: 0}
+  m_explanationSeconds: 5
+  m_resultSeconds: 5
+  m_playerControls: []
+  m_onPlayerControlChanged:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &984985897
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 984985894}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 30de53af7cc105e4689bbdcc140db778, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::StateMachine
+  m_stateMachineName: MiniGameUI
+  m_initialState: MiniGameUIClosedState
+  m_currentState: {fileID: 0}
+--- !u!114 &984985898
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 984985894}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f822ba16b6f447ae8656d09ed154e077, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::MiniGameUIClosedState
+--- !u!114 &984985899
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 984985894}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d3f260dd33be44fc88dddfa18502cf00, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::MiniGameUIExplanationState
+--- !u!114 &984985900
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 984985894}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e4602d8560f44f96b535a10f3f2b2ed0, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::MiniGameUIPlayingState
+--- !u!114 &984985901
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 984985894}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c2373d338de64bcdbe0786d7ccdc718b, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::MiniGameUIResultState
+--- !u!114 &984985902
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 984985894}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5e3117f38f7a4dea9add141e3a94f83c, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::MiniGameUIInputForwarder
+  m_target: {fileID: 984985895}
 --- !u!4 &984985896
 Transform:
   m_ObjectHideFlags: 0
@@ -547,7 +639,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1713091586
 RectTransform:
   m_ObjectHideFlags: 0
