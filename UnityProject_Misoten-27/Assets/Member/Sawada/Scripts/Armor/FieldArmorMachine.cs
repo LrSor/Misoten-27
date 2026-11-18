@@ -12,7 +12,7 @@ public class FieldArmorMachine : MonoBehaviour
         m_armorSO = armorSO;
 
         // モデル反映
-        Instantiate(m_armorSO.m_modelPrefab, transform);
+        Instantiate(m_armorSO.m_KARI_icon, transform);
     }
 
     private void Start()

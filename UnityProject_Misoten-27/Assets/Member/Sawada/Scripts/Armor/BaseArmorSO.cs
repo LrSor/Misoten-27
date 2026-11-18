@@ -1,10 +1,12 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 [CreateAssetMenu(fileName = "BaseArmor", menuName = "Scriptable Objects/BaseArmor")]
 public class BaseArmorSO : ScriptableObject
 {
     [Header("モデル")]
-    public GameObject m_modelPrefab;
+    public GameObject m_KARI_icon;
+    public List<GameObject> m_temporaryOutfit;
 
     [Header("服に反映する色合い")]
     public Color m_color01 = Color.white;

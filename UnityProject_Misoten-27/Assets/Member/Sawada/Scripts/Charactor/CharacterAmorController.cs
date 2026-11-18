@@ -20,7 +20,7 @@ public class CharacterAmorController : MonoBehaviour
         if (armorSO == null) return oldArmorSO;
 
         // 子オブジェクトを作成
-        Instantiate(armorSO.m_modelPrefab, m_parent);
+        Instantiate(armorSO.m_KARI_icon, m_parent);
 
         return oldArmorSO;
     }
