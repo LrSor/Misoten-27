@@ -151,6 +151,7 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1713091586}
+  - {fileID: 1271196073}
   m_Father: {fileID: 984985896}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -530,82 +531,6 @@ MonoBehaviour:
   m_onPlayerControlChanged:
     m_PersistentCalls:
       m_Calls: []
---- !u!114 &984985897
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 984985894}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 30de53af7cc105e4689bbdcc140db778, type: 3}
-  m_Name:
-  m_EditorClassIdentifier: Assembly-CSharp::StateMachine
-  m_stateMachineName: MiniGameUI
-  m_initialState: MiniGameUIClosedState
-  m_currentState: {fileID: 0}
---- !u!114 &984985898
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 984985894}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f822ba16b6f447ae8656d09ed154e077, type: 3}
-  m_Name:
-  m_EditorClassIdentifier: Assembly-CSharp::MiniGameUIClosedState
---- !u!114 &984985899
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 984985894}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d3f260dd33be44fc88dddfa18502cf00, type: 3}
-  m_Name:
-  m_EditorClassIdentifier: Assembly-CSharp::MiniGameUIExplanationState
---- !u!114 &984985900
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 984985894}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e4602d8560f44f96b535a10f3f2b2ed0, type: 3}
-  m_Name:
-  m_EditorClassIdentifier: Assembly-CSharp::MiniGameUIPlayingState
---- !u!114 &984985901
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 984985894}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c2373d338de64bcdbe0786d7ccdc718b, type: 3}
-  m_Name:
-  m_EditorClassIdentifier: Assembly-CSharp::MiniGameUIResultState
---- !u!114 &984985902
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 984985894}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5e3117f38f7a4dea9add141e3a94f83c, type: 3}
-  m_Name:
-  m_EditorClassIdentifier: Assembly-CSharp::MiniGameUIInputForwarder
-  m_target: {fileID: 984985895}
 --- !u!4 &984985896
 Transform:
   m_ObjectHideFlags: 0
@@ -622,6 +547,263 @@ Transform:
   - {fileID: 106486390}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &984985897
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 984985894}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 30de53af7cc105e4689bbdcc140db778, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::StateMachine
+  m_stateMachineName: MiniGameUI
+  m_initialState: MiniGameUIClosedState
+  m_currentState: {fileID: 0}
+--- !u!114 &984985898
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 984985894}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f822ba16b6f447ae8656d09ed154e077, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MiniGameUIClosedState
+--- !u!114 &984985899
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 984985894}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d3f260dd33be44fc88dddfa18502cf00, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MiniGameUIExplanationState
+--- !u!114 &984985900
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 984985894}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e4602d8560f44f96b535a10f3f2b2ed0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MiniGameUIPlayingState
+--- !u!114 &984985901
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 984985894}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c2373d338de64bcdbe0786d7ccdc718b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MiniGameUIResultState
+--- !u!114 &984985902
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 984985894}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5e3117f38f7a4dea9add141e3a94f83c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MiniGameUIInputForwarder
+  m_target: {fileID: 984985895}
+  m_vector2Input:
+    m_Name: MiniGameVector2
+    m_Type: 0
+    m_ExpectedControlType: Vector2
+    m_Id: b8dcfd49-cf68-42ea-8420-8e0f985d7b1b
+    m_Processors: 
+    m_Interactions: 
+    m_SingletonActionBindings:
+    - m_Name: 
+      m_Id: e9c2ec80-d2f1-4d46-8e7b-6396e4ab67b5
+      m_Path: <Gamepad>/leftStick
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: MiniGameVector2
+      m_Flags: 0
+    - m_Name: 
+      m_Id: 25029f90-dafa-4c3f-ac59-3c1d85cb8725
+      m_Path: <Mouse>/delta
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: MiniGameVector2
+      m_Flags: 0
+    - m_Name: 2DVector
+      m_Id: 8bf818ff-f695-4150-b9c5-844282c0c332
+      m_Path: 2DVector
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: MiniGameVector2
+      m_Flags: 4
+    - m_Name: Up
+      m_Id: c2b4f271-0e7a-4a0d-b100-710f34333e2e
+      m_Path: <Keyboard>/upArrow
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: MiniGameVector2
+      m_Flags: 8
+    - m_Name: Down
+      m_Id: 7af0ea3a-22c5-4289-bc14-f59a7432370b
+      m_Path: <Keyboard>/downArrow
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: MiniGameVector2
+      m_Flags: 8
+    - m_Name: Left
+      m_Id: 8b9048cd-68a4-41f3-bcfc-784ece58f315
+      m_Path: <Keyboard>/leftArrow
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: MiniGameVector2
+      m_Flags: 8
+    - m_Name: Right
+      m_Id: 2148808d-af61-48ac-a3a2-c8697c94c68a
+      m_Path: <Keyboard>/rightArrow
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: MiniGameVector2
+      m_Flags: 8
+    m_Flags: 0
+  m_buttonInput:
+    m_Name: MiniGameButton
+    m_Type: 1
+    m_ExpectedControlType: 
+    m_Id: 12473be6-e709-457d-bbcf-c4ebb45cda3a
+    m_Processors: 
+    m_Interactions: 
+    m_SingletonActionBindings:
+    - m_Name: 
+      m_Id: da821949-b4f2-407f-9151-1c4fa67efce9
+      m_Path: <Gamepad>/buttonSouth
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: MiniGameButton
+      m_Flags: 0
+    - m_Name: 
+      m_Id: 678eee57-656d-4a34-ad8c-5e2a43ec51f9
+      m_Path: <Gamepad>/leftShoulder
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: MiniGameButton
+      m_Flags: 0
+    - m_Name: 
+      m_Id: 6321b3dd-a200-4e3d-98a0-0f519ecef113
+      m_Path: <Keyboard>/space
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: MiniGameButton
+      m_Flags: 0
+    - m_Name: 
+      m_Id: 359c06ac-d679-4b98-a131-6348f6bad563
+      m_Path: <Mouse>/leftButton
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: MiniGameButton
+      m_Flags: 0
+    m_Flags: 0
+--- !u!1 &1271196072
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1271196073}
+  - component: {fileID: 1271196075}
+  - component: {fileID: 1271196074}
+  m_Layer: 5
+  m_Name: SpeechBubble
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &1271196073
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1271196072}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 106486390}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 83, y: -75}
+  m_SizeDelta: {x: 360, y: 300}
+  m_Pivot: {x: 0, y: 1}
+--- !u!114 &1271196074
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1271196072}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 0
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: b064a0c602758c74b88469b5fe5fa34c, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!222 &1271196075
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1271196072}
+  m_CullTransparentMesh: 1
 --- !u!1 &1713091585
 GameObject:
   m_ObjectHideFlags: 0
@@ -634,12 +816,12 @@ GameObject:
   - component: {fileID: 1713091588}
   - component: {fileID: 1713091587}
   m_Layer: 5
-  m_Name: Image
+  m_Name: CallIcon
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &1713091586
 RectTransform:
   m_ObjectHideFlags: 0
@@ -654,11 +836,11 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 106486390}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 100, y: 100}
-  m_Pivot: {x: 0.5, y: 0.5}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 39, y: -39}
+  m_SizeDelta: {x: 200, y: 200}
+  m_Pivot: {x: 0, y: 1}
 --- !u!114 &1713091587
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -673,13 +855,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
+  m_Maskable: 0
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: 21300000, guid: 1fed6c4134b54604d8473145c7e47d0f, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
