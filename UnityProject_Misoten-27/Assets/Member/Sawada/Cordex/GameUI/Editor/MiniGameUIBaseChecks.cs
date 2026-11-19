@@ -12,6 +12,7 @@ public static class MiniGameUIBaseChecks
     public static void Run()
     {
         if (Application.isPlaying) throw new InvalidOperationException("Run MiniGame UI checks in Edit Mode.");
+        CheckSpriteSequence();
         GameObject owner = new GameObject("MiniGame UI check");
         GameObject player = new GameObject("Player control check");
         try
@@ -104,6 +105,35 @@ public static class MiniGameUIBaseChecks
             ui.BeginMiniGame();
             Require(ui.CurrentPhase == MiniGameUIBase.Phase.Explanation, "Can restart after interruption");
             ui.CancelMiniGame();
+            var sequenceObject = new GameObject("Speech sequence", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            sequenceObject.transform.SetParent(root.transform);
+            var sequence = sequenceObject.AddComponent<UISpriteSequencePlayer>();
+            SetField(sequence, "m_spriteSheet", AssetDatabase.LoadAssetAtPath<Texture2D>(
+                "Assets/Member/Sawada/Texture/TestRenban.png"));
+            Invoke(sequence, "OnValidate");
+            SetField(explanation, "m_speechAnimation", sequence);
+            ui.BeginMiniGame();
+            Require(Mathf.Abs(ui.RemainingSeconds - 3.6f) < 0.01f, "Estimated duration follows sequence duration");
+            SetField(ui, "m_phaseStartedAt", Time.unscaledTime - 1.5f);
+            explanation.UpdateState();
+            Require(sequence.IsPlaying, "Sequence begins when bubble finishes opening");
+            SetField(ui, "m_phaseStartedAt", Time.unscaledTime - 20f);
+            explanation.UpdateState();
+            Require(ui.CurrentPhase == MiniGameUIBase.Phase.Explanation && bubble.localScale == Vector3.one,
+                "Elapsed time alone cannot close bubble while sequence is unfinished");
+            typeof(UISpriteSequencePlayer).GetMethod("Advance", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(sequence, new object[] { 2f });
+            Require(sequence.HasCompleted && sequence.CurrentFrameIndex == 99, "Explanation plays sequence once even with Loop on");
+            explanation.UpdateState();
+            Require(ui.CurrentPhase == MiniGameUIBase.Phase.Explanation, "Completion starts closing before play");
+            SetField(ui, "m_phaseStartedAt", Time.unscaledTime - 20.05f);
+            explanation.UpdateState();
+            Require(Mathf.Abs(bubble.localScale.x - 0.5f) < 0.002f, "Bubble closes over 0.1 seconds after completion");
+            SetField(ui, "m_phaseStartedAt", Time.unscaledTime - 20.11f);
+            explanation.UpdateState();
+            Require(ui.CanControlPlayer && !sequence.IsPlaying && !sequence.HasCompleted,
+                "Play begins only after closing and playback resets");
+            ui.CancelMiniGame();
             CheckScene();
             Debug.Log("MiniGameUIBaseChecks: PASS (timing, transitions, control restoration, restart, scene references)");
         }
@@ -125,6 +155,48 @@ public static class MiniGameUIBaseChecks
             Mathf.Abs(callIcon.color.a - alpha) < 0.002f &&
             Vector3.Distance(bubble.localScale, Vector3.one * bubbleScale) < 0.002f,
             "Animation values at " + elapsed);
+    }
+
+    private static void CheckSpriteSequence()
+    {
+        var owner = new GameObject("Sprite sequence check", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        try
+        {
+            var player = owner.AddComponent<UISpriteSequencePlayer>();
+            SetField(player, "m_spriteSheet", AssetDatabase.LoadAssetAtPath<Texture2D>(
+                "Assets/Member/Sawada/Texture/TestRenban.png"));
+            Invoke(player, "OnValidate");
+            var frames = (Sprite[])GetField(player, "m_frames");
+            Require(frames.Length == 100 && frames[2].name == "sample_2" && frames[10].name == "sample_10",
+                "TestRenban contains 100 frames in numeric order");
+            var advance = typeof(UISpriteSequencePlayer).GetMethod("Advance", BindingFlags.Instance | BindingFlags.NonPublic);
+            SetField(player, "m_durationSeconds", 2f);
+            player.Play();
+            advance.Invoke(player, new object[] { 1f });
+            Require(player.CurrentFrameIndex == 50 && owner.GetComponent<Image>().sprite == frames[50],
+                "Half of specified duration displays middle frame");
+            advance.Invoke(player, new object[] { 1f });
+            Require(player.CurrentFrameIndex == 0 && player.IsPlaying, "Loop returns to first frame after two seconds");
+            advance.Invoke(player, new object[] { 2.5f });
+            Require(player.CurrentFrameIndex == 25, "Long frame preserves playback timing");
+            SetField(player, "m_loop", false);
+            player.Play();
+            advance.Invoke(player, new object[] { 2f });
+            Require(player.CurrentFrameIndex == 99 && !player.IsPlaying && player.HasCompleted,
+                "Nonlooping sequence ends on final sprite and signals completion");
+            foreach (int count in new[] { 5, 6 })
+            {
+                var shorter = new Sprite[count];
+                Array.Copy(frames, shorter, count);
+                SetField(player, "m_frames", shorter);
+                player.Play();
+                advance.Invoke(player, new object[] { 1f });
+                Require(player.CurrentFrameIndex == count / 2, "Different frame counts share the duration");
+            }
+            player.Stop();
+            Require(player.CurrentFrameIndex == 0 && !player.IsPlaying && !player.HasCompleted, "Stop resets sequence");
+        }
+        finally { UnityEngine.Object.DestroyImmediate(owner); }
     }
 
     private static void CheckScene()
@@ -152,6 +224,8 @@ public static class MiniGameUIBaseChecks
             var explanation = testUI.GetComponent<MiniGameUIExplanationState>();
             Require(GetField(explanation, "m_callIcon") is Image, "Scene CallIcon reference resolves");
             Require(GetField(explanation, "m_speechBubble") is RectTransform, "Scene SpeechBubble reference resolves");
+            Require(GetField(explanation, "m_speechAnimation") is UISpriteSequencePlayer,
+                "Scene sprite sequence is connected to explanation State");
         }
         finally { if (openedForCheck) EditorSceneManager.CloseScene(scene, true); }
     }

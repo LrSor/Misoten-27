@@ -14,7 +14,12 @@ public sealed class MiniGameUIExplanationState : BaseState
 
     [SerializeField] private Image m_callIcon;
     [SerializeField] private RectTransform m_speechBubble;
+    [SerializeField] private UISpriteSequencePlayer m_speechAnimation;
+    private bool m_animationStarted;
+    private float m_bubbleCloseStartedAt = -1f;
     private MiniGameUIBase m_ui;
+    public float ExpectedDuration => Duration - BubbleHoldSeconds +
+        (m_speechAnimation != null ? m_speechAnimation.DurationSeconds : BubbleHoldSeconds);
 
     public override void InitState()
     {
@@ -27,7 +32,10 @@ public sealed class MiniGameUIExplanationState : BaseState
     {
         float elapsed = m_ui.PhaseElapsedSeconds;
         ApplyAnimation(elapsed);
-        if (elapsed >= Duration)
+        bool finished = m_speechAnimation != null
+            ? m_bubbleCloseStartedAt >= 0f && elapsed - m_bubbleCloseStartedAt >= BubbleScaleSeconds
+            : elapsed >= Duration;
+        if (finished)
             GetComponent<StateMachine>().ChangeState<MiniGameUIPlayingState>();
     }
 
@@ -42,7 +50,21 @@ public sealed class MiniGameUIExplanationState : BaseState
         float pulseEnd = CallScaleSeconds + CallPulseSeconds * CallPulseCount;
         float fadeEnd = pulseEnd + CallFadeSeconds;
         float bubbleOpenEnd = fadeEnd + BubbleScaleSeconds;
-        float bubbleCloseStart = bubbleOpenEnd + BubbleHoldSeconds;
+        float bubbleCloseStart = m_speechAnimation != null ? float.PositiveInfinity : bubbleOpenEnd + BubbleHoldSeconds;
+
+        if (m_speechAnimation != null && !m_animationStarted &&
+            elapsed >= bubbleOpenEnd)
+        {
+            m_animationStarted = true;
+            // 説明では1回だけ再生。未設定のコマで開始できない場合も閉じる。
+            if (!m_speechAnimation.PlayOnce()) m_bubbleCloseStartedAt = elapsed;
+        }
+        if (m_speechAnimation != null && m_animationStarted)
+        {
+            if (m_speechAnimation.HasCompleted && m_bubbleCloseStartedAt < 0f)
+                m_bubbleCloseStartedAt = elapsed;
+            if (m_bubbleCloseStartedAt >= 0f) bubbleCloseStart = m_bubbleCloseStartedAt;
+        }
 
         if (m_callIcon != null)
         {
@@ -69,6 +91,9 @@ public sealed class MiniGameUIExplanationState : BaseState
 
     private void ResetPresentation()
     {
+        m_animationStarted = false;
+        m_bubbleCloseStartedAt = -1f;
+        if (m_speechAnimation != null) m_speechAnimation.Stop();
         if (m_callIcon != null)
         {
             m_callIcon.rectTransform.localScale = Vector3.zero;

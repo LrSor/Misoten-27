@@ -2,12 +2,38 @@
 
 `BaseState` と `StateMachine` を利用する共通フロー。
 
-1. `BeginMiniGame()` → 説明アニメーション（合計4.6秒、操作不可）
+1. `BeginMiniGame()` → 説明アニメーション（連番再生完了まで操作不可）
 2. 自動でプレイ（操作可）
 3. ミニゲームの終了条件から `FinishMiniGame()` → 終了表示（既定5秒、操作不可）
 4. UI を閉じ、開始前の Player 操作状態へ復帰
 
 時間には `Time.unscaledTime` を使う。プレイ時間・勝敗判定は継承先に実装する。
+
+## 連番 Sprite の再生
+
+GameUI Scene の `MiniGameUI_Base > Canvas > SpeechBubble > Image` に
+`UISpriteSequencePlayer` を追加し、`TestRenban.png` の100コマを設定済み。
+F で開始すると、吹き出しの拡大完了後から連番を1回再生し、再生が完了したら0.1秒で吹き出しを閉じてプレイへ移行する。
+
+Inspector の設定：
+
+- Sprite Sheet：Sprite Editor で分割済みの画像。変更すると末尾の連番順で Frames を自動登録する（`sample_2` → `sample_10` の順）。
+- Duration Seconds：「全コマで1ループする秒数」。初期値2秒。100コマを2秒なら1コマ約0.02秒。
+- Loop：通常の `Play()` で繰り返すかを指定。説明 State は `PlayOnce()` で1回再生する。
+- Play On Enable：有効になった時に再生。今回の Image はオフにし、説明 State から開始する。
+- Use Unscaled Time：オンなら Time.timeScale に影響されない。初期値オン。
+
+他の UI Image にもコンポーネントを追加して使用できる。
+Sprite Sheet を使わず Frames に各 Sprite を手動登録することも可能。
+5コマ・6コマなど枚数が変わっても、指定秒数で全コマを再生する。
+スクリプトからは `Play()` で先頭から開始、`PlayOnce()` で1回再生、`Stop()` で停止して先頭に戻す。
+再生位置は `CurrentFrameIndex`、再生中かどうかは `IsPlaying`、最後まで再生したかは `HasCompleted` で参照する。
+`Stop()` と再開時には `HasCompleted` も false に戻す。
+
+説明 State は経過時間だけでは吹き出しを閉じず、`HasCompleted` を確認して閉じ始める。
+Duration Seconds が5秒なら、5秒分の全コマを再生し終わるまで表示を継続する。
+連番コンポーネントを指定しない場合のみ、従来の3秒表示にフォールバックする。
+画像のコマ数や再生時間を変えるだけなら Animator / Animation Clip の作成は不要。
 
 ## 説明アニメーション
 
@@ -22,13 +48,14 @@ GameUI Scene は既存の CallIcon / SpeechBubble に接続済み。配置・画
 | 0.6～1.0秒 | CallIcon の α を 1→0.5→1（2回目） |
 | 1.0～1.4秒 | CallIcon の α を 1→0 |
 | 1.4～1.5秒 | SpeechBubble の Scale を 0→1 |
-| 1.5～4.5秒 | SpeechBubble を3秒表示 |
-| 4.5～4.6秒 | SpeechBubble の Scale を 1→0 |
+| 1.5秒～再生完了 | SpeechBubble 内の連番を指定秒数で1回再生 |
+| 再生完了後0.1秒 | SpeechBubble の Scale を 1→0、閉じ終わったらプレイへ移行 |
 
 点滅の「0.4秒」は1往復の時間。3回目は同じ0.4秒で透明にする。
 Scale は XYZ を同じ値にする。経過時間から値を計算するため、低フレームレート時も各区間を累積遅延させない。
 中断・終了時には両方の Scale を0、CallIcon の α を1に戻し、次回開始時も初期化する。
-従来の説明5秒タイマーは、このアニメーションの所要時間に置き換えた。終了表示は引き続き5秒。
+説明の残り時間は連番の指定秒数に合わせた見込み値。状態遷移は実際の再生完了を待つ。
+既定の2秒再生なら説明全体は約3.6秒。終了表示は引き続き5秒。
 
 ## 入力の渡し方
 
@@ -151,3 +178,30 @@ Scene の追加 fileID の重複・コンポーネント接続・追加スクリ
 プロジェクト既存の Cinemachine サンプル asmref 警告は起動時に出るが、検査は通過した。
 Unity 起動による `Assets/Member/Liu/Fonts/LiuQuestFont SDF.asset` の自動更新は、
 起動前に変更がなかったことを確認したうえで元の内容に復元し、成果物から除外した。
+
+## 連番アニメーション追加時の変更と確認
+
+フェッチ・早送りプルで `3e79e67` まで取り込み、TestRenban と吹き出し内の Image を使用。
+
+追加ファイル（プロジェクトルート相対）：
+
+- `Assets/Member/Sawada/Cordex/GameUI/UISpriteSequencePlayer.cs`：分割済み画像からコマを数字順に登録し、Inspector 指定秒数で再生。通常ループ・1回再生・完了状態・停止を提供。
+- `Assets/Member/Sawada/Cordex/GameUI/UISpriteSequencePlayer.cs.meta`：新規スクリプトの GUID。
+
+編集ファイル（プロジェクトルート相対）：
+
+- `Assets/Member/Sawada/Cordex/GameUI/MiniGameUIExplanationState.cs`：吹き出しが開いてから1回再生し、実際の再生完了後に0.1秒で閉じてプレイへ移行。
+- `Assets/Member/Sawada/Cordex/GameUI/MiniGameUIBase.cs`：説明時間の見込みを連番の指定秒数に合わせる。
+- `Assets/Member/Sawada/Cordex/GameUI/Editor/MiniGameUIBaseChecks.cs`：100コマの数字順・指定秒数・ループ・完了状態・5/6コマ共通再生と、経過時間だけでは閉じないことを検査。
+- `Assets/Member/Sawada/Scenes/GameUI.unity`：既存の SpeechBubble/Image に再生コンポーネントを追加し、100コマ・2秒・1回再生・説明 State との参照を設定。
+- `Assets/Member/Sawada/Cordex/GameUI/README.md`：Inspector 設定・仕様・本報告を追記。
+
+削除・移動なし。追加画像、既存画像の切り取り設定・GUID、Animator Controller は変更していない。
+
+Unity 6000.3.14f1 の `MiniGameUIBaseChecks.Run` は、再生完了待ちの最終仕様で PASS、終了コード0。
+完了前は時間を20秒まで進めても閉じないこと、完了後は0.1秒で閉じてプレイへ移行することを確認。
+Scene の Missing Script・連番コンポーネントへの参照、既存UI遷移と入力制限も通過した。
+Play Mode での目視再生と実機入力は未確認。実行ログは `Logs/UISpriteSequenceCompletionChecks.log`。
+
+Unity が自動更新した動的フォントは、内容一致を確認したバックアップを Logs 配下に保存してから起動前へ復元した。
+Logs / Library / Temp は成果物に含めない。

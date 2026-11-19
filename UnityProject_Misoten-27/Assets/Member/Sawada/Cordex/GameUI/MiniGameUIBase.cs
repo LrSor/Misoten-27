@@ -27,6 +27,7 @@ public class MiniGameUIBase : MonoBehaviour
     private readonly Dictionary<Behaviour, bool> m_controlSnapshot = new Dictionary<Behaviour, bool>();
     private StateMachine m_stateMachine;
     private MiniGameUIPlayingState m_playingState;
+    private MiniGameUIExplanationState m_explanationState;
     private float m_phaseStartedAt;
 
     public Phase CurrentPhase { get; private set; }
@@ -34,13 +35,14 @@ public class MiniGameUIBase : MonoBehaviour
     public bool CanControlPlayer => CurrentPhase == Phase.Playing;
     internal float PhaseElapsedSeconds => Mathf.Max(0f, Time.unscaledTime - m_phaseStartedAt);
     public float RemainingSeconds => Mathf.Max(0f,
-        (CurrentPhase == Phase.Explanation ? MiniGameUIExplanationState.Duration :
+        (CurrentPhase == Phase.Explanation ? m_explanationState.ExpectedDuration :
          CurrentPhase == Phase.Result ? m_resultSeconds : 0f) - PhaseElapsedSeconds);
 
     protected virtual void Awake()
     {
         m_stateMachine = GetComponent<StateMachine>();
         m_playingState = GetComponent<MiniGameUIPlayingState>();
+        m_explanationState = GetComponent<MiniGameUIExplanationState>();
         UpdateVisibility();
     }
 
