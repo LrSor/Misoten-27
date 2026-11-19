@@ -565,7 +565,7 @@ PrefabInstance:
     - target: {fileID: 1063307764340556283, guid: 7e1d4857f63a13342b220b6ae63703a4, type: 3}
       propertyPath: m_TargetTexture
       value: 
-      objectReference: {fileID: 8400000, guid: dd1cbda8d002fd745ba4ae5c0d56d478, type: 2}
+      objectReference: {fileID: 0}
     - target: {fileID: 1149727398687965720, guid: 7e1d4857f63a13342b220b6ae63703a4, type: 3}
       propertyPath: m_LocalPosition.x
       value: 12
@@ -657,6 +657,10 @@ PrefabInstance:
     - target: {fileID: 5389946605445453264, guid: 7e1d4857f63a13342b220b6ae63703a4, type: 3}
       propertyPath: OutputChannel
       value: 16
+      objectReference: {fileID: 0}
+    - target: {fileID: 1063307764340556283, guid: 7e1d4857f63a13342b220b6ae63703a4, type: 3}
+      propertyPath: m_Enabled
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -753,7 +757,7 @@ PrefabInstance:
     - target: {fileID: 3035127261219388213, guid: 7cd25b2827470094ca9340091bdfb3a4, type: 3}
       propertyPath: m_Texture
       value: 
-      objectReference: {fileID: 8400000, guid: 30b8fa591bab9aa45a705c2be52d8646, type: 2}
+      objectReference: {fileID: 0}
     - target: {fileID: 3146685752632725929, guid: 7cd25b2827470094ca9340091bdfb3a4, type: 3}
       propertyPath: m_text
       value: 3
@@ -845,7 +849,15 @@ PrefabInstance:
     - target: {fileID: 5315166763767150101, guid: 7cd25b2827470094ca9340091bdfb3a4, type: 3}
       propertyPath: m_Texture
       value: 
-      objectReference: {fileID: 8400000, guid: 1da32f6b5d793f543a1683f73910a4e6, type: 2}
+      objectReference: {fileID: 0}
+    - target: {fileID: 3035127261219388213, guid: 7cd25b2827470094ca9340091bdfb3a4, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5315166763767150101, guid: 7cd25b2827470094ca9340091bdfb3a4, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -952,7 +964,7 @@ PrefabInstance:
     - target: {fileID: 1063307764340556283, guid: 7e1d4857f63a13342b220b6ae63703a4, type: 3}
       propertyPath: m_TargetTexture
       value: 
-      objectReference: {fileID: 8400000, guid: 3764a4f3ea45ccb49833638f8da6b4c0, type: 2}
+      objectReference: {fileID: 0}
     - target: {fileID: 1149727398687965720, guid: 7e1d4857f63a13342b220b6ae63703a4, type: 3}
       propertyPath: m_LocalPosition.x
       value: 6
@@ -1040,10 +1052,18 @@ PrefabInstance:
     - target: {fileID: 5040667259525543430, guid: 7e1d4857f63a13342b220b6ae63703a4, type: 3}
       propertyPath: m_TargetTexture
       value: 
-      objectReference: {fileID: 8400000, guid: 03278a268e393dd46a926585247f7625, type: 2}
+      objectReference: {fileID: 0}
     - target: {fileID: 5389946605445453264, guid: 7e1d4857f63a13342b220b6ae63703a4, type: 3}
       propertyPath: OutputChannel
       value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 1063307764340556283, guid: 7e1d4857f63a13342b220b6ae63703a4, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5040667259525543430, guid: 7e1d4857f63a13342b220b6ae63703a4, type: 3}
+      propertyPath: m_Enabled
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -2754,7 +2774,7 @@ PrefabInstance:
     - target: {fileID: 3035127261219388213, guid: 7cd25b2827470094ca9340091bdfb3a4, type: 3}
       propertyPath: m_Texture
       value: 
-      objectReference: {fileID: 8400000, guid: 3764a4f3ea45ccb49833638f8da6b4c0, type: 2}
+      objectReference: {fileID: 0}
     - target: {fileID: 3146685752632725929, guid: 7cd25b2827470094ca9340091bdfb3a4, type: 3}
       propertyPath: m_text
       value: 2
@@ -2862,7 +2882,15 @@ PrefabInstance:
     - target: {fileID: 5315166763767150101, guid: 7cd25b2827470094ca9340091bdfb3a4, type: 3}
       propertyPath: m_Texture
       value: 
-      objectReference: {fileID: 8400000, guid: 03278a268e393dd46a926585247f7625, type: 2}
+      objectReference: {fileID: 0}
+    - target: {fileID: 3035127261219388213, guid: 7cd25b2827470094ca9340091bdfb3a4, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5315166763767150101, guid: 7cd25b2827470094ca9340091bdfb3a4, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -5739,7 +5767,7 @@ PrefabInstance:
     - target: {fileID: 3035127261219388213, guid: 7cd25b2827470094ca9340091bdfb3a4, type: 3}
       propertyPath: m_Texture
       value: 
-      objectReference: {fileID: 8400000, guid: dd1cbda8d002fd745ba4ae5c0d56d478, type: 2}
+      objectReference: {fileID: 0}
     - target: {fileID: 3146685752632725929, guid: 7cd25b2827470094ca9340091bdfb3a4, type: 3}
       propertyPath: m_text
       value: 4
@@ -5826,6 +5854,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4886949711311959928, guid: 7cd25b2827470094ca9340091bdfb3a4, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3035127261219388213, guid: 7cd25b2827470094ca9340091bdfb3a4, type: 3}
+      propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
@@ -6910,7 +6942,7 @@ PrefabInstance:
     - target: {fileID: 1063307764340556283, guid: 7e1d4857f63a13342b220b6ae63703a4, type: 3}
       propertyPath: m_TargetTexture
       value: 
-      objectReference: {fileID: 8400000, guid: 30b8fa591bab9aa45a705c2be52d8646, type: 2}
+      objectReference: {fileID: 0}
     - target: {fileID: 1149727398687965720, guid: 7e1d4857f63a13342b220b6ae63703a4, type: 3}
       propertyPath: m_LocalPosition.x
       value: 9
@@ -6998,10 +7030,18 @@ PrefabInstance:
     - target: {fileID: 5040667259525543430, guid: 7e1d4857f63a13342b220b6ae63703a4, type: 3}
       propertyPath: m_TargetTexture
       value: 
-      objectReference: {fileID: 8400000, guid: 1da32f6b5d793f543a1683f73910a4e6, type: 2}
+      objectReference: {fileID: 0}
     - target: {fileID: 5389946605445453264, guid: 7e1d4857f63a13342b220b6ae63703a4, type: 3}
       propertyPath: OutputChannel
       value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 1063307764340556283, guid: 7e1d4857f63a13342b220b6ae63703a4, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5040667259525543430, guid: 7e1d4857f63a13342b220b6ae63703a4, type: 3}
+      propertyPath: m_Enabled
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
