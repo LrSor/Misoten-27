@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public sealed class MiniGameUIPlayingState : BaseState
 {
@@ -13,7 +14,7 @@ public sealed class MiniGameUIPlayingState : BaseState
         m_ui.EnterPhase(MiniGameUIBase.Phase.Playing);
     }
 
-    // デバイスは参照せず、外部の入力取得スクリプト → UI の関数経由で値を受け取る。
+    // ミニゲーム操作は外部の入力取得スクリプト → UI の関数経由で値を受け取る。
     internal void ReceiveVector2Input(Vector2 value)
     {
         Vector2Input = value;
@@ -28,8 +29,16 @@ public sealed class MiniGameUIPlayingState : BaseState
 
     public override void UpdateState()
     {
-        if (m_ui.isActiveAndEnabled)
-            m_ui.UpdateMiniGameInput(Vector2Input, IsButtonPressed);
+        if (!m_ui.isActiveAndEnabled) return;
+
+        // プレイ中のみ、テスト用の E キーで結果表示へ移行する。
+        if (Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame)
+        {
+            m_ui.FinishMiniGame();
+            return;
+        }
+
+        m_ui.UpdateMiniGameInput(Vector2Input, IsButtonPressed);
     }
 
     public override void UnInitState()
