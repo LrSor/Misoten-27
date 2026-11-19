@@ -9,7 +9,7 @@ public sealed class UISpriteSequencePlayer : MonoBehaviour
 {
     [Header("分割済みの画像（Sprite Mode: Multiple）")]
     [SerializeField] private Texture2D m_spriteSheet;
-    [SerializeField] private Sprite[] m_frames = new Sprite[0];
+    [SerializeField, HideInInspector] private Sprite[] m_frames = new Sprite[0];
     [Header("1ループの秒数")]
     [SerializeField, Min(0.01f)] private float m_durationSeconds = 2f;
     [SerializeField] private bool m_loop = true;
@@ -52,7 +52,7 @@ public sealed class UISpriteSequencePlayer : MonoBehaviour
         Stop();
         if (m_frames == null || m_frames.Length == 0)
         {
-            Debug.LogWarning("再生する Sprite がありません。分割済み画像または Frames を指定してください。", this);
+            Debug.LogWarning("再生する Sprite がありません。Sprite Sheet に分割済みの画像を指定してください。", this);
             return false;
         }
         m_isLooping = loop;
@@ -103,7 +103,11 @@ public sealed class UISpriteSequencePlayer : MonoBehaviour
     private void OnValidate()
     {
         m_durationSeconds = Mathf.Max(0.01f, m_durationSeconds);
-        if (m_spriteSheet == null) return;
+        if (m_spriteSheet == null)
+        {
+            m_frames = new Sprite[0];
+            return;
+        }
         string path = UnityEditor.AssetDatabase.GetAssetPath(m_spriteSheet);
         var sprites = new System.Collections.Generic.List<Sprite>();
         foreach (UnityEngine.Object asset in UnityEditor.AssetDatabase.LoadAllAssetsAtPath(path))

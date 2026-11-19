@@ -17,14 +17,14 @@ F で開始すると、吹き出しの拡大完了後から連番を1回再生�
 
 Inspector の設定：
 
-- Sprite Sheet：Sprite Editor で分割済みの画像。変更すると末尾の連番順で Frames を自動登録する（`sample_2` → `sample_10` の順）。
+- Sprite Sheet：Sprite Editor で分割済みの画像。指定するだけで末尾の連番順にコマを自動登録する（`sample_2` → `sample_10` の順）。コマ配列は内部保存し、Inspector には表示しない。
 - Duration Seconds：「全コマで1ループする秒数」。初期値2秒。100コマを2秒なら1コマ約0.02秒。
 - Loop：通常の `Play()` で繰り返すかを指定。説明 State は `PlayOnce()` で1回再生する。
 - Play On Enable：有効になった時に再生。今回の Image はオフにし、説明 State から開始する。
 - Use Unscaled Time：オンなら Time.timeScale に影響されない。初期値オン。
 
 他の UI Image にもコンポーネントを追加して使用できる。
-Sprite Sheet を使わず Frames に各 Sprite を手動登録することも可能。
+コマを1枚ずつ登録する必要はない。Sprite Sheet を外すと内部のコマ配列も空にする。
 5コマ・6コマなど枚数が変わっても、指定秒数で全コマを再生する。
 スクリプトからは `Play()` で先頭から開始、`PlayOnce()` で1回再生、`Stop()` で停止して先頭に戻す。
 再生位置は `CurrentFrameIndex`、再生中かどうかは `IsPlaying`、最後まで再生したかは `HasCompleted` で参照する。
