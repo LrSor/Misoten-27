@@ -448,7 +448,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &3055163893017512748
 RectTransform:
   m_ObjectHideFlags: 0
@@ -997,7 +997,8 @@ Transform:
   m_LocalPosition: {x: 1.2, y: 2, z: -4.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 6164856620413967954}
   m_Father: {fileID: 4158466756397663255}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!20 &5165188593992805641
@@ -1621,7 +1622,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SHAKE_EFFECTS
   m_input: {fileID: 6464756951219964404}
-  m_speedLines: {fileID: 1993659248690302546}
+  m_speedLines: {fileID: 0}
+  m_speedLinesParticle: {fileID: 5647556898329117601}
   m_speedLinesSource: 0
   m_speedLinesByLevel:
   - 0
@@ -2801,6 +2803,79 @@ MonoBehaviour:
     m_VerticalOverflow: 0
     m_LineSpacing: 1
   m_Text: 3
+--- !u!1001 &5159723992626007485
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 7823287989433534789}
+    m_Modifications:
+    - target: {fileID: 1303508197762782191, guid: f2bd4bc25ec8d61479665d2deb6559a6, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1303508197762782191, guid: f2bd4bc25ec8d61479665d2deb6559a6, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1303508197762782191, guid: f2bd4bc25ec8d61479665d2deb6559a6, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 1303508197762782191, guid: f2bd4bc25ec8d61479665d2deb6559a6, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1303508197762782191, guid: f2bd4bc25ec8d61479665d2deb6559a6, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1303508197762782191, guid: f2bd4bc25ec8d61479665d2deb6559a6, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1303508197762782191, guid: f2bd4bc25ec8d61479665d2deb6559a6, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1303508197762782191, guid: f2bd4bc25ec8d61479665d2deb6559a6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1303508197762782191, guid: f2bd4bc25ec8d61479665d2deb6559a6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1303508197762782191, guid: f2bd4bc25ec8d61479665d2deb6559a6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3356946413785837107, guid: f2bd4bc25ec8d61479665d2deb6559a6, type: 3}
+      propertyPath: m_Name
+      value: FX_SpeedLines
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: f2bd4bc25ec8d61479665d2deb6559a6, type: 3}
+--- !u!114 &5647556898329117601 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 719206713164451356, guid: f2bd4bc25ec8d61479665d2deb6559a6, type: 3}
+  m_PrefabInstance: {fileID: 5159723992626007485}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3d9a6f4e1c0b4a8d9e2f3a4b5c6d7e8f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SPEED_LINES_PARTICLE
+--- !u!4 &6164856620413967954 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1303508197762782191, guid: f2bd4bc25ec8d61479665d2deb6559a6, type: 3}
+  m_PrefabInstance: {fileID: 5159723992626007485}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &5713602195425086302
 PrefabInstance:
   m_ObjectHideFlags: 0

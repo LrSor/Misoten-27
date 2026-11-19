@@ -30,6 +30,10 @@ public class SHAKE_EFFECTS : MiniGameObject
     [SerializeField]
     private SPEED_LINES m_speedLines;
 
+    [Tooltip("パーティクルの集中線（05_Sprite）。強さは下の設定で決まる（上の UI の集中線と同じ）")]
+    [SerializeField]
+    private SPEED_LINES_PARTICLE m_speedLinesParticle;
+
     [SerializeField]
     private SOURCE m_speedLinesSource = SOURCE.SPEED;
 
@@ -187,6 +191,11 @@ public class SHAKE_EFFECTS : MiniGameObject
         if (m_speedLines != null)
         {
             m_speedLines.Intensity = speedLines;
+        }
+
+        if (m_speedLinesParticle != null)
+        {
+            m_speedLinesParticle.Intensity = speedLines;
         }
 
         if (m_sparkle != null)
