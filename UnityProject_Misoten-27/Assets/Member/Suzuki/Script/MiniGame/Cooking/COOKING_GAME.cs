@@ -183,7 +183,7 @@ public class COOKING_GAME : MiniGame
             return;
         }
 
-        m_board.Chop(point);
+        m_board.Chop(point, m_input != null && m_input.IsStraight);
     }
 
     void ResetGame()

@@ -7,6 +7,7 @@ using UnityEngine;
 // ・食材は、残りの量に合わせて左から短くなっていく
 //   → 食材の長さを見れば、あとどれくらいで終わるかがわかる
 // ・1 回振るごとに包丁が上下に動き、切れ端（輪切り）が出て倒れる
+// ・まっすぐ切れたときだけ、切り口からキラキラ（FX_Sparkle）がパッと飛び散る
 // ・食材は「右端」を固定して、左側から切っていく
 //
 // ■ 本番のモデルに差し替えるとき
@@ -70,6 +71,20 @@ public class COOKING_BOARD : MonoBehaviour
     [SerializeField]
     private float m_fallTime = 0.2f;
 
+    [Header("まっすぐ切れたときのキラキラ")]
+    [Tooltip("切り口から出すキラキラ（空欄なら出さない）")]
+    [SerializeField]
+    private SPARKLE_PARTICLE m_cutSparkle;
+
+    [Tooltip("まっすぐ切れたとき、1 回で出す星の数")]
+    [SerializeField]
+    private int m_cutSparkleCount = 6;
+
+    [Tooltip("どれだけパッと光らせるか（0～1）")]
+    [Range(0f, 1f)]
+    [SerializeField]
+    private float m_cutSparkleFlash = 0.8f;
+
     private class SLICE
     {
         public Transform m_transform;
@@ -114,10 +129,15 @@ public class COOKING_BOARD : MonoBehaviour
         m_targetRest = Mathf.Clamp01(rest);
     }
 
-    // 1 回切る
-    public void Chop(float point)
+    // 1 回切る（isStraight：まっすぐ振れたか）
+    public void Chop(float point, bool isStraight = false)
     {
         m_chopTimer = 0f;
+
+        if (isStraight)
+        {
+            PlayCutSparkle();
+        }
 
         // 切り口の位置に包丁を合わせる（次に食材が短くなる分も先に見込む）
         SpawnSlice(Mathf.Max(0.3f, point));
@@ -214,6 +234,21 @@ public class COOKING_BOARD : MonoBehaviour
         position.x = CutX - m_knifeOffsetX;
         position.y = Mathf.Lerp(m_knifeUpY, m_knifeDownY, Mathf.Clamp01(down));
         m_knife.localPosition = position;
+    }
+
+    // 切り口の位置に移して、キラキラをまとめて出す
+    void PlayCutSparkle()
+    {
+        if (m_cutSparkle == null || m_food == null)
+        {
+            return;
+        }
+
+        m_cutSparkle.transform.localPosition =
+            new Vector3(CutX, m_food.localPosition.y + 0.03f, m_food.localPosition.z);
+
+        m_cutSparkle.Burst(m_cutSparkleCount);
+        m_cutSparkle.Flash(m_cutSparkleFlash);
     }
 
     void SpawnSlice(float point)

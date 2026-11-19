@@ -58,6 +58,15 @@ public class GRAFFITI_GAME : MiniGame
     [SerializeField]
     private float m_stageImpulse = 0.08f;
 
+    [Header("演出")]
+    [Tooltip("汚れが 1 段階落ちたときに、まとめて出して強く光らせるキラキラ（空欄でもよい）")]
+    [SerializeField]
+    private SPARKLE_PARTICLE m_goalSparkle;
+
+    [Tooltip("1 段階落ちたときに、まとめて出す星の数（全部きれいになったときは 2 倍）")]
+    [SerializeField]
+    private int m_goalSparkleCount = 25;
+
     [Header("スコア（早くきれいにするほど高い）")]
     [Tooltip("この秒数以内にきれいにしたら最高点")]
     [SerializeField]
@@ -207,6 +216,13 @@ public class GRAFFITI_GAME : MiniGame
         if (m_camera != null)
         {
             m_camera.Impulse(m_stageImpulse);
+        }
+
+        if (m_goalSparkle != null)
+        {
+            bool isClean = m_stage >= m_stageCount;
+            m_goalSparkle.Burst(isClean ? m_goalSparkleCount * 2 : m_goalSparkleCount);
+            m_goalSparkle.Flash(1f);
         }
     }
 

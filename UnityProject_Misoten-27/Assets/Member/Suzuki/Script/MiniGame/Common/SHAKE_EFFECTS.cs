@@ -41,6 +41,15 @@ public class SHAKE_EFFECTS : MiniGameObject
     [SerializeField]
     private SPARKLE_EFFECT m_sparkle;
 
+    [Tooltip("パーティクルのキラキラ（08_Sprite1 の星）。強さは下の設定で決まる（上の UI のキラキラと同じ）")]
+    [SerializeField]
+    private SPARKLE_PARTICLE m_sparkleParticle;
+
+    [Tooltip("まっすぐ振れたとき（向きを問わないときは振るたび）に、パーティクルのキラキラをパッと光らせる強さ（0 で光らせない）")]
+    [Range(0f, 1f)]
+    [SerializeField]
+    private float m_swingFlash = 0.3f;
+
     [SerializeField]
     private SOURCE m_sparkleSource = SOURCE.STRAIGHT;
 
@@ -83,6 +92,33 @@ public class SHAKE_EFFECTS : MiniGameObject
     void Start()
     {
         SetEffectsActive(false);
+
+        if (m_input != null)
+        {
+            m_input.Swung += OnSwung;
+        }
+    }
+
+    void OnDestroy()
+    {
+        if (m_input != null)
+        {
+            m_input.Swung -= OnSwung;
+        }
+    }
+
+    // まっすぐ振れたとき、キラキラをパッと光らせる
+    void OnSwung(float point)
+    {
+        if (!m_isActive ||
+            m_sparkleParticle == null ||
+            m_swingFlash <= 0f ||
+            !m_input.IsStraight)
+        {
+            return;
+        }
+
+        m_sparkleParticle.Flash(m_swingFlash);
     }
 
     //オブジェクト初期化関数
@@ -108,6 +144,11 @@ public class SHAKE_EFFECTS : MiniGameObject
         Apply(0f, 0f, 0f, 0f);
         SetEffectsActive(false);
 
+        if (m_sparkleParticle != null)
+        {
+            m_sparkleParticle.IsFast = false;
+        }
+
         if (m_camera != null)
         {
             m_camera.Shake = 0f;
@@ -132,6 +173,12 @@ public class SHAKE_EFFECTS : MiniGameObject
 
         Apply(speedLines, sparkle, shake, fov);
 
+        // 一番速い段階のときは、キラキラを明るくする
+        if (m_sparkleParticle != null)
+        {
+            m_sparkleParticle.IsFast = m_input.Level == SHAKE_INPUT.SPEED_LEVEL.FAST;
+        }
+
         UpdatePrompt();
     }
 
@@ -145,6 +192,11 @@ public class SHAKE_EFFECTS : MiniGameObject
         if (m_sparkle != null)
         {
             m_sparkle.Intensity = sparkle;
+        }
+
+        if (m_sparkleParticle != null)
+        {
+            m_sparkleParticle.Intensity = sparkle;
         }
 
         if (m_camera != null)

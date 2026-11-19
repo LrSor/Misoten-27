@@ -82,6 +82,15 @@ public class DELIVERY_GAME : MiniGame
     [SerializeField]
     private MINIGAME_CAMERA m_camera;
 
+    [Header("演出")]
+    [Tooltip("ゴールしたときに、まとめて出して強く光らせるキラキラ（空欄でもよい）")]
+    [SerializeField]
+    private SPARKLE_PARTICLE m_goalSparkle;
+
+    [Tooltip("ゴールしたときに、まとめて出す星の数")]
+    [SerializeField]
+    private int m_goalSparkleCount = 40;
+
     [Header("表示")]
     [Tooltip("ゴールまでの距離を出す文字（空欄でもよい）")]
     [SerializeField]
@@ -187,6 +196,12 @@ public class DELIVERY_GAME : MiniGame
             if (m_runnerVisual != null)
             {
                 m_runnerVisual.SetGoal();
+            }
+
+            if (m_goalSparkle != null)
+            {
+                m_goalSparkle.Burst(m_goalSparkleCount);
+                m_goalSparkle.Flash(1f);
             }
 
             if (m_distanceText != null)
