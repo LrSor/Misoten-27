@@ -13,13 +13,12 @@ public class FindLightImage : MiniGameObject
     [SerializeField] private Transform m_targetTransfrom;
     private RectTransform m_rectTransform;
     [Header("ポインターの感度")]
-    [SerializeField] private float scale = 50.0f;
+    [SerializeField] private float m_scale = 50.0f;
 
     //オブジェクト初期化関数
     public override void Activate()
     {
         m_rectTransform = GetComponent<RectTransform>();
-        gameObject.SetActive(true);
     }
 
     //オブジェクト終了関数
@@ -31,10 +30,12 @@ public class FindLightImage : MiniGameObject
     //オブジェクト更新関数
     public override void UpdateObject()
     {
+        //位置補正(通常時は座標0からの距離を参照するため)
         Vector3 pos = m_targetTransfrom.position - m_miniGame.transform.position;
 
-        float x = pos.x * scale;
-        float y = pos.z * -scale;
+        float x = pos.x * m_scale;
+        float y = pos.z * -m_scale;
+
         m_rectTransform.anchoredPosition = new Vector3(x, y, 0);
     }
 }
