@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using System;
 using UnityEngine;
 using System.Linq;
+using UnityEngine.InputSystem.Controls;
+using UnityEngine.InputSystem;
 
 public class PointerObject : MiniGameObject
 {
@@ -65,6 +67,25 @@ public class PointerObject : MiniGameObject
         if (!hasJoycon)
         {
             //デバッグ用キーボード操作を以下に記載
+
+            //Quaternion qua = Quaternion.identity;
+            //
+            //if(Keyboard.current.wKey.isPressed)
+            //{
+            //    qua.x += 0.02f;
+            //}
+            //if (Keyboard.current.sKey.isPressed)
+            //{
+            //    qua.x -= 0.02f;
+            //}
+            //if (Keyboard.current.aKey.isPressed)
+            //{
+            //    qua.z += 0.02f;
+            //}
+            //if (Keyboard.current.dKey.isPressed)
+            //{
+            //    qua.z -= 0.02f;
+            //}
 
             return;
         }
