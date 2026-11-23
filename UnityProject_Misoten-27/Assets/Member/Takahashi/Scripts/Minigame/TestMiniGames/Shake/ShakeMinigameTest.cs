@@ -6,6 +6,7 @@ public class ShakeMinigameTest : MiniGame
     [Header("制限時間")]
     [SerializeField] private float m_limit;
     private float m_limitCount;
+    public override float NetworkRemainingSeconds => Mathf.Max(0f, m_limitCount);
 
     [Header("振るオブジェクト")]
     [SerializeField] private ShakeObject m_shakeObject;

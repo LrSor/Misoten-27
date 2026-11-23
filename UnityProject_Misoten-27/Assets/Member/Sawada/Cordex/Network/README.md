@@ -1,5 +1,23 @@
 # Host + Client 3台 通信テスト
 
+## MiniGame のHost権威通信（2026-11-24）
+
+プロトコルは `SawadaNetworkTest/8`。接続者全員が同じ更新済みビルドを使う。
+`NetworkTestSession` が同じSceneの `MiniGameSystem` と、それを参照する `MiniGameZone` を自動登録する。既存Scene・Prefabの再保存は不要。
+
+- ゾーン中心から3m以内で Z / Joy-ConのSHOULDER_2を押すと開始要求。Hostが距離・使用中・参加者の状態を確認し、カウントダウン後に本体を開始する。
+- Clientは加速度・ジャイロ・姿勢・ボタンを送信し、Hostだけがゲームを計算する。ClientはHostから届くTransformの位置・回転・Scale・Activeと進行状態を表示する。動的生成・破棄や任意コンポーネントの内部状態は自動同期しない。
+- キーボードの通信テスト入力は、薪割りがZ長押し、回転がD/A、シェイクがS→W、ポインターが矢印、ボタンがSpace。従来のオフライン用キー処理とは分けている。
+- 参加者の移動・装備変更を止め、カメラをミニゲームへ切り替える。ESC・切断・入力停止・結果表示終了で使用中状態を解放する。入力が0.25秒止まると中立値、3秒止まると中断する。
+- 回転・シェイク・コーヒー・猫探しは元の制限時間を使う。時間を持たない薪割り等は既定10秒で失敗終了。既存の時間切れ集計型ゲームは、そのゲーム側の成否を使う。
+- 星評価はHostで確定し、`PlayerScore`へ最高評価を保存する。既定は成功で星1、100点以上で星2、150点以上で星3、失敗で星0。元スコアは結果データとして別に保持する。
+- 必要ならScene内のシステムに `NetworkMiniGameSettings` を付けて制限時間・星の閾値・結果表示時間を変更する。閾値はゲームごとに調整する（既定値は仮の共通値）。
+- UI側は `MiniGameStateChanged` / `LocalMiniGame` から進行・残り時間・星を受け取れる。`GetMiniGameId(system)` と `RequestMiniGame(id)` で独自の開始UIからも要求可能。Sawadaの `MiniGameUI_Base` への演出接続は別途必要で、現在は既存Canvasと通信側の簡易表示を使用する。
+- 状態は12 Transformずつ分割し、既存の8KB送信上限内で配信する。1ゲーム128 Transformまで。途中参加も進行中の完全な状態を受信する。入力の接続元・セッションID・連番・有限値・センサー範囲を検証するが、実機センサー値の真偽そのものは証明できない。
+
+検証メニュー: `Sawada > Cordex > Check MiniGame Networking (in memory)`。
+一時Scene内で所有者判定・古いセッション・入力検証・カウントダウン・入力停止・評価・スコア反映・重複結果・分割送信・中断・切断・距離判定を確認する。既存Sceneは保存しない。
+
 対象: Unity 6000.3.14f1 / Windows x64。
 Scene は `Assets/Member/Sawada/Scenes/testMapPlayerMove.unity`。`Player_ver2.prefab` を生成元に使用（Prefab本体は変更しない）。
 Display 1～5の分配・起動処理は追加していません。

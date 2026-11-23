@@ -7,6 +7,40 @@ using System.Linq;
 
 public class MiniGameSystem : MonoBehaviour
 {
+    public MiniGame Game => m_minigame;
+    public float CountdownSeconds => Mathf.Max(0f, m_countNum);
+    public Camera MiniGameCamera => m_miniGameCamera;
+    public Canvas MiniGameCanvas => m_miniGameCanvas;
+
+    // Online presentation never disables the network avatar or saves scores locally.
+    public void PresentNetworkGame(bool visible, int phase, float remaining, int score, bool clear)
+    {
+        if (m_miniGameCamera != null)
+        {
+            m_miniGameCamera.targetDisplay = 0;
+            m_miniGameCamera.enabled = visible;
+            m_miniGameCamera.gameObject.SetActive(visible);
+        }
+        if (m_miniGameCanvas != null)
+        {
+            m_miniGameCanvas.targetDisplay = 0;
+            m_miniGameCanvas.gameObject.SetActive(visible);
+        }
+        if (m_howToPlay != null) m_howToPlay.gameObject.SetActive(false);
+        if (m_pose != null) m_pose.gameObject.SetActive(false);
+        if (m_count != null)
+        {
+            m_count.gameObject.SetActive(visible && phase == 1);
+            m_count.text = Mathf.CeilToInt(remaining).ToString();
+        }
+        if (m_score != null)
+        {
+            m_score.gameObject.SetActive(visible && phase == 3 && clear);
+            m_score.text = score.ToString("000");
+        }
+        if (m_gameOver != null) m_gameOver.gameObject.SetActive(visible && phase == 3 && !clear);
+    }
+
     //============================================================
     // JoyCon関連
     //============================================================
@@ -73,6 +107,7 @@ public class MiniGameSystem : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if (Sawada.Cordex.NetworkTestSession.HasMiniGameNetworking(gameObject.scene)) return;
         if (!m_isActiveFlag)
         {
             return;
@@ -270,6 +305,7 @@ public class MiniGameSystem : MonoBehaviour
 
     public void Activate(GameObject playerObject)
     {
+        if (Sawada.Cordex.NetworkTestSession.HasMiniGameNetworking(gameObject.scene)) return;
         //メンバ変数へプレイヤーオブジェクトをを紐付け
         m_playerObject = playerObject;
         //プレイヤー本体の動作を停止
