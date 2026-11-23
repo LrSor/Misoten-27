@@ -6,20 +6,27 @@ using UnityEngine.UIElements;
 
 public class WoodChopping : MiniGame
 {
-
     protected override void Start()
     {
-        //Šî’êƒNƒ‰ƒX“àˆ—
+        //åŸºåº•ã‚¯ãƒ©ã‚¹å†…å‡¦ç†
         base.Start();
 
-        
+
     }
 
     protected override void UpdateMiniGame()
     {
-        //Šî’êƒNƒ‰ƒX“àˆ—(ƒ~ƒjƒQ[ƒ€—pƒIƒuƒWƒFƒNƒg‚ÌÀs)
+        //åŸºåº•ã‚¯ãƒ©ã‚¹å†…å‡¦ç†(ãƒŸãƒ‹ã‚²ãƒ¼ãƒ ç”¨ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã®å®Ÿè¡Œ)
         base.UpdateMiniGame();
 
+        m_remainingSeconds -= Time.deltaTime; // å¤‰æ›´ Sawada
+    }
 
+    public override void Activate()
+    {
+        base.Activate();
+
+        m_stars = 2;                // ä¾‹ 2ã¤æ˜Ÿã‚’è¨­å®š // å¤‰æ›´ Sawada
+        m_remainingSeconds = 20f;   // ä¾‹ 20ç§’ã‚’è¨­å®š
     }
 }

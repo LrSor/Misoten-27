@@ -33,6 +33,7 @@ public class SensorObject : MonoBehaviour
     {
         //メンバ変数の初期化などは、ジョイコンの初期化より先に行う
         m_currentEuler=Vector3.zero;
+        if (Sawada.Cordex.NetworkTestSession.HasMiniGameNetworking(gameObject.scene)) return; // 変更 Sawada
 
         //デバッグ用: キーボード操作が有効の場合、ジョイコンの初期化を停止
 #if UNITY_EDITOR
@@ -57,8 +58,11 @@ public class SensorObject : MonoBehaviour
     //オブジェクト更新関数
     void Update()
     {
+        bool network = m_miniGame != null && m_miniGame.IsNetworkControlled; // 変更 Sawada
+        if (!network && Sawada.Cordex.NetworkTestSession.HasMiniGameNetworking(gameObject.scene)) return;
+        if (network && (!m_miniGame.IsNetworkAuthority || !m_miniGame.IsActive || m_miniGame.GetIsFinish())) return;
 #if UNITY_EDITOR
-        bool hasJoycon = (m_joycon != null);
+        bool hasJoycon = (network || m_joycon != null); // 変更 Sawada
         if (!hasJoycon)
         {
             //デバッグ用キーボード操作を以下に記載
@@ -68,7 +72,7 @@ public class SensorObject : MonoBehaviour
 #endif
 
         //ジョイコンを用いた操作を記載(以下に回転処理を生成)
-        Vector3 accel = m_joycon.GetAccel();
+        Vector3 accel = network ? m_miniGame.NetworkInput.m_acceleration : m_joycon.GetAccel(); // 変更 Sawada
 
         //------------------------------------------------------------
         // 加速度 → 角度変換

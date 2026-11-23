@@ -39,7 +39,7 @@ public class PlayerScore : MonoBehaviour
 
     //ミニゲーム結果保存用リスト
     [Header("スコア管理リスト")]
-    [SerializeField] private List<Result> m_results;
+    [SerializeField] private List<Result> m_results = new List<Result>(); // 変更 Sawada
 
     [Header("プレイヤーのカメラを取得")]
     [SerializeField] private Camera m_camera;
@@ -67,6 +67,7 @@ public class PlayerScore : MonoBehaviour
 
     public void SetMiniGameScore(MiniGame miniGame, int  score)
     {
+        if (m_results == null) m_results = new List<Result>(); // 変更 Sawada
         m_totalScore = 0;
         bool isPlayed = false;
         foreach (Result result in m_results)
@@ -93,7 +94,7 @@ public class PlayerScore : MonoBehaviour
         }
 
         //スコア表示UIを更新
-        m_scoreText.text = m_totalScore.ToString("Total Score: 0000");
+        if (m_scoreText != null) m_scoreText.text = m_totalScore.ToString("Total Score: 0000"); // 変更 Sawada
     }
 
     public int GetTotalScore()

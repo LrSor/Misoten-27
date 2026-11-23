@@ -1,5 +1,26 @@
 # Host + Client 3台 通信テスト
 
+## MiniGame のHost権威通信（2026-11-24）
+
+プロトコルは `SawadaNetworkTest/11`。接続者全員が同じ更新済みビルドを使う。
+`NetworkTestSession` が同じSceneの `MiniGameSystem` と、それを参照する `MiniGameZone` を自動登録する。既存Scene・Prefabの再保存は不要。
+
+- ゾーン中心から3m以内で Z / Joy-ConのSHOULDER_2を押すと開始要求。Hostが距離・使用中・参加者の状態を確認し、カウントダウン後に本体を開始する。
+- Clientは加速度・ジャイロ・姿勢・ボタンを送信し、Hostだけがゲームを計算する。ClientはHostから届くTransformの位置・回転・Scale・Activeと進行状態を表示する。動的生成・破棄や任意コンポーネントの内部状態は自動同期しない。
+- キーボードの通信テスト入力は、薪割りがZ長押し、回転がD/A、シェイクがS→W、ポインターが矢印、ボタンがSpace。従来のオフライン用キー処理とは分けている。
+- 参加者の移動・装備変更を止め、カメラをミニゲームへ切り替える。ESC・切断・入力停止・結果表示終了で使用中状態を解放する。入力が0.25秒止まると中立値、3秒止まると中断する。
+- 回転・シェイク・コーヒー・猫探しは、ゲーム自身が更新する既存の残り秒数を `NetworkRemainingSeconds` から取得して送る。UIは受信値をそのまま上書きし、自分では減算しない。時間のない薪割り等は `m_hasTimer = false` とし、表示は `--` 固定。通信側にゲームプレイ用の制限時間・自動時間切れ処理は設けない。既存の時間切れ集計型ゲームは、そのゲーム自身の終了判定を使う。
+- 既存の星評価があるゲームは、その値を `MiniGame.NetworkStars` で公開してHostからUIへ渡す。未実装（`null`）なら星3固定。元スコアから星へ換算する閾値や採点式は追加しない。元スコアとゲームの成否は別データとして保持し、星の最高評価を `PlayerScore` へ保存する。
+- `NetworkMiniGameSettings` は結果表示の演出時間だけを設定する。ゲームの制限時間や星の採点設定は持たない。
+- 各端末のScene内に1つだけ配置された有効な `MiniGameUI_Base` がある場合は、`NetworkMiniGameUIBridge` を実行時に自動接続する。Prefab・Sceneの保存変更は不要。READY/START、Hostの残り時間、確定した星、通常終了後の星回収を表示し、従来の開始カウント・結果表示と簡易表示は重ねない。UIがない場合は従来の簡易表示を使う。
+- UIの独自タイムアウト・F開始・SPACE等によるテスト終了は通信中に無効。Hostの終了通知だけで結果へ移り、時間切れ集計でも正当な星評価を表示する。時間はUIから決めず、ゲーム側のカウントダウン時間・制限時間・結果時間を `m_duration` と `m_remaining` で渡す。星評価もHostが確定した値をそのまま描画する。
+- 通常終了を `m_completed` で区別し、その通知でのみ星を回収する。キャンセル・切断では演出を開始せず、Indexを保存済みスコアへ同期する。回収先とスコア参照はローカル参加者のPlayerCanvasへ紐付け、結果の重複通知で演出を繰り返さない。
+- UI側は `MiniGameStateChanged` / `LocalMiniGame` から進行・残り時間・星を受け取れる。`GetMiniGameId(system)` と `RequestMiniGame(id)` で独自の開始UIからも要求可能。
+- 状態は12 Transformずつ分割し、既存の8KB送信上限内で配信する。1ゲーム128 Transformまで。途中参加も進行中の完全な状態を受信する。入力の接続元・セッションID・連番・有限値・センサー範囲を検証するが、実機センサー値の真偽そのものは証明できない。
+
+検証メニュー: `Sawada > Cordex > Check MiniGame Networking (in memory)`。
+一時Scene内で所有者判定・古いセッション・入力検証・カウントダウン・入力停止・評価・スコア反映・重複結果・分割送信・中断・切断・距離判定を確認する。既存Sceneは保存しない。
+
 対象: Unity 6000.3.14f1 / Windows x64。
 Scene は `Assets/Member/Sawada/Scenes/testMapPlayerMove.unity`。`Player_ver2.prefab` を生成元に使用（Prefab本体は変更しない）。
 Display 1～5の分配・起動処理は追加していません。

@@ -222,6 +222,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterAmorController
   m_parent: {fileID: 1592184488894524308}
+  m_temporaryOutfit: {fileID: 0}
 --- !u!1 &1843249377512303315
 GameObject:
   m_ObjectHideFlags: 0

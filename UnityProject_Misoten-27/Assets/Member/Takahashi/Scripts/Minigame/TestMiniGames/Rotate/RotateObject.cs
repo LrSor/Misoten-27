@@ -57,6 +57,8 @@ public class RotateObject : MiniGameObject
         transform.localEulerAngles = Vector3.zero;
 
 
+        if (IsNetworkControlled) { m_joycon = null; return; } // 変更 Sawada
+
     //デバッグ用: キーボード操作が有効の場合、ジョイコンの初期化を停止
 #if UNITY_EDITOR
     JoyconManager joyconManager = GameObject.FindFirstObjectByType<JoyconManager>();
@@ -89,7 +91,7 @@ public class RotateObject : MiniGameObject
     public override void UpdateObject()
     {
 #if UNITY_EDITOR
-        bool hasJoycon = (m_joycon != null);
+        bool hasJoycon = (IsNetworkControlled || m_joycon != null); // 変更 Sawada
         //ジョイコンが接続されている場合、キーボード操作処理を飛ばしジョイコン操作を行う
         if (!hasJoycon)
         {
@@ -148,10 +150,10 @@ public class RotateObject : MiniGameObject
         //------------------------------------------------------------
         // 現在の加速度を取得
         //------------------------------------------------------------
-        Vector3 accel = m_joycon.GetAccel();
+        Vector3 accel = (IsNetworkControlled ? NetworkInput.m_acceleration : m_joycon.GetAccel()); // 変更 Sawada
 
         //ジョイコンがRの場合、加速度YとZの数値を反転
-        if (!m_joycon.isLeft)
+        if (!(IsNetworkControlled ? NetworkInput.m_isLeft : m_joycon.isLeft)) // 変更 Sawada
         {
             accel.y = -accel.y;
             accel.z = -accel.z;

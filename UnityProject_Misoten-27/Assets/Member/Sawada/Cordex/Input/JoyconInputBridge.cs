@@ -19,6 +19,7 @@ public sealed class JoyconInputBridge : MonoBehaviour
     [SerializeField] private Joycon.Button m_swapButton = Joycon.Button.SR;
 
     private Joycon m_source;
+    public Joycon Source => m_source;
     private Gamepad m_virtualPad;
     private bool m_previousAutoSwitch;
     private string m_previousScheme;

@@ -12,9 +12,9 @@ using UnityEngine.InputSystem;
 namespace Sawada.Cordex
 {
     [DefaultExecutionOrder(-10000)]
-    public sealed class NetworkTestSession : MonoBehaviour
+    public sealed partial class NetworkTestSession : MonoBehaviour
     {
-        const string Protocol = "SawadaNetworkTest/7";
+        const string Protocol = "SawadaNetworkTest/11";
         const float Timeout = 10f;
         const float NetworkInterval = .05f;
         const float FastSnapshotInterval = 1f / 30f;
@@ -53,6 +53,7 @@ namespace Sawada.Cordex
             public int request, target, part, parts;
             public bool accepted;
             public NetworkWorld.State[] world;
+            public MiniGamePacket m_miniGame;
             public int firstMoveSequence;
             public WalkCommand[] moves;
             public float time;
@@ -199,6 +200,7 @@ namespace Sawada.Cordex
                 lobby.SetActive(true);
                 view = lobbyView;
             }
+            InitializeMiniGames();
             started = Time.realtimeSinceStartup;
         }
 
@@ -398,7 +400,7 @@ namespace Sawada.Cordex
                     server = relay.Client;
                     relayConnecting = false;
                     lastReceive = now;
-                    Send(server, new Message { kind = "hello", protocol = Protocol, catalog = world.Catalog });
+                    Send(server, new Message { kind = "hello", protocol = Protocol, catalog = SessionCatalog });
                     SetStatus("Connected; waiting for Host approval");
                 }
                 if ((relayStarting || relayConnecting || (hosting && !roomAnnounced)) && now - relayStarted > 45f)
@@ -418,18 +420,20 @@ namespace Sawada.Cordex
                         connectingSocket = null;
                         connecting = false;
                         lastReceive = now;
-                        Send(server, new Message { kind = "hello", protocol = Protocol, catalog = world.Catalog });
+                        Send(server, new Message { kind = "hello", protocol = Protocol, catalog = SessionCatalog });
                         SetStatus("Connected; waiting for Host approval");
                     }
                 }
                 else if (now - connectStarted > Timeout)
                     StopSession("Connect timeout: check Host IP / port, same LAN and Host firewall (TCP).");
             }
+            UpdateMiniGameInput(now);
             ReadLocalInput(now);
             if (hosting) world.TickHost();
             if (hosting) PollHost(now);
             else if (server != null) PollClient(now);
             UpdateAvatars();
+            UpdateNetworkMiniGames(now);
             UpdateRanking(now);
             // PositionConstraint evaluates before LateUpdate. Feed it the current rendered pose.
             RenderClientAvatars(now);
@@ -440,7 +444,7 @@ namespace Sawada.Cordex
             localInput = Vector2.zero;
             localSprintSteer = 0f;
             localSprint = false;
-            if (localId == 0) return;
+            if (localId == 0 || IsMiniGamePlayer(localId)) return;
             if (testPickup)
             {
                 float elapsed = now - started;
@@ -580,7 +584,7 @@ namespace Sawada.Cordex
                     {
                         if (m.kind != "hello" || m.protocol != Protocol)
                         { Reject(c, "Protocol mismatch: " + Protocol + " required", now); break; }
-                        if (m.catalog != world.Catalog)
+                        if (m.catalog != SessionCatalog)
                         { Reject(c, "World catalog mismatch: use the same map and build", now); break; }
                         if (ranking.IsCollecting)
                         { Reject(c, "Score collection in progress; join again after it finishes", now); break; }
@@ -590,6 +594,11 @@ namespace Sawada.Cordex
                         states.Add(id, SpawnState(id));
                         Send(c.peer, new Message { kind = "welcome", id = id, protocol = Protocol });
                         Debug.Log("[NetworkTest] JOIN P" + id);
+                    }
+                    else if (m.kind == "minigame")
+                    {
+                        if (!HandleMiniGameRequest(c.id, m.m_miniGame, now))
+                        { Reject(c, "Invalid minigame message", now); break; }
                     }
                     else if (m.kind == "ranking-request" || m.kind == "ranking-score")
                     {
@@ -631,6 +640,7 @@ namespace Sawada.Cordex
                     connections.Remove(c);
                     if (c.id != 0)
                     {
+                        RemoveMiniGamePlayer(c.id);
                         ranking.RemoveDisconnected(c.id);
                         states.Remove(c.id); Debug.Log("[NetworkTest] LEAVE P" + c.id);
                     }
@@ -725,6 +735,10 @@ namespace Sawada.Cordex
                 if (m.kind == "reject") { StopSession("Connection rejected: " + m.reason); return; }
                 if (m.kind == "welcome" && m.protocol == Protocol && m.id >= 2 && m.id <= 4 && localId == 0)
                 { localId = m.id; SetStatus("Client connected as P" + localId); }
+                else if (m.kind == "minigame" && localId > 0)
+                {
+                    if (!ReceiveMiniGameState(m.m_miniGame)) { StopSession("Invalid minigame state"); return; }
+                }
                 else if (m.kind == "world" && localId > 0)
                 {
                     if (!world.Receive(m)) { StopSession("Invalid Host world state"); return; }
@@ -841,6 +855,7 @@ namespace Sawada.Cordex
         void FeedMovement(int id, Vector2 input, bool sprint, Vector2 forward, float sprintSteer)
         {
             if (!movers.TryGetValue(id, out var mover)) return;
+            if (IsMiniGamePlayer(id)) { input = Vector2.zero; sprint = false; sprintSteer = 0f; }
             mover.SetNetworkInput(input, sprint, new Vector3(forward.x, 0, forward.y), sprintSteer);
             var movementState = mover.GetComponent<StateMachine>();
             if (mover.HasMoveInput && movementState.IsInState<Player_Idle>()) movementState.ChangeState<Player_Walk>();
@@ -989,6 +1004,7 @@ namespace Sawada.Cordex
         void ApplyArmorSelection(int id, int step, ref int appliedStep)
         {
             if (!inventories.TryGetValue(id, out var inventory)) return;
+            if (IsMiniGamePlayer(id)) { appliedStep = step; return; }
             int delta = (int)Math.Max(-32L, Math.Min(32L, (long)step - appliedStep));
             if (inventory.ArmorSlotCount > 0)
                 for (int i = 0; i < Math.Abs(delta); i++)
@@ -999,7 +1015,7 @@ namespace Sawada.Cordex
         void FeedSwap(int id, int press, ref int appliedPress)
         {
             if (!swappers.TryGetValue(id, out var swapper)) return;
-            swapper.SetNetworkSwapInput(press != appliedPress);
+            swapper.SetNetworkSwapInput(!IsMiniGamePlayer(id) && press != appliedPress);
             appliedPress = press;
         }
 
@@ -1267,7 +1283,7 @@ namespace Sawada.Cordex
 
         void LateUpdate()
         {
-            if (localLook != null) localLook.Look();
+            if (localLook != null && !IsMiniGamePlayer(localId)) localLook.Look();
         }
 
         void SetStatus(string text)
@@ -1285,6 +1301,7 @@ namespace Sawada.Cordex
 
         public void StopSession(string reason = "Disconnected by user")
         {
+            ResetNetworkMiniGames();
             rankingSlow.Restore();
             ranking.Reset();
             rankingId = completedRankingId = 0;
@@ -1335,6 +1352,7 @@ namespace Sawada.Cordex
 
         void OnGUI()
         {
+            DrawNetworkMiniGame();
             GUI.skin.label.wordWrap = true;
             GUILayout.BeginArea(new Rect(12, 12, 440, Screen.height - 24));
             GUILayout.BeginVertical(GUI.skin.box);
@@ -1421,11 +1439,12 @@ namespace Sawada.Cordex
 
         void OnDisable()
         {
-            if (rankingWaiting) StopSession("Session disabled during score collection");
+            if (Busy || rankingWaiting || m_miniGameViewActive) StopSession("Session disabled");
         }
 
         void OnDestroy()
         {
+            m_miniGameSessions.Remove(this);
             StopSession("Session closed");
             trace?.Dispose(); trace = null;
         }

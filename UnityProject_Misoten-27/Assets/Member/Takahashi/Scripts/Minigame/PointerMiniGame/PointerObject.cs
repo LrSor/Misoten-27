@@ -28,6 +28,8 @@ public class PointerObject : MiniGameObject
         //メンバ変数の初期化などは、ジョイコンの初期化より先に行う
 
 
+        if (IsNetworkControlled) { m_joycon = null; return; } // 変更 Sawada
+
         //デバッグ用: キーボード操作が有効の場合、ジョイコンの初期化を停止
         //=====================================================
         JoyconManager joyconManager = GameObject.FindFirstObjectByType<JoyconManager>();
@@ -61,7 +63,7 @@ public class PointerObject : MiniGameObject
     public override void UpdateObject()
     {
         //=====================================================
-        bool hasJoycon = (m_joycon != null);
+        bool hasJoycon = (IsNetworkControlled || m_joycon != null); // 変更 Sawada
         if (!hasJoycon)
         {
             //デバッグ用キーボード操作を以下に記載
@@ -72,11 +74,11 @@ public class PointerObject : MiniGameObject
 
         //ジョイコンを用いた操作を記載
         // Bボタンでセンター位置のリセット
-        if (m_joycon.GetButtonDown(Joycon.Button.DPAD_DOWN))
+        if (!IsNetworkControlled && m_joycon.GetButtonDown(Joycon.Button.DPAD_DOWN)) // 変更 Sawada
         {
             m_joycon.Recenter();
         }
 
-        gameObject.transform.rotation = m_joycon.GetVector();
+        gameObject.transform.rotation = (IsNetworkControlled ? NetworkInput.m_orientation : m_joycon.GetVector()); // 変更 Sawada
     }
 }

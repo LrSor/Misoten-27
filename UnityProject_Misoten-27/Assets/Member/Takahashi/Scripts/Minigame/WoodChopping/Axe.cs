@@ -26,6 +26,9 @@ public class Axe : MiniGameObject
 
     public override void Activate()
     {
+        m_shamAccel = Vector3.zero; // 変更 Sawada
+        if (IsNetworkControlled) { m_joycon = null; return; }
+
         //デバッグ用: キーボード操作が有効の場合、ジョイコンの初期化を停止
         JoyconManager joyconManager = GameObject.FindFirstObjectByType<JoyconManager>();
         if (joyconManager.GetIsKeyboardPlay())
@@ -55,7 +58,7 @@ public class Axe : MiniGameObject
     public override void UpdateObject()
     {
         //========================================================================================
-        bool hasJoycon = (m_joycon != null);
+        bool hasJoycon = (IsNetworkControlled || m_joycon != null); // 変更 Sawada
         //ジョイコンが接続されている場合、キーボード操作処理を飛ばしジョイコン操作を行う
         if(!hasJoycon)
         {
@@ -100,11 +103,11 @@ public class Axe : MiniGameObject
         //--------------------------------------------
         // JoyConの加速度を取得
         //--------------------------------------------
-        Vector3 accel = m_joycon.GetAccel();
+        Vector3 accel = (IsNetworkControlled ? NetworkInput.m_acceleration : m_joycon.GetAccel()); // 変更 Sawada
         
 
         //ジョイコンがRの場合、加速度YとZの数値を反転
-        if(!m_joycon.isLeft)
+        if(!(IsNetworkControlled ? NetworkInput.m_isLeft : m_joycon.isLeft)) // 変更 Sawada
         {
             accel.y = -accel.y;
             accel.z = -accel.z;
@@ -131,13 +134,15 @@ public class Axe : MiniGameObject
 
     public void OnCollisionEnter(Collision collision)
     {
+        if (m_miniGame == null || !m_miniGame.IsActive || m_miniGame.GetIsFinish() || // 変更 Sawada
+            (IsNetworkControlled && !IsNetworkAuthority)) return;
         if(collision.gameObject == m_gameClearObject)
         {
             //ミニゲームクリアフラグ
             m_miniGame.FinishMiniGame();
 
             //========================================================================================
-            bool hasJoycon = (m_joycon != null);
+            bool hasJoycon = (IsNetworkControlled || m_joycon != null); // 変更 Sawada
             if (!hasJoycon)
             {
                 float collisionPower = Mathf.Abs(m_shamAccel.y);
@@ -161,7 +166,7 @@ public class Axe : MiniGameObject
             //--------------------------------------------
             // JoyCon の加速度を取得（振り下ろし強さ）
             //--------------------------------------------
-            Vector3 joyconAccel = m_joycon.GetAccel();
+            Vector3 joyconAccel = (IsNetworkControlled ? NetworkInput.m_acceleration : m_joycon.GetAccel()); // 変更 Sawada
             float joyconPower = Mathf.Abs(joyconAccel.y);
 
             {//--------------------------------------------
