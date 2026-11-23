@@ -84,14 +84,63 @@ public static class MiniGameUIBaseChecks
             ui.BeginMiniGame();
             Invoke(ui, "OnDisable");
             Require(!ui.IsRunning && control.enabled && ui.ResultStars == 0, "Interruption resets UI");
+            CheckExternalAuthority(ui, control);
             CheckScene();
-            Debug.Log("MiniGameUIBaseChecks: PASS (timing, transitions, control restoration, restart, scene references)");
+            Debug.Log("MiniGameUIBaseChecks: PASS (timing, transitions, control restoration, restart, external authority, scene references)");
         }
         finally
         {
             UnityEngine.Object.DestroyImmediate(owner);
             UnityEngine.Object.DestroyImmediate(player);
         }
+    }
+
+    private static void CheckExternalAuthority(MiniGameUIBase ui, Camera control)
+    {
+        ui.SetExternalControl(true);
+        ui.BeginMiniGame();
+        Require(!ui.IsRunning, "External authority blocks local test start");
+        ui.ApplyExternalPhase(MiniGameUIBase.Phase.Countdown, 0f, 3f);
+        ui.GetComponent<MiniGameUIExplanationState>().UpdateState();
+        Require(ui.CurrentPhase == MiniGameUIBase.Phase.Countdown, "Countdown waits for Host even at zero");
+        ui.ApplyExternalPhase(MiniGameUIBase.Phase.Playing, 60f, 60f);
+        Require(ui.RemainingSeconds > 59f && control.enabled, "Host timer replaces ten-second timer without changing controls");
+        SetField(ui, "m_externalSampleAt", Time.time - 5f);
+        ui.GetComponent<MiniGameUIPlayingState>().UpdateState();
+        Require(ui.RemainingSeconds == 60f, "UI does not decrement a supplied time sample");
+        ui.ApplyExternalPhase(MiniGameUIBase.Phase.Playing, 23.25f, 60f);
+        Require(ui.RemainingSeconds == 23.25f, "Next game time sample overwrites the display value");
+        ui.ApplyExternalPhase(MiniGameUIBase.Phase.Playing, 0f, 0f, hasTimer: false);
+        SetField(ui, "m_externalSampleAt", Time.time - 60f);
+        ui.GetComponent<MiniGameUIPlayingState>().UpdateState();
+        Require(ui.CurrentPhase == MiniGameUIBase.Phase.Playing && ui.RemainingSeconds == 0f,
+            "No timer stays still and does not end the game");
+        ui.ReceiveButtonInput(true);
+        ui.FinishMiniGame(2);
+        Require(ui.CurrentPhase == MiniGameUIBase.Phase.Playing
+            && !ui.GetComponent<MiniGameUIPlayingState>().IsButtonPressed, "External mode blocks test clear input");
+        ui.ApplyExternalPhase(MiniGameUIBase.Phase.Playing, 0f, 60f);
+        ui.GetComponent<MiniGameUIPlayingState>().UpdateState();
+        Require(ui.CurrentPhase == MiniGameUIBase.Phase.Playing, "UI timeout cannot decide the game result");
+        ui.ApplyExternalPhase(MiniGameUIBase.Phase.Result, 0f, .5f, 3, true);
+        Require(ui.ResultStars == 3, "Time-based score games retain Host-confirmed stars at zero");
+        object startedAt = GetField(ui, "m_phaseStartedAt");
+        ui.ApplyExternalPhase(MiniGameUIBase.Phase.Result, 0f, .5f, 3, true);
+        Require(startedAt.Equals(GetField(ui, "m_phaseStartedAt")), "Repeated snapshots do not restart the result state");
+        ui.GetComponent<MiniGameUIResultState>().UpdateState();
+        Require(ui.CurrentPhase == MiniGameUIBase.Phase.Result, "Result waits for Host completion");
+        // Animation itself requires Play Mode; exercise the completion transition without spawning sprites.
+        SetField(ui, "m_star", null);
+        ui.CloseExternalGame(true);
+        ui.CloseExternalGame(true);
+        Require(!ui.IsRunning && ui.ResultStars == 0, "Completion is safe to repeat");
+        ui.ApplyExternalPhase(MiniGameUIBase.Phase.Countdown, 3f, 3f);
+        ui.CloseExternalGame(false);
+        Require(!ui.IsRunning && control.enabled, "Cancellation closes presentation and preserves controls");
+        ui.SetExternalControl(false);
+        ui.BeginMiniGame();
+        Require(ui.IsRunning && !control.enabled, "Standalone behavior remains available after unbinding");
+        ui.CancelMiniGame();
     }
 
     private static void CheckSpriteSequence()

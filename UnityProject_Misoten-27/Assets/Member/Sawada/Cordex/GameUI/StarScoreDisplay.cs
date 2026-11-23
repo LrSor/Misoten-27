@@ -37,9 +37,15 @@ public sealed class StarScoreDisplay : MonoBehaviour
     // PlayerDisplay とプレイヤーを実行時に接続する場合にも使用できる。
     public void SetPlayerScore(PlayerScore source)
     {
+        BindPlayerScore(source, true);
+    }
+
+    // A late network result must not jump to the final score before its stars arrive.
+    public void BindPlayerScore(PlayerScore source, bool synchronize)
+    {
         m_playerScore = source;
         m_warnedMissingSource = false;
-        if (!m_collecting) SynchronizeFromSavedScore();
+        if (synchronize && !m_collecting) SynchronizeFromSavedScore();
     }
 
     public void SynchronizeFromSavedScore()

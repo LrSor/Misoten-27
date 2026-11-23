@@ -14,10 +14,10 @@ public sealed class StarCollectionEffect : MonoBehaviour
 
     private sealed class Collection
     {
-        public Texture2D Texture;
-        public Rect[] Stars;
-        public Vector2 ScreenSize;
-        public float Angle, Delay, Duration, ArcHeightRatio;
+        public Texture2D m_texture;
+        public Rect[] m_stars;
+        public Vector2 m_screenSize;
+        public float m_angle, m_delay, m_duration, m_arcHeightRatio;
     }
 
     private readonly Queue<Collection> m_pending = new Queue<Collection>();
@@ -42,13 +42,13 @@ public sealed class StarCollectionEffect : MonoBehaviour
         }
         m_pending.Enqueue(new Collection
         {
-            Texture = texture,
-            Stars = (Rect[])stars.Clone(),
-            ScreenSize = new Vector2(Screen.width, Screen.height),
-            Angle = angle,
-            Delay = Mathf.Max(0f, delay),
-            Duration = Mathf.Max(0.01f, duration),
-            ArcHeightRatio = Mathf.Max(0f, arcHeightRatio)
+            m_texture = texture,
+            m_stars = (Rect[])stars.Clone(),
+            m_screenSize = new Vector2(Screen.width, Screen.height),
+            m_angle = angle,
+            m_delay = Mathf.Max(0f, delay),
+            m_duration = Mathf.Max(0.01f, duration),
+            m_arcHeightRatio = Mathf.Max(0f, arcHeightRatio)
         });
         if (m_isPlaying) return;
         m_isPlaying = true;
@@ -62,25 +62,25 @@ public sealed class StarCollectionEffect : MonoBehaviour
             Collection collection = m_pending.Dequeue();
             if (!TryGetDestinationRect(out _)) break;
             m_collectionInProgress = true;
-            CollectionStarted?.Invoke(collection.Stars.Length);
+            CollectionStarted?.Invoke(collection.m_stars.Length);
             m_originalScale = m_destination.localScale;
             m_hasOriginalScale = true;
-            foreach (Rect star in collection.Stars)
+            foreach (Rect star in collection.m_stars)
             {
                 var owner = new GameObject("FlyingStar", typeof(RectTransform), typeof(CanvasRenderer), typeof(RawImage));
                 owner.transform.SetParent(transform, false);
                 RawImage image = owner.GetComponent<RawImage>();
-                image.texture = collection.Texture;
+                image.texture = collection.m_texture;
                 image.raycastTarget = false;
                 m_images.Add(image);
-                SetImageRect(image, ResizeForScreen(star, collection.ScreenSize), collection.Angle);
+                SetImageRect(image, ResizeForScreen(star, collection.m_screenSize), collection.m_angle);
             }
 
             float waitingSince = Time.unscaledTime;
-            while (Time.unscaledTime - waitingSince < collection.Delay)
+            while (Time.unscaledTime - waitingSince < collection.m_delay)
             {
                 for (int i = 0; i < m_images.Count; i++)
-                    SetImageRect(m_images[i], ResizeForScreen(collection.Stars[i], collection.ScreenSize), collection.Angle);
+                    SetImageRect(m_images[i], ResizeForScreen(collection.m_stars[i], collection.m_screenSize), collection.m_angle);
                 yield return null;
             }
 
@@ -98,18 +98,18 @@ public sealed class StarCollectionEffect : MonoBehaviour
                         EndCollection(false);
                         yield break;
                     }
-                    float progress = Mathf.Clamp01((Time.unscaledTime - startedAt) / collection.Duration);
-                    Rect start = ResizeForScreen(collection.Stars[i], collection.ScreenSize);
+                    float progress = Mathf.Clamp01((Time.unscaledTime - startedAt) / collection.m_duration);
+                    Rect start = ResizeForScreen(collection.m_stars[i], collection.m_screenSize);
                     Vector2 control = (start.center + destination.center) * 0.5f;
                     // GUI と同じ画面左上原点。制御点を上側に置いて弧を描く。
                     control.y = Mathf.Min(start.center.y, destination.center.y) -
-                        Mathf.Min(Screen.width, Screen.height) * collection.ArcHeightRatio;
+                        Mathf.Min(Screen.width, Screen.height) * collection.m_arcHeightRatio;
                     Vector2 center = Vector2.Lerp(Vector2.Lerp(start.center, control, progress),
                         Vector2.Lerp(control, destination.center, progress), progress);
                     Vector2 size = Vector2.Lerp(start.size, destination.size, progress);
-                    SetImageRect(m_images[i], new Rect(center - size * 0.5f, size), collection.Angle);
+                    SetImageRect(m_images[i], new Rect(center - size * 0.5f, size), collection.m_angle);
                     for (int j = i + 1; j < m_images.Count; j++)
-                        SetImageRect(m_images[j], ResizeForScreen(collection.Stars[j], collection.ScreenSize), collection.Angle);
+                        SetImageRect(m_images[j], ResizeForScreen(collection.m_stars[j], collection.m_screenSize), collection.m_angle);
                     if (progress >= 1f) break;
                     yield return null;
                 }
@@ -206,6 +206,11 @@ public sealed class StarCollectionEffect : MonoBehaviour
     }
 
     private void OnDisable()
+    {
+        CancelCollection();
+    }
+
+    public void CancelCollection()
     {
         StopAllCoroutines();
         ClearImages();

@@ -88,7 +88,7 @@ public class ShakeObject : MiniGameObject
         }
 
         //ジョイコンを用いた操作を記載
-        Vector3 accel = (IsNetworkControlled ? NetworkInput.acceleration : m_joycon.GetAccel());  // 加速度取得（縦持ち前提）
+        Vector3 accel = (IsNetworkControlled ? NetworkInput.m_acceleration : m_joycon.GetAccel());  // 加速度取得（縦持ち前提）
 
         // 下方向の振りを検知
         if (!m_isDownSwingFlag && accel.x < accelThresholdDown)

@@ -14,7 +14,7 @@ namespace Sawada.Cordex
     [DefaultExecutionOrder(-10000)]
     public sealed partial class NetworkTestSession : MonoBehaviour
     {
-        const string Protocol = "SawadaNetworkTest/8";
+        const string Protocol = "SawadaNetworkTest/11";
         const float Timeout = 10f;
         const float NetworkInterval = .05f;
         const float FastSnapshotInterval = 1f / 30f;
@@ -53,7 +53,7 @@ namespace Sawada.Cordex
             public int request, target, part, parts;
             public bool accepted;
             public NetworkWorld.State[] world;
-            public MiniGamePacket miniGame;
+            public MiniGamePacket m_miniGame;
             public int firstMoveSequence;
             public WalkCommand[] moves;
             public float time;
@@ -597,7 +597,7 @@ namespace Sawada.Cordex
                     }
                     else if (m.kind == "minigame")
                     {
-                        if (!HandleMiniGameRequest(c.id, m.miniGame, now))
+                        if (!HandleMiniGameRequest(c.id, m.m_miniGame, now))
                         { Reject(c, "Invalid minigame message", now); break; }
                     }
                     else if (m.kind == "ranking-request" || m.kind == "ranking-score")
@@ -737,7 +737,7 @@ namespace Sawada.Cordex
                 { localId = m.id; SetStatus("Client connected as P" + localId); }
                 else if (m.kind == "minigame" && localId > 0)
                 {
-                    if (!ReceiveMiniGameState(m.miniGame)) { StopSession("Invalid minigame state"); return; }
+                    if (!ReceiveMiniGameState(m.m_miniGame)) { StopSession("Invalid minigame state"); return; }
                 }
                 else if (m.kind == "world" && localId > 0)
                 {
@@ -1439,12 +1439,12 @@ namespace Sawada.Cordex
 
         void OnDisable()
         {
-            if (Busy || rankingWaiting || miniGameViewActive) StopSession("Session disabled");
+            if (Busy || rankingWaiting || m_miniGameViewActive) StopSession("Session disabled");
         }
 
         void OnDestroy()
         {
-            miniGameSessions.Remove(this);
+            m_miniGameSessions.Remove(this);
             StopSession("Session closed");
             trace?.Dispose(); trace = null;
         }

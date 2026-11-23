@@ -72,7 +72,7 @@ public class SensorObject : MonoBehaviour
 #endif
 
         //ジョイコンを用いた操作を記載(以下に回転処理を生成)
-        Vector3 accel = network ? m_miniGame.NetworkInput.acceleration : m_joycon.GetAccel();
+        Vector3 accel = network ? m_miniGame.NetworkInput.m_acceleration : m_joycon.GetAccel();
 
         //------------------------------------------------------------
         // 加速度 → 角度変換

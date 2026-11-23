@@ -17,7 +17,7 @@ public class TestUIController : MiniGameUIBase
     protected override void OnGUI()
     {
         base.OnGUI();
-        if (CanControlPlayer)
+        if (!IsExternallyDriven && CanControlPlayer)
             GUI.Label(new Rect(20, Screen.height - 60, 320, 40), "SPACE / SL / CLICK  -  CLEAR");
     }
 }

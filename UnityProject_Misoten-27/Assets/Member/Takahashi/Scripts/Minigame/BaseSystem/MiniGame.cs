@@ -28,6 +28,8 @@ public class MiniGame : MonoBehaviour
     public bool IsNetworkControlled { get; private set; }
     public bool IsNetworkAuthority { get; private set; }
     public virtual float NetworkRemainingSeconds => -1f;
+    // Expose an existing star rating only. null means no rating is implemented; do not convert raw scores here.
+    public virtual int? NetworkStars => null;
     public bool IsActive => m_isActiveFlag;
     public MiniGameObject[] NetworkObjects => m_objects ?? Array.Empty<MiniGameObject>();
     public MiniGameNetworkInput NetworkInput { get; private set; }

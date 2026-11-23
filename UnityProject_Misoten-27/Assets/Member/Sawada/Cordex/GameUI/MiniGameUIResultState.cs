@@ -10,7 +10,7 @@ public sealed class MiniGameUIResultState : BaseState
 
     public override void UpdateState()
     {
-        if (m_ui.RemainingSeconds <= 0f)
+        if (!m_ui.IsExternallyDriven && m_ui.RemainingSeconds <= 0f)
             m_ui.CompleteResult();
     }
 }

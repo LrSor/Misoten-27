@@ -189,7 +189,7 @@ public class CowboyRope : MiniGameObject
         }
 
         //投げた際の処理
-        if ((IsNetworkControlled ? NetworkInput.release : m_joycon.GetButtonUp(Joycon.Button.SHOULDER_1)) && m_power >= m_throwPower)
+        if ((IsNetworkControlled ? NetworkInput.m_release : m_joycon.GetButtonUp(Joycon.Button.SHOULDER_1)) && m_power >= m_throwPower)
         {
             
             m_throwFlag = true;
@@ -197,7 +197,7 @@ public class CowboyRope : MiniGameObject
         }
 
         //ボタンを押していない場合、ボタン入力を促す
-        if(!(IsNetworkControlled ? NetworkInput.button : m_joycon.GetButton(Joycon.Button.SHOULDER_1)))
+        if(!(IsNetworkControlled ? NetworkInput.m_button : m_joycon.GetButton(Joycon.Button.SHOULDER_1)))
         {
             //UI表示
             m_pleasePressButton.gameObject.SetActive(true);
@@ -217,7 +217,7 @@ public class CowboyRope : MiniGameObject
         // GetGyro() は「角速度(rad/s)」を返す。
         // 角速度を時間で積分すると「角度(rad)」になるため、
         // Time.deltaTime を掛けて角度に変換する。
-        Vector3 gyro = (IsNetworkControlled ? NetworkInput.gyro : m_joycon.GetGyro());
+        Vector3 gyro = (IsNetworkControlled ? NetworkInput.m_gyro : m_joycon.GetGyro());
 
         //------------------------------------------------------------
         // Z軸の角速度を積分して回転角度を推定

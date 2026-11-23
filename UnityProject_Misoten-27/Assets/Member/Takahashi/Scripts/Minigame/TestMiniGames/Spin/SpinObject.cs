@@ -132,9 +132,9 @@ public class SpinObject : MiniGameObject
         // GetGyro() は「角速度(rad/s)」を返す。
         // 角速度を時間で積分すると「角度(rad)」になるため、
         // Time.deltaTime を掛けて角度に変換する。
-        Vector3 gyro = (IsNetworkControlled ? NetworkInput.gyro : m_joycon.GetGyro());
+        Vector3 gyro = (IsNetworkControlled ? NetworkInput.m_gyro : m_joycon.GetGyro());
 
-        if (!(IsNetworkControlled ? NetworkInput.isLeft : m_joycon.isLeft))
+        if (!(IsNetworkControlled ? NetworkInput.m_isLeft : m_joycon.isLeft))
         {
             gyro.y = -gyro.y;
             gyro.z = -gyro.z;

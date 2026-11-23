@@ -79,6 +79,6 @@ public class PointerObject : MiniGameObject
             m_joycon.Recenter();
         }
 
-        gameObject.transform.rotation = (IsNetworkControlled ? NetworkInput.orientation : m_joycon.GetVector());
+        gameObject.transform.rotation = (IsNetworkControlled ? NetworkInput.m_orientation : m_joycon.GetVector());
     }
 }

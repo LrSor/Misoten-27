@@ -18,7 +18,7 @@ public sealed class MiniGameUIExplanationState : BaseState
 
     public override void UpdateState()
     {
-        if (m_ui.PhaseElapsedSeconds >= m_ui.CountdownSeconds)
+        if (!m_ui.IsExternallyDriven && m_ui.PhaseElapsedSeconds >= m_ui.CountdownSeconds)
             GetComponent<StateMachine>().ChangeState<MiniGameUIPlayingState>();
     }
 }

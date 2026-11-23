@@ -61,10 +61,16 @@ public class MiniGameUIBase : MonoBehaviour
     public int ResultStars { get; private set; }
     private float m_phaseStartedAt;
     private Texture2D m_ready, m_start, m_star;
+    private bool m_externalControl, m_externalClear, m_externalHasTimer;
+    private float m_externalRemaining, m_externalDuration, m_externalSampleAt;
+    public bool IsExternallyDriven => m_externalControl;
+    public float ResultDisplaySeconds => Mathf.Max(0f, m_resultSeconds);
+    private float ExternalElapsed => Mathf.Max(0f, Time.time - m_externalSampleAt);
     private float ReadySeconds => m_readyZoomSeconds + m_readyHoldSeconds;
     // 短い結果表示でも、すべての星の出現・回転を表示時間内に収める。
-    private float ResultAnimationSpeed => m_resultSeconds > 0f && ResultStars > 0
-        ? Mathf.Max(1f, ((ResultStars - 1) * m_starIntervalSeconds + m_lastStarRotateSeconds) / m_resultSeconds)
+    private float ResultAnimationDuration => m_externalControl ? m_externalDuration : m_resultSeconds;
+    private float ResultAnimationSpeed => ResultAnimationDuration > 0f && ResultStars > 0
+        ? Mathf.Max(1f, ((ResultStars - 1) * m_starIntervalSeconds + m_lastStarRotateSeconds) / ResultAnimationDuration)
         : 1f;
     internal float CountdownSeconds => ReadySeconds + m_startZoomSeconds;
     public bool ShowingReady => CurrentPhase == Phase.Countdown && PhaseElapsedSeconds < ReadySeconds;
@@ -73,11 +79,57 @@ public class MiniGameUIBase : MonoBehaviour
     public Phase CurrentPhase { get; private set; }
     public bool IsRunning => CurrentPhase != Phase.Closed;
     public bool CanControlPlayer => CurrentPhase == Phase.Playing;
-    internal float PhaseElapsedSeconds => Mathf.Max(0f, Time.unscaledTime - m_phaseStartedAt);
-    public float RemainingSeconds => Mathf.Max(0f,
+    internal float PhaseElapsedSeconds => m_externalControl
+        ? Mathf.Max(0f, m_externalDuration - m_externalRemaining + ExternalElapsed)
+            * (CurrentPhase == Phase.Countdown && m_externalDuration > 0f ? CountdownSeconds / m_externalDuration : 1f)
+        : Mathf.Max(0f, Time.unscaledTime - m_phaseStartedAt);
+    public float RemainingSeconds => m_externalControl ? m_externalRemaining : Mathf.Max(0f,
         (CurrentPhase == Phase.Playing ? m_playSeconds :
          CurrentPhase == Phase.Countdown ? CountdownSeconds :
          CurrentPhase == Phase.Result ? m_resultSeconds : 0f) - PhaseElapsedSeconds);
+
+    /// <summary>The external authority owns timing, input and player controls; this component only presents them.</summary>
+    public void SetExternalControl(bool enabled)
+    {
+        if (m_externalControl == enabled) return;
+        CancelMiniGame();
+        RestorePlayerControls();
+        m_controlSnapshot.Clear();
+        m_externalControl = enabled;
+    }
+
+    public void BindStarCollectionEffect(StarCollectionEffect effect) => m_starCollectionEffect = effect;
+
+    public void ApplyExternalPhase(Phase phase, float remaining, float duration, int stars = 0, bool clear = false, bool hasTimer = true)
+    {
+        if (!m_externalControl || !isActiveAndEnabled || m_stateMachine == null || !m_stateMachine.enabled) return;
+        m_externalRemaining = Mathf.Max(0f, remaining);
+        m_externalDuration = Mathf.Max(0f, duration);
+        m_externalSampleAt = Time.time;
+        m_externalClear = clear;
+        m_externalHasTimer = hasTimer;
+        if (phase == Phase.Result) ResultStars = Mathf.Clamp(stars, 0, 3);
+        if (phase != CurrentPhase)
+        {
+            switch (phase)
+            {
+                case Phase.Countdown: m_stateMachine.ChangeState<MiniGameUIExplanationState>(); break;
+                case Phase.Playing: m_stateMachine.ChangeState<MiniGameUIPlayingState>(); break;
+                case Phase.Result: m_stateMachine.ChangeState<MiniGameUIResultState>(); break;
+                case Phase.Closed: m_stateMachine.ChangeState<MiniGameUIClosedState>(); break;
+            }
+        }
+        UpdateTimer();
+    }
+
+    /// <summary>Only a confirmed normal completion may start star collection. Disconnect/cancel never does.</summary>
+    public void CloseExternalGame(bool completed)
+    {
+        if (!m_externalControl) return;
+        if (completed && CurrentPhase == Phase.Result) CompleteResult();
+        else CancelMiniGame();
+        m_externalRemaining = m_externalDuration = 0f;
+    }
 
     protected virtual void Awake()
     {
@@ -104,12 +156,13 @@ public class MiniGameUIBase : MonoBehaviour
         if (CanReceiveInput) m_playingState.ReceiveButtonInput(isPressed);
     }
 
-    private bool CanReceiveInput => isActiveAndEnabled && m_stateMachine.enabled &&
+    private bool CanReceiveInput => !m_externalControl && isActiveAndEnabled && m_stateMachine.enabled &&
         m_stateMachine.IsInState<MiniGameUIPlayingState>();
 
     internal void UpdateMiniGameInput(Vector2 value, bool isPressed)
     {
         UpdateTimer();
+        if (m_externalControl) return;
         if (RemainingSeconds <= 0f) FinishMiniGame(0);
         else OnMiniGameInputUpdate(value, isPressed);
     }
@@ -129,7 +182,7 @@ public class MiniGameUIBase : MonoBehaviour
         {
             Rect label = new Rect(0, Screen.height * 0.4f - 40, Screen.width, 40);
             var style = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 28 };
-            GUI.Label(label, ResultStars > 0 ? "CLEAR!" : "TIME UP", style);
+            GUI.Label(label, (m_externalControl ? m_externalClear : ResultStars > 0) ? "CLEAR!" : "TIME UP", style);
             for (int i = 0; i < ResultStars && m_star != null; i++)
             {
                 float age = PhaseElapsedSeconds * ResultAnimationSpeed - i * m_starIntervalSeconds;
@@ -204,7 +257,7 @@ public class MiniGameUIBase : MonoBehaviour
 
     public void BeginMiniGame()
     {
-        if (!isActiveAndEnabled || !m_stateMachine.enabled ||
+        if (m_externalControl || !isActiveAndEnabled || !m_stateMachine.enabled ||
             !m_stateMachine.IsInState<MiniGameUIClosedState>()) return;
         m_controlSnapshot.Clear();
         foreach (Behaviour control in m_playerControls)
@@ -220,7 +273,7 @@ public class MiniGameUIBase : MonoBehaviour
 
     public void FinishMiniGame(int stars)
     {
-        if (!isActiveAndEnabled || CurrentPhase != Phase.Playing) return;
+        if (m_externalControl || !isActiveAndEnabled || CurrentPhase != Phase.Playing) return;
         ResultStars = RemainingSeconds > 0f ? Mathf.Clamp(stars, 0, 3) : 0;
         m_stateMachine.ChangeState<MiniGameUIResultState>();
     }
@@ -242,14 +295,14 @@ public class MiniGameUIBase : MonoBehaviour
         if (phase == Phase.Closed || phase == Phase.Countdown) ResultStars = 0;
         CurrentPhase = phase;
         m_phaseStartedAt = Time.unscaledTime;
-        if (phase == Phase.Closed || phase == Phase.Playing) RestorePlayerControls();
-        else
+        if (!m_externalControl && (phase == Phase.Closed || phase == Phase.Playing)) RestorePlayerControls();
+        else if (!m_externalControl)
             foreach (Behaviour control in m_controlSnapshot.Keys)
                 if (control != null) control.enabled = false;
 
         UpdateVisibility();
         // Closed は通常操作に戻す。CanControlPlayer はミニゲーム内操作の可否。
-        m_onPlayerControlChanged.Invoke(phase == Phase.Closed || phase == Phase.Playing);
+        if (!m_externalControl) m_onPlayerControlChanged.Invoke(phase == Phase.Closed || phase == Phase.Playing);
         if (phase == Phase.Closed) m_controlSnapshot.Clear();
         if (m_timeLabel != null)
         {
@@ -261,7 +314,9 @@ public class MiniGameUIBase : MonoBehaviour
 
     private void UpdateTimer()
     {
-        if (m_timeLabel != null) m_timeLabel.SetText("{0}", Mathf.CeilToInt(RemainingSeconds));
+        if (m_timeLabel == null) return;
+        if (m_externalControl && !m_externalHasTimer) m_timeLabel.SetText("--");
+        else m_timeLabel.SetText("{0}", Mathf.CeilToInt(RemainingSeconds));
     }
 
     protected virtual void OnPhaseChanged(Phase phase) { }

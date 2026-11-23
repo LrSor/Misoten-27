@@ -66,50 +66,56 @@ namespace Sawada.Cordex
                 var host = Create(hostScene, true); var client = Create(clientScene, false);
                 var frame = MiniGameNetworkInput.Neutral;
                 Check(frame.IsValid(), "neutral input");
-                frame.acceleration.x = float.NaN;
+                frame.m_acceleration.x = float.NaN;
                 Check(!frame.IsValid(), "NaN rejected");
-                frame = MiniGameNetworkInput.Neutral; frame.gyro.z = 65f;
+                frame = MiniGameNetworkInput.Neutral; frame.m_gyro.z = 65f;
                 Check(!frame.IsValid(), "sensor limit");
-                frame = MiniGameNetworkInput.Neutral; frame.orientation = default;
+                frame = MiniGameNetworkInput.Neutral; frame.m_orientation = default;
                 Check(!frame.IsValid(), "invalid quaternion");
-                Check((string)Get(host.session, "miniGameCatalog") == (string)Get(client.session, "miniGameCatalog"), "stable catalog");
+                Check((string)Get(host.session, "m_miniGameCatalog") == (string)Get(client.session, "m_miniGameCatalog"), "stable catalog");
                 bool Request(int player, NetworkTestSession.MiniGamePacket packet, float time)
                     => (bool)Call(host.session, "HandleMiniGameRequest", player, packet, time);
-                Check(Request(1, new NetworkTestSession.MiniGamePacket { operation = "start", game = 1 }, 1f), "entry request");
+                Check(Request(1, new NetworkTestSession.MiniGamePacket { m_operation = "start", m_game = 1 }, 1f), "entry request");
                 var state = host.session.LocalMiniGame;
-                Check(state != null && state.phase == NetworkTestSession.MiniGamePhase.Countdown, "Host accepted entry");
-                int sessionId = state.session;
-                Request(2, new NetworkTestSession.MiniGamePacket { operation = "cancel", game = 1, session = sessionId }, 1.1f);
+                Check(state != null && state.m_phase == NetworkTestSession.MiniGamePhase.Countdown, "Host accepted entry");
+                int sessionId = state.m_session;
+                Request(2, new NetworkTestSession.MiniGamePacket { m_operation = "cancel", m_game = 1, m_session = sessionId }, 1.1f);
                 Check(host.session.LocalMiniGame != null, "non-owner cannot cancel");
-                var input = MiniGameNetworkInput.Neutral; input.acceleration.y = -1f;
-                Request(1, new NetworkTestSession.MiniGamePacket { operation = "input", game = 1,
-                    session = sessionId, sequence = 1, input = input }, 1.1f);
+                var input = MiniGameNetworkInput.Neutral; input.m_acceleration.y = -1f;
+                Request(1, new NetworkTestSession.MiniGamePacket { m_operation = "input", m_game = 1,
+                    m_session = sessionId, m_sequence = 1, m_input = input }, 1.1f);
                 Check(!host.game.IsActive, "no simulation during countdown");
-                var slots = (System.Collections.IList)Get(host.session, "miniGames");
-                Set(slots[0], "deadline", Time.time - 1f);
+                var slots = (System.Collections.IList)Get(host.session, "m_miniGames");
+                Set(slots[0], "m_deadline", Time.time - 1f);
                 Call(host.session, "UpdateNetworkMiniGames", 1.2f);
                 Check(host.game.IsActive && host.game.IsNetworkAuthority, "Host starts simulation");
-                Check(host.game.NetworkInput.acceleration.y == -1f, "owner input delivered");
-                input.acceleration.y = -2f;
-                Request(1, new NetworkTestSession.MiniGamePacket { operation = "input", game = 1,
-                    session = sessionId - 1, sequence = 2, input = input }, 1.3f);
+                Check(host.game.NetworkInput.m_acceleration.y == -1f, "owner input delivered");
+                Check(!state.m_hasTimer && state.m_remaining == 0f, "game without timer sends no countdown");
+                Set(slots[0], "m_deadline", Time.time - 100f);
+                Call(host.session, "UpdateNetworkMiniGames", 1.25f);
+                Check(state.m_phase == NetworkTestSession.MiniGamePhase.Playing && !host.game.GetIsFinish(),
+                    "missing timer never creates a network time limit");
+                input.m_acceleration.y = -2f;
+                Request(1, new NetworkTestSession.MiniGamePacket { m_operation = "input", m_game = 1,
+                    m_session = sessionId - 1, m_sequence = 2, m_input = input }, 1.3f);
                 Call(host.session, "UpdateNetworkMiniGames", 1.3f);
-                Check(host.game.NetworkInput.acceleration.y == -1f, "old session ignored");
+                Check(host.game.NetworkInput.m_acceleration.y == -1f, "old session ignored");
                 Call(host.session, "UpdateNetworkMiniGames", 1.5f);
-                Check(host.game.NetworkInput.acceleration == Vector3.zero, "stale sensor neutralized");
-                host.game.SetScore(170); host.game.FinishMiniGame();
+                Check(host.game.NetworkInput.m_acceleration == Vector3.zero, "stale sensor neutralized");
+                host.game.SetScore(1); host.game.FinishMiniGame();
                 Call(host.session, "UpdateNetworkMiniGames", 1.6f);
-                Check(state.phase == NetworkTestSession.MiniGamePhase.Result && state.stars == 3, "result and rating");
+                Check(state.m_phase == NetworkTestSession.MiniGamePhase.Result && state.m_stars == 3 && state.m_score == 1,
+                    "missing star evaluation is fixed at three, independent of raw score");
                 Check(!host.game.IsActive && host.score.GetTotalScore() == 3, "Host saves stars once");
                 var copy = JsonUtility.FromJson<NetworkTestSession.MiniGamePacket>(JsonUtility.ToJson(state));
                 bool Receive(NetworkTestSession.MiniGamePacket full)
                 {
-                    for (int part = 0; part < full.parts; part++)
+                    for (int part = 0; part < full.m_parts; part++)
                     {
                         var fragment = JsonUtility.FromJson<NetworkTestSession.MiniGamePacket>(JsonUtility.ToJson(full));
-                        fragment.part = part; fragment.poses = full.poses.Skip(part * 12).Take(12).ToArray();
+                        fragment.m_part = part; fragment.m_poses = full.m_poses.Skip(part * 12).Take(12).ToArray();
                         Check(Encoding.UTF8.GetByteCount(JsonUtility.ToJson(new NetworkTestSession.Message
-                            { kind = "minigame", miniGame = fragment })) < 8192, "transport frame limit");
+                            { kind = "minigame", m_miniGame = fragment })) < 8192, "transport frame limit");
                         if (!(bool)Call(client.session, "ReceiveMiniGameState", fragment)) return false;
                     }
                     return true;
@@ -118,16 +124,28 @@ namespace Sawada.Cordex
                 Check(client.score.GetTotalScore() == 3 && !client.game.IsActive, "Client mirrors result without simulation");
                 Check(Receive(copy) && client.score.GetTotalScore() == 3, "duplicate result ignored");
                 copy = JsonUtility.FromJson<NetworkTestSession.MiniGamePacket>(JsonUtility.ToJson(state));
-                copy.stars = 4;
+                copy.m_stars = 4;
                 Check(!(bool)Call(client.session, "ReceiveMiniGameState", copy), "invalid result rejected");
-                Request(1, new NetworkTestSession.MiniGamePacket { operation = "cancel", game = 1, session = sessionId }, 1.7f);
-                Check(host.session.LocalMiniGame == null, "cancel releases session");
-                Request(1, new NetworkTestSession.MiniGamePacket { operation = "start", game = 1 }, 2f);
-                Check(host.session.LocalMiniGame.session > sessionId, "retry gets fresh session");
+                Request(1, new NetworkTestSession.MiniGamePacket { m_operation = "cancel", m_game = 1, m_session = sessionId }, 1.7f);
+                Check(host.session.LocalMiniGame == null && !state.m_completed, "cancel releases session without collection permission");
+                Request(1, new NetworkTestSession.MiniGamePacket { m_operation = "start", m_game = 1 }, 2f);
+                Check(host.session.LocalMiniGame.m_session > sessionId, "retry gets fresh session");
                 Call(host.session, "RemoveMiniGamePlayer", 1);
                 Check(host.session.LocalMiniGame == null, "disconnect releases game");
+                Request(1, new NetworkTestSession.MiniGamePacket { m_operation = "start", m_game = 1 }, 2.5f);
+                var completedState = host.session.LocalMiniGame;
+                Set(slots[0], "m_deadline", Time.time - 1f);
+                Call(host.session, "UpdateNetworkMiniGames", 2.6f);
+                host.game.SetScore(170); host.game.FinishMiniGame(false);
+                Call(host.session, "UpdateNetworkMiniGames", 2.7f);
+                Check(completedState.m_stars == 3 && !completedState.m_clear && completedState.m_score == 170,
+                    "no implicit score conversion or failure rating is invented");
+                Set(slots[0], "m_deadline", Time.time - 1f);
+                Call(host.session, "UpdateNetworkMiniGames", 2.8f);
+                Check(completedState.m_phase == NetworkTestSession.MiniGamePhase.Closed && completedState.m_completed,
+                    "normal result expiry grants collection permission");
                 host.zone.transform.position = Vector3.one * 100f;
-                Request(1, new NetworkTestSession.MiniGamePacket { operation = "start", game = 1 }, 3f);
+                Request(1, new NetworkTestSession.MiniGamePacket { m_operation = "start", m_game = 1 }, 3f);
                 Check(host.session.LocalMiniGame == null, "out-of-range entry denied");
                 Debug.Log("NetworkMiniGameChecks: PASS (ownership, sessions, sensor validation, countdown, stale input, rating, score mirror, duplicates, chunking, frame limit, cancel, disconnect, proximity)");
             }

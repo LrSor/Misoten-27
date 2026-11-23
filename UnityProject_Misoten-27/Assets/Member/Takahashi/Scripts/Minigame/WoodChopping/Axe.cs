@@ -103,11 +103,11 @@ public class Axe : MiniGameObject
         //--------------------------------------------
         // JoyConの加速度を取得
         //--------------------------------------------
-        Vector3 accel = (IsNetworkControlled ? NetworkInput.acceleration : m_joycon.GetAccel());
+        Vector3 accel = (IsNetworkControlled ? NetworkInput.m_acceleration : m_joycon.GetAccel());
         
 
         //ジョイコンがRの場合、加速度YとZの数値を反転
-        if(!(IsNetworkControlled ? NetworkInput.isLeft : m_joycon.isLeft))
+        if(!(IsNetworkControlled ? NetworkInput.m_isLeft : m_joycon.isLeft))
         {
             accel.y = -accel.y;
             accel.z = -accel.z;
@@ -166,7 +166,7 @@ public class Axe : MiniGameObject
             //--------------------------------------------
             // JoyCon の加速度を取得（振り下ろし強さ）
             //--------------------------------------------
-            Vector3 joyconAccel = (IsNetworkControlled ? NetworkInput.acceleration : m_joycon.GetAccel());
+            Vector3 joyconAccel = (IsNetworkControlled ? NetworkInput.m_acceleration : m_joycon.GetAccel());
             float joyconPower = Mathf.Abs(joyconAccel.y);
 
             {//--------------------------------------------
