@@ -4,7 +4,7 @@ using UnityEngine;
 //ミニゲーム用オブジェクト基底クラス
 public class MiniGameObject : MonoBehaviour
 {
-    public bool IsNetworkControlled { get; private set; }
+    public bool IsNetworkControlled { get; private set; } // 螟画峩 Sawada
     public bool IsNetworkAuthority { get; private set; }
     protected MiniGameNetworkInput NetworkInput { get; private set; }
     public void ConfigureNetwork(bool controlled, bool authority)

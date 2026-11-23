@@ -7,7 +7,7 @@ using System.Linq;
 
 public class MiniGameSystem : MonoBehaviour
 {
-    public MiniGame Game => m_minigame;
+    public MiniGame Game => m_minigame; // 変更 Sawada
     public float CountdownSeconds => Mathf.Max(0f, m_countNum);
     public Camera MiniGameCamera => m_miniGameCamera;
     public Canvas MiniGameCanvas => m_miniGameCanvas;
@@ -107,7 +107,7 @@ public class MiniGameSystem : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (Sawada.Cordex.NetworkTestSession.HasMiniGameNetworking(gameObject.scene)) return;
+        if (Sawada.Cordex.NetworkTestSession.HasMiniGameNetworking(gameObject.scene)) return; // 変更 Sawada
         if (!m_isActiveFlag)
         {
             return;
@@ -305,7 +305,7 @@ public class MiniGameSystem : MonoBehaviour
 
     public void Activate(GameObject playerObject)
     {
-        if (Sawada.Cordex.NetworkTestSession.HasMiniGameNetworking(gameObject.scene)) return;
+        if (Sawada.Cordex.NetworkTestSession.HasMiniGameNetworking(gameObject.scene)) return; // 変更 Sawada
         //メンバ変数へプレイヤーオブジェクトをを紐付け
         m_playerObject = playerObject;
         //プレイヤー本体の動作を停止

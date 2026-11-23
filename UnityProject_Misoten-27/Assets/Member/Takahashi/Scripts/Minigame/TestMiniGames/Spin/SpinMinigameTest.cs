@@ -6,7 +6,7 @@ public class SpinMinigameTest : MiniGame
     [Header("制限時間")]
     [SerializeField] private float m_limit;
     private float m_limitCount;
-    public override float NetworkRemainingSeconds => Mathf.Max(0f, m_limitCount);
+    public override float NetworkRemainingSeconds => Mathf.Max(0f, m_limitCount); // 変更 Sawada
 
     [Header("回転オブジェクト")]
     [SerializeField] private SpinObject m_spinObject;

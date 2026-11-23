@@ -25,7 +25,7 @@ public class MiniGame : MonoBehaviour
 
     // ============================================================ 追加 Sawada
     // 星評価（未設定なら星3固定）
-    protected int? m_stars = null;
+    protected int? m_stars = null; // 変更 Sawada
 
     // 終了時に通信管理が読み取り、参加者のUIへ渡す
     public virtual int? NetworkStars => m_stars;
@@ -38,7 +38,7 @@ public class MiniGame : MonoBehaviour
 
     [SerializeField] MiniGameObject[] m_objects;
 
-    public bool IsNetworkControlled { get; private set; }
+    public bool IsNetworkControlled { get; private set; } // 変更 Sawada
     public bool IsNetworkAuthority { get; private set; }
 
     public bool IsActive => m_isActiveFlag;
@@ -79,16 +79,16 @@ public class MiniGame : MonoBehaviour
     public virtual void Activate()
     {
         //変数初期化
-        if (IsNetworkControlled && !IsNetworkAuthority) return;
+        if (IsNetworkControlled && !IsNetworkAuthority) return; // 変更 Sawada
         m_isActiveFlag = true;
-        m_isGameClearFlag = true;
+        m_isGameClearFlag = true; // 変更 Sawada
         m_isFinishFlag = false;
         m_score = 0;
 
         //ミニゲーム用オブジェクトの初期化
-        foreach (var obj in NetworkObjects)
+        foreach (var obj in NetworkObjects) // 変更 Sawada
         {
-            if (obj != null) obj.Activate();
+            if (obj != null) obj.Activate(); // 変更 Sawada
         }
     }
 
@@ -98,15 +98,15 @@ public class MiniGame : MonoBehaviour
         m_isActiveFlag = false;
 
         //ミニゲーム用オブジェクトの終了処理
-        foreach (var obj in NetworkObjects)
+        foreach (var obj in NetworkObjects) // 変更 Sawada
         {
-            if (obj != null) obj.Deactivate();
+            if (obj != null) obj.Deactivate(); // 変更 Sawada
         }
     }
 
     public void FinishMiniGame(bool isClear = true) //引数でゲームクリアの成否を取得
     {
-        if (IsNetworkControlled && (!IsNetworkAuthority || !m_isActiveFlag || m_isFinishFlag)) return;
+        if (IsNetworkControlled && (!IsNetworkAuthority || !m_isActiveFlag || m_isFinishFlag)) return; // 変更 Sawada
         //ミニゲーム終了フラグ
         m_isFinishFlag = true;
 
@@ -126,7 +126,7 @@ public class MiniGame : MonoBehaviour
 
     public void SetScore(int score)
     {
-        if (IsNetworkControlled && (!IsNetworkAuthority || !m_isActiveFlag)) return;
+        if (IsNetworkControlled && (!IsNetworkAuthority || !m_isActiveFlag)) return; // 変更 Sawada
         m_score = score;
     }
 
@@ -138,7 +138,7 @@ public class MiniGame : MonoBehaviour
     void Update()
     {
         //ミニゲーム実行中フラグがたっている場合、ミニゲーム更新関数を実行
-        if (!m_isActiveFlag || m_isFinishFlag || (IsNetworkControlled && !IsNetworkAuthority))
+        if (!m_isActiveFlag || m_isFinishFlag || (IsNetworkControlled && !IsNetworkAuthority)) // 変更 Sawada
         {
             return;
         }
@@ -153,9 +153,9 @@ public class MiniGame : MonoBehaviour
         // 制限時間のタイマーとかはここでいいかも
 
         //ミニゲーム用オブジェクトの更新
-        foreach (var obj in NetworkObjects)
+        foreach (var obj in NetworkObjects) // 変更 Sawada
         {
-            if (obj != null) obj.UpdateObject();
+            if (obj != null) obj.UpdateObject(); // 変更 Sawada
         }
     }
 }

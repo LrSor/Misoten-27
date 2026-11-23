@@ -36,7 +36,7 @@ public class ShakeObject : MiniGameObject
         m_isDownSwingFlag = false;
         m_shakedCount = 0;
 
-        if (IsNetworkControlled) { m_joycon = null; return; }
+        if (IsNetworkControlled) { m_joycon = null; return; } // 変更 Sawada
 
         //デバッグ用: キーボード操作が有効の場合、ジョイコンの初期化を停止
 #if UNITY_EDITOR
@@ -70,7 +70,7 @@ public class ShakeObject : MiniGameObject
     //オブジェクト更新関数
     public override void UpdateObject()
     {
-        bool hasJoycon = (IsNetworkControlled || m_joycon != null);
+        bool hasJoycon = (IsNetworkControlled || m_joycon != null); // 変更 Sawada
         if (!hasJoycon)
         {
             //デバッグ用キーボード操作を以下に記載
@@ -88,7 +88,7 @@ public class ShakeObject : MiniGameObject
         }
 
         //ジョイコンを用いた操作を記載
-        Vector3 accel = (IsNetworkControlled ? NetworkInput.m_acceleration : m_joycon.GetAccel());  // 加速度取得（縦持ち前提）
+        Vector3 accel = (IsNetworkControlled ? NetworkInput.m_acceleration : m_joycon.GetAccel());  // 加速度取得（縦持ち前提） // 変更 Sawada
 
         // 下方向の振りを検知
         if (!m_isDownSwingFlag && accel.x < accelThresholdDown)

@@ -89,10 +89,10 @@ public class CoffeeMill: MiniGameObject
         m_prevAccel = Vector3.zero;
 
         m_rotatedCount = 0;
-        m_accumulatedRotationZ = 0f;
+        m_accumulatedRotationZ = 0f; // 変更 Sawada
         m_velocity = Vector2.zero;
 
-        if (IsNetworkControlled) { m_joycon = null; return; }
+        if (IsNetworkControlled) { m_joycon = null; return; } // 変更 Sawada
 
         //デバッグ用: キーボード操作が有効の場合、ジョイコンの初期化を停止
 #if UNITY_EDITOR
@@ -133,7 +133,7 @@ public class CoffeeMill: MiniGameObject
     public override void UpdateObject()
     {
 #if UNITY_EDITOR
-        bool hasJoycon = (IsNetworkControlled || m_joycon != null);
+        bool hasJoycon = (IsNetworkControlled || m_joycon != null); // 変更 Sawada
         //ジョイコンが接続されている場合、キーボード操作処理を飛ばしジョイコン操作を行う
         if (!hasJoycon)
         {
@@ -205,7 +205,7 @@ public class CoffeeMill: MiniGameObject
         }
 
         //投げた際の処理
-        if ((IsNetworkControlled ? NetworkInput.m_release : m_joycon.GetButtonUp(Joycon.Button.SHOULDER_1)))
+        if ((IsNetworkControlled ? NetworkInput.m_release : m_joycon.GetButtonUp(Joycon.Button.SHOULDER_1))) // 変更 Sawada
         {
             
         }
@@ -218,7 +218,7 @@ public class CoffeeMill: MiniGameObject
             // GetGyro() は「角速度(rad/s)」を返す。
             // 角速度を時間で積分すると「角度(rad)」になるため、
             // Time.deltaTime を掛けて角度に変換する。
-            Vector3 gyro = (IsNetworkControlled ? NetworkInput.m_gyro : m_joycon.GetGyro());
+            Vector3 gyro = (IsNetworkControlled ? NetworkInput.m_gyro : m_joycon.GetGyro()); // 変更 Sawada
 
         //------------------------------------------------------------
         // Z軸の角速度を積分して回転角度を推定
@@ -268,7 +268,7 @@ public class CoffeeMill: MiniGameObject
         //------------------------------------------------------------
         // JoyCon の加速度取得（X軸は無視）
         //------------------------------------------------------------
-        Vector3 accel = (IsNetworkControlled ? NetworkInput.m_acceleration : m_joycon.GetAccel());
+        Vector3 accel = (IsNetworkControlled ? NetworkInput.m_acceleration : m_joycon.GetAccel()); // 変更 Sawada
         float accelY = accel.y;
         float accelZ = accel.z;
 
@@ -335,7 +335,7 @@ public class CoffeeMill: MiniGameObject
             transform.position = m_defaultPosition;
         }
 
-        Vector3 accel = (IsNetworkControlled ? NetworkInput.m_acceleration : m_joycon.GetAccel());
+        Vector3 accel = (IsNetworkControlled ? NetworkInput.m_acceleration : m_joycon.GetAccel()); // 変更 Sawada
         Vector3 gyro = (IsNetworkControlled ? NetworkInput.m_gyro : m_joycon.GetGyro());
         Vector3 move = Vector3.zero;
         if(gyro.y > m_gyroSensitivity)
@@ -371,10 +371,10 @@ public class CoffeeMill: MiniGameObject
         //------------------------------------------------------------
         // JoyCon の加速度取得（X軸は無視）
         //------------------------------------------------------------
-        Vector3 accel = (IsNetworkControlled ? NetworkInput.m_acceleration : m_joycon.GetAccel());
+        Vector3 accel = (IsNetworkControlled ? NetworkInput.m_acceleration : m_joycon.GetAccel()); // 変更 Sawada
 
         //ジョイコンがRの場合、加速度YとZの数値を反転
-        if (!(IsNetworkControlled ? NetworkInput.m_isLeft : m_joycon.isLeft))
+        if (!(IsNetworkControlled ? NetworkInput.m_isLeft : m_joycon.isLeft)) // 変更 Sawada
         {
             accel.x = -accel.x;
             accel.y = -accel.y;
@@ -402,11 +402,11 @@ public class CoffeeMill: MiniGameObject
         //------------------------------------------------------------
         // JoyCon の加速度取得（X軸は無視）
         //------------------------------------------------------------
-        Vector3 accel = (IsNetworkControlled ? NetworkInput.m_acceleration : m_joycon.GetAccel());
+        Vector3 accel = (IsNetworkControlled ? NetworkInput.m_acceleration : m_joycon.GetAccel()); // 変更 Sawada
         Vector3 gyro = (IsNetworkControlled ? NetworkInput.m_gyro : m_joycon.GetGyro());
 
         //ジョイコンがRの場合、加速度YとZの数値を反転
-        if (!(IsNetworkControlled ? NetworkInput.m_isLeft : m_joycon.isLeft))
+        if (!(IsNetworkControlled ? NetworkInput.m_isLeft : m_joycon.isLeft)) // 変更 Sawada
         {
             accel.z = -accel.z;
             accel.y = -accel.y;

@@ -23,7 +23,7 @@ public class MiniGameZone : MonoBehaviour
 
     [Header("ミニゲーム管理用オブジェクト")]
     [SerializeField] MiniGameSystem m_system;
-    public MiniGameSystem System => m_system;
+    public MiniGameSystem System => m_system; // 変更 Sawada
     private bool NetworkOwnsScene => Sawada.Cordex.NetworkTestSession.HasMiniGameNetworking(gameObject.scene);
     private bool m_isPlayingFlag = false;
     private GameObject m_playerObject;
@@ -32,7 +32,7 @@ public class MiniGameZone : MonoBehaviour
     void Start()
     {
         m_playerObject = null;
-        if (NetworkOwnsScene) return;
+        if (NetworkOwnsScene) return; // 変更 Sawada
 
         //デバッグ用: キーボード操作が有効の場合、ジョイコンの初期化を停止
 #if UNITY_EDITOR
@@ -57,7 +57,7 @@ public class MiniGameZone : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (NetworkOwnsScene) return;
+        if (NetworkOwnsScene) return; // 変更 Sawada
         if(m_isPlayingFlag)
         {
             return;
