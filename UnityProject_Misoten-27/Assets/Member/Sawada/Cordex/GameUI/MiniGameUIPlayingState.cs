@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 public sealed class MiniGameUIPlayingState : BaseState
 {
@@ -30,13 +29,6 @@ public sealed class MiniGameUIPlayingState : BaseState
     public override void UpdateState()
     {
         if (!m_ui.isActiveAndEnabled) return;
-
-        // プレイ中のみ、テスト用の E キーで結果表示へ移行する。
-        if (Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame)
-        {
-            m_ui.FinishMiniGame();
-            return;
-        }
 
         m_ui.UpdateMiniGameInput(Vector2Input, IsButtonPressed);
     }

@@ -14,6 +14,46 @@ namespace Sawada.Cordex
         const string ScenePath = "Assets/Member/Sawada/Scenes/GameUI.unity";
         const string TexturePath = "Assets/Member/Sawada/Cordex/Camera/RT_HandPreview.renderTexture";
 
+        public static void VerifyDisplayClearBatch()
+        {
+            if (!Application.isBatchMode) throw new InvalidOperationException("Batch only.");
+            var scene = EditorSceneManager.OpenScene(ScenePath);
+            var cameras = scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<Camera>(true)).ToArray();
+            var display = cameras.Single(camera => camera.name == "GameViewCamera");
+            var preview = cameras.Single(camera => camera.name == "HandPreviewCamera");
+            if (display.targetTexture != null || !display.enabled || display.clearFlags != CameraClearFlags.SolidColor ||
+                display.backgroundColor.a != 1 || display.targetDisplay != 0 || display.cullingMask != 0 ||
+                preview.targetTexture == null || preview.clearFlags != CameraClearFlags.SolidColor)
+                throw new Exception("Display/RT clear configuration is invalid");
+
+            // Seed a previous frame, then check that the display camera overwrites it completely.
+            var scratch = new RenderTexture(64, 64, 24, RenderTextureFormat.ARGB32);
+            scratch.Create();
+            var previous = RenderTexture.active;
+            RenderTexture.active = scratch;
+            GL.Clear(true, true, Color.magenta);
+            display.targetTexture = scratch;
+            display.Render();
+            var readback = new Texture2D(64, 64, TextureFormat.RGBA32, false);
+            RenderTexture.active = scratch;
+            readback.ReadPixels(new Rect(0, 0, 64, 64), 0, 0);
+            readback.Apply();
+            var pixels = readback.GetPixels32();
+            if (pixels.Any(pixel => pixel.r > 240 && pixel.b > 240 && pixel.g < 10))
+                throw new Exception("Previous-frame pixels survived the display camera clear");
+            if (pixels.Any(pixel => pixel.a < 250)) throw new Exception("Display background was not cleared opaque");
+            display.targetTexture = null;
+            RenderTexture.active = previous;
+            scratch.Release();
+            UnityEngine.Object.DestroyImmediate(scratch);
+            UnityEngine.Object.DestroyImmediate(readback);
+            foreach (var root in scene.GetRootGameObjects())
+                foreach (var item in root.GetComponentsInChildren<Transform>(true))
+                    if (GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(item.gameObject) > 0)
+                        throw new Exception("Missing script: " + item.name);
+            Debug.Log("[GameViewClear] PASS: display camera clears previous pixels, opaque background, independent RT camera, no missing scripts");
+        }
+
         public static void RunGameUIBatch()
         {
             if (!Application.isBatchMode) throw new InvalidOperationException("Batch only.");
