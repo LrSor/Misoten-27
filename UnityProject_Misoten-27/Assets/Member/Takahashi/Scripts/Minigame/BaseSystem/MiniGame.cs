@@ -22,14 +22,25 @@ public class MiniGame : MonoBehaviour
     private int m_score = 0;
     private bool m_isGameClearFlag = true;
 
+
+    // ============================================================ 追加 Sawada
+    // 星評価（未設定なら星3固定）
+    protected int? m_stars = null;
+
+    // 終了時に通信管理が読み取り、参加者のUIへ渡す
+    public virtual int? NetworkStars => m_stars;
+
+    // 残り時間（負数なら時間なし）
+    protected float m_remainingSeconds = -1f;
+
+    // 通信管理が定期的に読み取り、参加者のUIへ渡す
+    public virtual float NetworkRemainingSeconds => m_remainingSeconds;
+
     [SerializeField] MiniGameObject[] m_objects;
 
-    // Online simulation is driven by Host; clients only apply presentation snapshots.
     public bool IsNetworkControlled { get; private set; }
     public bool IsNetworkAuthority { get; private set; }
-    public virtual float NetworkRemainingSeconds => -1f;
-    // Expose an existing star rating only. null means no rating is implemented; do not convert raw scores here.
-    public virtual int? NetworkStars => null;
+
     public bool IsActive => m_isActiveFlag;
     public MiniGameObject[] NetworkObjects => m_objects ?? Array.Empty<MiniGameObject>();
     public MiniGameNetworkInput NetworkInput { get; private set; }
@@ -48,6 +59,7 @@ public class MiniGame : MonoBehaviour
         foreach (var obj in NetworkObjects)
             if (obj != null) obj.SetNetworkInput(input);
     }
+    // ============================================================
 
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
