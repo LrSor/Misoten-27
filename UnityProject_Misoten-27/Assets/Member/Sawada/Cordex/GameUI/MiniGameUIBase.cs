@@ -48,6 +48,19 @@ public class MiniGameUIBase : MonoBehaviour
     [Tooltip("画面の短い辺に対する弧の高さの割合")]
     [SerializeField, Min(0f)] private float m_starArcHeightRatio = 0.2f;
 
+    [Header("ミニゲーム中に非表示にする UI（READY ～ 結果終了）")]
+    [Tooltip("CanvasGroup で表示と UI 入力を停止する。空の場合は同じ Scene の PlayerDisplay を自動取得する。")]
+    [SerializeField] private List<GameObject> m_hideDuringMiniGame = new List<GameObject>();
+
+    private struct HiddenUI
+    {
+        public CanvasGroup Group;
+        public float Alpha;
+        public bool Interactable, BlocksRaycasts;
+    }
+
+    private readonly List<HiddenUI> m_hiddenUI = new List<HiddenUI>();
+
     [Header("説明・終了表示中に停止する Player の操作コンポーネント")]
     [Tooltip("Player 専用の入力・移動 StateMachine 等を指定。UI 自身は指定しない。")]
     [SerializeField] private Behaviour[] m_playerControls = new Behaviour[0];
@@ -60,7 +73,7 @@ public class MiniGameUIBase : MonoBehaviour
     [SerializeField] private TMP_Text m_timeLabel;
     public int ResultStars { get; private set; }
     private float m_phaseStartedAt;
-    private Texture2D m_ready, m_start, m_star;
+    private Texture2D m_ready, m_start, m_star, m_starNone;
     private bool m_externalControl, m_externalClear, m_externalHasTimer;
     private float m_externalRemaining, m_externalDuration, m_externalSampleAt;
     public bool IsExternallyDriven => m_externalControl;
@@ -139,6 +152,7 @@ public class MiniGameUIBase : MonoBehaviour
         if (m_timeLabel == null && m_uiRoot != null)
             m_timeLabel = m_uiRoot.transform.Find("Image/Text (TMP)")?.GetComponent<TMP_Text>();
         m_star = Resources.Load<Texture2D>("SawadaQuest/Star");
+        m_starNone = Resources.Load<Texture2D>("SawadaQuest/StarNone");
         m_ready = Resources.Load<Texture2D>("SawadaQuest/READY");
         m_start = Resources.Load<Texture2D>("SawadaQuest/START");
         UpdateVisibility();
@@ -183,6 +197,9 @@ public class MiniGameUIBase : MonoBehaviour
             Rect label = new Rect(0, Screen.height * 0.4f - 40, Screen.width, 40);
             var style = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 28 };
             GUI.Label(label, (m_externalControl ? m_externalClear : ResultStars > 0) ? "CLEAR!" : "TIME UP", style);
+            // 未獲得の3枠は固定し、回転する獲得済みの星より先に描画する。
+            for (int i = 0; i < 3 && m_starNone != null; i++)
+                GUI.DrawTexture(GetResultStarRect(i), m_starNone, ScaleMode.ScaleToFit);
             for (int i = 0; i < ResultStars && m_star != null; i++)
             {
                 float age = PhaseElapsedSeconds * ResultAnimationSpeed - i * m_starIntervalSeconds;
@@ -225,7 +242,7 @@ public class MiniGameUIBase : MonoBehaviour
     private Rect GetResultStarRect(int index)
     {
         float size = Mathf.Min(Screen.width, Screen.height) * m_starSizeRatio;
-        return new Rect((Screen.width - size * ResultStars) / 2f + index * size,
+        return new Rect((Screen.width - size * 3) / 2f + index * size,
             Screen.height * 0.4f, size, size);
     }
 
@@ -233,6 +250,8 @@ public class MiniGameUIBase : MonoBehaviour
     internal void CompleteResult()
     {
         if (CurrentPhase != Phase.Result) return;
+        // OnEnable を発生させず、スコアを先に同期せずに回収先を再表示する。
+        RestoreHiddenUI();
         if (ResultStars > 0 && m_star != null)
         {
             if (m_starCollectionEffect == null)
@@ -288,6 +307,7 @@ public class MiniGameUIBase : MonoBehaviour
         // 中断時にも操作状態を元に戻し、次回は待機から再開する。
         CancelMiniGame();
         RestorePlayerControls();
+        RestoreHiddenUI();
     }
 
     internal void EnterPhase(Phase phase)
@@ -295,6 +315,8 @@ public class MiniGameUIBase : MonoBehaviour
         if (phase == Phase.Closed || phase == Phase.Countdown) ResultStars = 0;
         CurrentPhase = phase;
         m_phaseStartedAt = Time.unscaledTime;
+        if (phase == Phase.Closed) RestoreHiddenUI();
+        else HideMiniGameUI();
         if (!m_externalControl && (phase == Phase.Closed || phase == Phase.Playing)) RestorePlayerControls();
         else if (!m_externalControl)
             foreach (Behaviour control in m_controlSnapshot.Keys)
@@ -320,6 +342,52 @@ public class MiniGameUIBase : MonoBehaviour
     }
 
     protected virtual void OnPhaseChanged(Phase phase) { }
+
+    private void HideMiniGameUI()
+    {
+        if (m_hideDuringMiniGame.Count > 0)
+        {
+            foreach (GameObject target in m_hideDuringMiniGame) HideUI(target);
+            return;
+        }
+        // 既存 Scene / Prefab の編集なしでも PlayerDisplay を対象にする。
+        foreach (GameObject root in gameObject.scene.GetRootGameObjects())
+            foreach (Canvas canvas in root.GetComponentsInChildren<Canvas>(true))
+                if (canvas.name == "PlayerDisplay") HideUI(canvas.gameObject);
+    }
+
+    private void HideUI(GameObject target)
+    {
+        if (target == null) return;
+        CanvasGroup group = target.GetComponent<CanvasGroup>();
+        foreach (HiddenUI hidden in m_hiddenUI)
+            if (hidden.Group != null && hidden.Group == group) return;
+
+        // 前回の星が飛行中でも、非表示になった HUD へ飛び続けないようにする。
+        foreach (StarCollectionEffect effect in target.GetComponentsInChildren<StarCollectionEffect>(true))
+            effect.CancelCollection();
+        if (group == null) group = target.AddComponent<CanvasGroup>();
+        m_hiddenUI.Add(new HiddenUI
+        {
+            Group = group, Alpha = group.alpha,
+            Interactable = group.interactable, BlocksRaycasts = group.blocksRaycasts
+        });
+        group.alpha = 0f;
+        group.interactable = false;
+        group.blocksRaycasts = false;
+    }
+
+    private void RestoreHiddenUI()
+    {
+        foreach (HiddenUI hidden in m_hiddenUI)
+        {
+            if (hidden.Group == null) continue;
+            hidden.Group.alpha = hidden.Alpha;
+            hidden.Group.interactable = hidden.Interactable;
+            hidden.Group.blocksRaycasts = hidden.BlocksRaycasts;
+        }
+        m_hiddenUI.Clear();
+    }
 
     private void RestorePlayerControls()
     {

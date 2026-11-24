@@ -18,11 +18,17 @@ public static class MiniGameUIBaseChecks
         try
         {
             MiniGameUIBase ui = owner.AddComponent<MiniGameUIBase>();
+            var hud = new GameObject("HUD visibility check", typeof(RectTransform), typeof(CanvasGroup));
+            hud.transform.SetParent(player.transform);
+            CanvasGroup hudGroup = hud.GetComponent<CanvasGroup>();
+            hudGroup.alpha = 0.6f;
+            hudGroup.interactable = false;
+            SetField(ui, "m_hideDuringMiniGame", new System.Collections.Generic.List<GameObject> { hud, null, hud });
             StateMachine machine = owner.GetComponent<StateMachine>();
             Camera control = player.AddComponent<Camera>();
             Light disabledControl = player.AddComponent<Light>();
             disabledControl.enabled = false;
-            GameObject root = new GameObject("UI root");
+            GameObject root = new GameObject("UI root", typeof(RectTransform));
             root.transform.SetParent(owner.transform);
             SetField(ui, "m_uiRoot", root);
             var callObject = new GameObject("CallIcon", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
@@ -46,6 +52,8 @@ public static class MiniGameUIBaseChecks
             Require(playingState.Vector2Input == Vector2.zero && !playingState.IsButtonPressed, "Closed ignores input");
 
             ui.BeginMiniGame();
+            Require(hud.activeSelf && hudGroup.alpha == 0f && !hudGroup.interactable && !hudGroup.blocksRaycasts,
+                "Countdown hides HUD without disabling objects");
             Require(!control.enabled && !disabledControl.enabled && root.activeSelf, "Countdown locks controls");
             ui.ReceiveButtonInput(true);
             ui.FinishMiniGame(3);
@@ -69,6 +77,7 @@ public static class MiniGameUIBaseChecks
             ui.FinishMiniGame(3);
             Require(ui.ResultStars == 3, "Uses the stars supplied by the game");
             Require(ui.CurrentPhase == MiniGameUIBase.Phase.Result && !control.enabled, "Result locks controls");
+            Require(hudGroup.alpha == 0f, "HUD remains hidden through play and result");
             ui.ReceiveVector2Input(sample);
             ui.ReceiveButtonInput(true);
             Require(playingState.Vector2Input == Vector2.zero && !playingState.IsButtonPressed, "Exit resets input and result ignores it");
@@ -80,11 +89,16 @@ public static class MiniGameUIBaseChecks
             owner.GetComponent<MiniGameUIResultState>().UpdateState();
             Require(!ui.IsRunning && !root.activeSelf && control.enabled && !disabledControl.enabled,
                 "Result closes and restores original controls");
+            Require(hudGroup.alpha == 0.6f && !hudGroup.interactable && hudGroup.blocksRaycasts,
+                "Completion restores original HUD state despite duplicate entries");
 
             ui.BeginMiniGame();
             Invoke(ui, "OnDisable");
             Require(!ui.IsRunning && control.enabled && ui.ResultStars == 0, "Interruption resets UI");
+            Require(hudGroup.alpha == 0.6f && hudGroup.blocksRaycasts, "Interruption restores HUD");
             CheckExternalAuthority(ui, control);
+            Require(hudGroup.alpha == 0.6f && hudGroup.blocksRaycasts, "External completion and cancellation restore HUD");
+            CheckResultBubble(ui, bubble);
             CheckScene();
             Debug.Log("MiniGameUIBaseChecks: PASS (timing, transitions, control restoration, restart, external authority, scene references)");
         }
@@ -93,6 +107,57 @@ public static class MiniGameUIBaseChecks
             UnityEngine.Object.DestroyImmediate(owner);
             UnityEngine.Object.DestroyImmediate(player);
         }
+    }
+
+    private static void CheckResultBubble(MiniGameUIBase ui, RectTransform bubble)
+    {
+        var imageObject = new GameObject("Result sequence check", typeof(RectTransform), typeof(Image));
+        imageObject.transform.SetParent(bubble, false);
+        var sequence = imageObject.AddComponent<UISpriteSequencePlayer>();
+        SetField(sequence, "m_frames", new Sprite[2]);
+        SetField(sequence, "m_durationSeconds", 1f);
+        SetField(sequence, "m_loop", false);
+        Vector2 originalAnchor = bubble.anchorMin;
+        Vector3 originalPosition = bubble.anchoredPosition3D;
+        ui.SetExternalControl(true);
+        ui.ApplyExternalPhase(MiniGameUIBase.Phase.Result, 10f, 10f, 0);
+        var result = ui.GetComponent<MiniGameUIResultState>();
+        float bottom = ((RectTransform)bubble.parent).rect.yMin;
+        Require(bubble.gameObject.activeSelf && bubble.localPosition.y < bottom - bubble.rect.height,
+            "Result bubble starts below the bottom edge, including zero-star results");
+        Require(sequence.IsPlaying, "Sequence starts together with bubble entrance");
+        typeof(UISpriteSequencePlayer).GetMethod("Advance", BindingFlags.Instance | BindingFlags.NonPublic)
+            .Invoke(sequence, new object[] { 0.75f });
+        SetField(ui, "m_externalSampleAt", Time.time - 0.1f);
+        result.UpdateState();
+        Require(sequence.CurrentFrameIndex == 1 && sequence.IsPlaying,
+            "Sequence advances during entrance without resetting");
+        SetField(ui, "m_externalSampleAt", Time.time - 1f);
+        result.UpdateState();
+        Require(Mathf.Abs(bubble.localPosition.x) < 0.01f && bubble.localPosition.y > bottom && sequence.IsPlaying,
+            "Bubble reaches bottom center while sequence continues");
+        typeof(UISpriteSequencePlayer).GetMethod("Advance", BindingFlags.Instance | BindingFlags.NonPublic)
+            .Invoke(sequence, new object[] { 0.25f });
+        result.UpdateState();
+        Require(sequence.HasCompleted && sequence.CurrentFrameIndex == 1,
+            "Result sequence plays once and holds its final frame");
+        ui.CloseExternalGame(false);
+        Require(!bubble.gameObject.activeSelf && bubble.anchorMin == originalAnchor
+            && bubble.anchoredPosition3D == originalPosition && !sequence.IsPlaying,
+            "Cancellation hides bubble and restores layout");
+        SetField(sequence, "m_loop", true);
+        ui.ApplyExternalPhase(MiniGameUIBase.Phase.Result, 10f, 10f);
+        Require(sequence.CurrentFrameIndex == 0 && sequence.IsPlaying, "Next result restarts sequence immediately");
+        SetField(ui, "m_externalSampleAt", Time.time - 1f);
+        result.UpdateState();
+        typeof(UISpriteSequencePlayer).GetMethod("Advance", BindingFlags.Instance | BindingFlags.NonPublic)
+            .Invoke(sequence, new object[] { 2.75f });
+        result.UpdateState();
+        Require(sequence.IsPlaying && !sequence.HasCompleted && sequence.CurrentFrameIndex == 1,
+            "Result honors Loop setting across multiple cycles without restarting playback");
+        ui.CloseExternalGame(true);
+        Require(!bubble.gameObject.activeSelf && !sequence.IsPlaying, "Normal completion hides bubble and stops loop");
+        ui.SetExternalControl(false);
     }
 
     private static void CheckExternalAuthority(MiniGameUIBase ui, Camera control)
