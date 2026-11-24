@@ -39,7 +39,7 @@ public class Player : MonoBehaviour
         float x=transform.position.x;
         float y=transform.position.y;
         float z=transform.position.z;
-        if(m_controlUp.isPressed)
+        if (m_controlUp.isPressed)
         {
             transform.position = new Vector3(x,y,z+ m_speed);
         }
@@ -54,6 +54,13 @@ public class Player : MonoBehaviour
         if (m_controlRight.isPressed)
         {
             transform.position = new Vector3(x + m_speed, y, z);
+        }
+
+        //デバッグ用: キーボード操作が有効の場合、ジョイコンの初期化を停止
+        JoyconManager joyconManager = GameObject.FindFirstObjectByType<JoyconManager>();
+        if (joyconManager.GetIsKeyboardPlay())
+        {
+            return;
         }
 
         //配列0 -> x
