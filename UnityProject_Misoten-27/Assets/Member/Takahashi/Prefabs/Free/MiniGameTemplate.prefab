@@ -351,6 +351,7 @@ MonoBehaviour:
   m_count: {fileID: 7330772994942494980}
   m_countNum: 3
   m_score: {fileID: 8059264090610750222}
+  m_gameOver: {fileID: 0}
 --- !u!114 &8616699651950371447
 MonoBehaviour:
   m_ObjectHideFlags: 0

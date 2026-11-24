@@ -44,6 +44,15 @@ public class QUEST_CHALLENGE : MonoBehaviour
     [SerializeField]
     private MiniGameSystem[] m_fallbackMiniGames;
 
+    [Tooltip("テスト用：ここに入れると、どのクエストでもこのミニゲームになる（空欄なら使わない）")]
+    [SerializeField]
+    private MiniGameSystem m_testMiniGame;
+
+    [Header("デバッグ（エディターと開発ビルドのみ）")]
+    [Tooltip("数字キー 1, 2, 3… を押すと、ここに入れた順のミニゲームをすぐ始める\n（クエストを探さずにテストできる。クエストはクリアにならない。スコアは入る）")]
+    [SerializeField]
+    private MiniGameSystem[] m_debugMiniGames;
+
     [Header("操作")]
     [Tooltip("クエストからこの距離（m）以内なら挑戦できる")]
     [SerializeField]
@@ -73,6 +82,16 @@ public class QUEST_CHALLENGE : MonoBehaviour
     private bool m_isChallenging;
 
     private GUIStyle m_promptStyle;
+
+    // クエストごとに決めたミニゲーム（クエストが出ている間は変えない）
+    private readonly Dictionary<Quest, MiniGameSystem> m_assignedMiniGames =
+        new Dictionary<Quest, MiniGameSystem>();
+
+    // プレイヤーの体（見つかっていなければ null）
+    public GameObject Player
+    {
+        get { return m_player; }
+    }
 
     public bool IsChallenging
     {
@@ -109,7 +128,13 @@ public class QUEST_CHALLENGE : MonoBehaviour
             return;
         }
 
-        m_nearestQuest = FindNearestQuest();
+        // デバッグ：数字キーでミニゲームをすぐ始める
+        if (UpdateDebugKeys())
+        {
+            return;
+        }
+
+        m_nearestQuest = FindClosestQuest(m_challengeDistance);
 
         if (m_nearestQuest != null &&
             IsChallengePressed())
@@ -183,11 +208,43 @@ public class QUEST_CHALLENGE : MonoBehaviour
             ChallengeCleared(quest);
         }
 
+        m_assignedMiniGames.Remove(quest);
+
         // Liu さんの LiuQuestManager が次のクエストを出す
         quest.ClearQuest();
     }
 
-    MiniGameSystem GetMiniGame(Quest quest)
+    // クエストで遊ぶミニゲーム
+    // ・最初に聞かれたときに 1 回だけ決めて、そのクエストをクリアするまで同じものを返す
+    //   （クエストのパネルに出したミニゲームと、実際に遊ぶミニゲームがずれないようにする）
+    public MiniGameSystem GetMiniGame(Quest quest)
+    {
+        if (quest == null)
+        {
+            return null;
+        }
+
+        // テスト用のミニゲームが決まっていれば、それを使う
+        if (m_testMiniGame != null)
+        {
+            return m_testMiniGame;
+        }
+
+        MiniGameSystem miniGame;
+
+        if (m_assignedMiniGames.TryGetValue(quest, out miniGame) &&
+            miniGame != null)
+        {
+            return miniGame;
+        }
+
+        miniGame = ChooseMiniGame(quest);
+        m_assignedMiniGames[quest] = miniGame;
+
+        return miniGame;
+    }
+
+    MiniGameSystem ChooseMiniGame(Quest quest)
     {
         if (quest.Data != null)
         {
@@ -248,15 +305,21 @@ public class QUEST_CHALLENGE : MonoBehaviour
         return false;
     }
 
-    Quest FindNearestQuest()
+    // プレイヤーから maxDistance（m）以内で、いちばん近いクエスト（なければ null）
+    public Quest FindClosestQuest(float maxDistance)
     {
+        if (m_player == null)
+        {
+            return null;
+        }
+
         Quest[] quests =
             FindObjectsByType<Quest>(FindObjectsSortMode.None);
 
         Vector3 playerPosition = m_player.transform.position;
 
         Quest nearest = null;
-        float nearestDistance = m_challengeDistance;
+        float nearestDistance = maxDistance;
 
         foreach (Quest quest in quests)
         {
@@ -274,6 +337,46 @@ public class QUEST_CHALLENGE : MonoBehaviour
         }
 
         return nearest;
+    }
+
+    //==================================================
+    // デバッグ：数字キーでミニゲームをすぐ始める
+    //==================================================
+
+    bool UpdateDebugKeys()
+    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Keyboard keyboard = Keyboard.current;
+
+        if (keyboard == null || m_debugMiniGames == null)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < m_debugMiniGames.Length && i < 9; i++)
+        {
+            if (m_debugMiniGames[i] != null &&
+                keyboard[(Key)((int)Key.Digit1 + i)].wasPressedThisFrame)
+            {
+                StartDebugChallenge(m_debugMiniGames[i]);
+                return true;
+            }
+        }
+#endif
+        return false;
+    }
+
+    void StartDebugChallenge(MiniGameSystem miniGame)
+    {
+        // クエストなしで挑戦する（終わってもクリアにするクエストがないので、何も起きない）
+        m_challengingQuest = null;
+        m_isChallenging = true;
+        m_nearestQuest = null;
+
+        Debug.Log(
+            "デバッグ：ミニゲーム「" + miniGame.gameObject.name + "」をすぐ始めます（クエストはクリアになりません）");
+
+        miniGame.Activate(m_player);
     }
 
     //==================================================
