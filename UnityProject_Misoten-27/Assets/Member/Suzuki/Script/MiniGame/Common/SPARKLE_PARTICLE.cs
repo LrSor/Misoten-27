@@ -16,7 +16,7 @@ using UnityEngine;
 // ・ゲームを再生していないときは、選ぶだけでシーンビューに「一番強いとき」の見え方が出る（プレビュー）
 //   ゲームを再生すると、振り方に合わせた強さに切りかわる（振っていなければ出ない）
 // ・Particle System の中身（大きさ・色・寿命・出る範囲など）は、Inspector でそのまま調整してよい
-// ・最初の作成は、メニュー「Misoten / キラキラ（パーティクル）を作成」で自動で行う
+// ・最初の作成は、メニュー「Suzuki / キラキラ（パーティクル）を作成」で自動で行う
 //==================================================
 [RequireComponent(typeof(ParticleSystem))]
 public class SPARKLE_PARTICLE : MonoBehaviour

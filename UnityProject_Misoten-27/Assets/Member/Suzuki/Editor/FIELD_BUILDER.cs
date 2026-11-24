@@ -5,7 +5,7 @@ using UnityEngine;
 //==================================================
 // 検証用の簡易フィールドを自動で組み立てるエディター拡張
 //
-// 使い方：メニュー「Misoten / 簡易フィールドを作成」→ 数値を確認して「作成」
+// 使い方：メニュー「Suzuki / 簡易フィールドを作成」→ 数値を確認して「作成」
 //
 // 手作業で作る場合も、この構造（名前と並び）に合わせて作っておけば、
 // あとで自動生成に切り替えても、他のスクリプトから同じように扱える。
@@ -102,7 +102,7 @@ public class FIELD_BUILDER : ScriptableWizard
 
     private PhysicsMaterial m_noFrictionMaterial;
 
-    [MenuItem("Misoten/簡易フィールドを作成")]
+    [MenuItem("Suzuki/簡易フィールドを作成")]
     static void Open()
     {
         DisplayWizard<FIELD_BUILDER>("簡易フィールドを作成", "作成");

@@ -9,7 +9,7 @@ using UnityEngine;
 //     強いほど、こく・線が画面の中心近くまで来る
 //   （SHAKE_EFFECTS が振り方に合わせて自動で変える）
 //
-// ・最初の作成は、メニュー「Misoten / 集中線（パーティクル）を作成」で自動で行う
+// ・最初の作成は、メニュー「Suzuki / 集中線（パーティクル）を作成」で自動で行う
 // ・コマの切りかわる速さは、Particle System の Texture Sheet Animation の Cycles で変えられる
 //==================================================
 [RequireComponent(typeof(ParticleSystem))]

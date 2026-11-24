@@ -5,7 +5,7 @@ using UnityEngine.Rendering;
 //==================================================
 // 集中線（パーティクル）を自動で作るエディター拡張
 //
-// 使い方：メニュー「Misoten / 集中線（パーティクル）を作成」
+// 使い方：メニュー「Suzuki / 集中線（パーティクル）を作成」
 //
 // 次のものを作る・設定する（もう一度実行すると、作り直して上書きする）
 //   1. 05_Sprite の読み込み設定（透明部分をきれいに）
@@ -38,7 +38,7 @@ public static class SPEED_LINES_PARTICLE_BUILDER
     const int TILES_X = 1;
     const int TILES_Y = 2;
 
-    [MenuItem("Misoten/集中線（パーティクル）を作成")]
+    [MenuItem("Suzuki/集中線（パーティクル）を作成")]
     static void Build()
     {
         Texture2D texture = SetupTexture();

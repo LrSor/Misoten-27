@@ -6,7 +6,7 @@ using UnityEngine.Rendering.Universal;
 //==================================================
 // キラキラ（パーティクル）を自動で作るエディター拡張
 //
-// 使い方：メニュー「Misoten / キラキラ（パーティクル）を作成」
+// 使い方：メニュー「Suzuki / キラキラ（パーティクル）を作成」
 //
 // 次のものを作る・設定する（もう一度実行すると、作り直して上書きする）
 //   1. 08_Sprite1 の読み込み設定（透明部分をきれいに）
@@ -41,7 +41,7 @@ public static class SPARKLE_PARTICLE_BUILDER
     const string PROFILE_PATH = MATERIAL_FOLDER + "/VP_MiniGameBloom.asset";
     const string VOLUME_NAME = "BloomVolume";
 
-    [MenuItem("Misoten/キラキラ（パーティクル）を作成")]
+    [MenuItem("Suzuki/キラキラ（パーティクル）を作成")]
     static void Build()
     {
         Texture2D texture = SetupTexture();
