@@ -23,6 +23,8 @@ namespace Sawada.Cordex
         const int MaxMoveBatch = 16;
         const int MaxQueuedMoves = 8;
         [SerializeField] GameObject playerPrefab;
+        [Tooltip("ネットワークプレイヤーの出現位置の中心（ワールド座標）。各プレイヤーはX方向に3m間隔で配置されます。")]
+        [SerializeField] Vector3 playerSpawnPosition = new Vector3(0f, 6.02f, -13f);
         [SerializeField] BaseArmorSO[] initialArmorSlots = Array.Empty<BaseArmorSO>();
         [SerializeField] GameObject[] worldPrefabs = Array.Empty<GameObject>();
         NetworkWorld world;
@@ -531,17 +533,16 @@ namespace Sawada.Cordex
 
         PlayerState SpawnState(int id)
         {
-            var body = playerPrefab != null ? playerPrefab.GetComponentInChildren<Rigidbody>(true) : null;
             if (testPickup && fieldArmors.Length > 0)
             {
                 // Explicit test mode only: start overlapping a field item to test the real trigger/E path.
                 Vector3 position = fieldArmors[(id - 1) % fieldArmors.Length].transform.position + Vector3.up * 1.2f;
                 return new PlayerState { id = id, x = position.x, y = position.y, z = position.z };
             }
-            // Prefab assets have no simulated pose in the Editor. Read the saved Transform,
-            // otherwise Rigidbody.position can be zero and spawn the capsule inside the floor.
-            return new PlayerState { id = id, x = (id - 2.5f) * 3,
-                y = body != null ? body.transform.position.y : 1.72f, z = 0 };
+            // Network states place PlayerBody directly. Use a floor-safe spawn center,
+            // independent of the scene player and prefab pose, with 3m between players.
+            return new PlayerState { id = id, x = playerSpawnPosition.x + (id - 2.5f) * 3,
+                y = playerSpawnPosition.y, z = playerSpawnPosition.z };
         }
         static void Send(INetworkTestPeer peer, Message message) => peer.Send(JsonUtility.ToJson(message));
         static bool Finite(float n) => !float.IsNaN(n) && !float.IsInfinity(n);
