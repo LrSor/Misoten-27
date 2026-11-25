@@ -19,14 +19,14 @@ public class WoodChopping : MiniGame
         //基底クラス内処理(ミニゲーム用オブジェクトの実行)
         base.UpdateMiniGame();
 
-        m_remainingSeconds -= Time.deltaTime; // 変更 Sawada
+        m_remainingSeconds -= Time.deltaTime; // ミニゲーム側で時間管理　m_remainingSecondsに代入した数字が画面に表示される
     }
 
     public override void Activate()
     {
         base.Activate();
 
-        m_stars = 2;                // 例 2つ星を設定 // 変更 Sawada
+        m_stars = 2;                // 例 2つ星を設定
         m_remainingSeconds = 20f;   // 例 20秒を設定
     }
 }
