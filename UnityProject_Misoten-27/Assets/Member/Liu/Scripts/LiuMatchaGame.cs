@@ -44,9 +44,10 @@ public class LiuMatchaGame : MiniGame
     private float m_defaultCameraSize;
     private Vector3 m_defaultCameraPosition;
     private float m_shakeTime;
-    private float m_remainingSeconds;
     private Text m_failureText;
     private string m_brokenBowlMessage;
+
+    public override float NetworkRemainingSeconds => m_showTimer ? base.NetworkRemainingSeconds : -1f;
 
     private void Awake()
     {
@@ -84,6 +85,7 @@ public class LiuMatchaGame : MiniGame
     public override void Activate()
     {
         base.Activate();
+        m_stars = 0;
         m_remainingSeconds = m_timeLimit;
         UpdateTimerDisplay();
         SetActionHintVisible(true);
@@ -114,6 +116,7 @@ public class LiuMatchaGame : MiniGame
                 stars = 2;
 
             SetScore(stars);
+            m_stars = stars;
             if (m_starText != null)
                 m_starText.text = new string('★', stars);
             if (m_resultFace != null)
