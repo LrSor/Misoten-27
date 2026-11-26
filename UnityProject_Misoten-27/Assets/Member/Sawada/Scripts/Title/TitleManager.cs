@@ -9,8 +9,8 @@ public class TitleManager : BaseManager<TitleManager>
     void Start()
     {
         // ボタン有効確認 仮false
-        m_buttonLoadGame.interactable = false;
-        m_buttonRecord.interactable = false;
+        if (m_buttonLoadGame != null) m_buttonLoadGame.interactable = false;
+        if (m_buttonRecord != null) m_buttonRecord.interactable = false;
     }
 
     void Update()
