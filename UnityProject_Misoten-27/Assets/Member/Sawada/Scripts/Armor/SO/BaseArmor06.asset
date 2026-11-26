@@ -12,9 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 43bc9983406b7b840987089ede354eb7, type: 3}
   m_Name: BaseArmor06
   m_EditorClassIdentifier: Assembly-CSharp::BaseArmorSO
-  m_KARI_icon: {fileID: 7080787473152318111, guid: 13dbba88b8c0e78409da102ec5257d39, type: 3}
+  m_KARI_icon: {fileID: 7080787473152318111, guid: a7f27c482e4c47943b24937cf0de2b20, type: 3}
   m_temporaryOutfit:
-  - {fileID: 919132149155446097, guid: cc981c18714bcff4bb91c84ccbdc453d, type: 3}
+  - {fileID: 919132149155446097, guid: d17a1f51c34e60449bd3fb9f5f13bf0b, type: 3}
+  - {fileID: 919132149155446097, guid: 6d093dc6c2e9a424cb481de89a1c20af, type: 3}
   m_color01: {r: 1, g: 0, b: 0, a: 1}
   m_color02: {r: 0, g: 0.18136334, b: 1, a: 1}
   m_areaA: 0

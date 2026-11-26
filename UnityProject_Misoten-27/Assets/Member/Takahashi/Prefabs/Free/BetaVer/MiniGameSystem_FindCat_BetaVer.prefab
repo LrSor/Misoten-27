@@ -1987,6 +1987,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PointerObject
   m_miniGame: {fileID: 1928802375726404517}
+  m_keyboardSpeed: 0.1
 --- !u!1 &5803196085466146851
 GameObject:
   m_ObjectHideFlags: 0
