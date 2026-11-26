@@ -195,57 +195,57 @@ public class CoffeeMill: MiniGameObject
 
         //横持ちをして前後左右に傾ける事でオブジェクトを移動させるテスト
         //MoveBySlope();
-        MoveByAccelAndGyro();
-        return;
-        
-        m_rotatedCount -= m_attenuationSpeed;
-        if ((m_rotatedCount < 0))
-        {
-            m_rotatedCount = 0;
-        }
-
-        //投げた際の処理
-        if ((IsNetworkControlled ? NetworkInput.m_release : m_joycon.GetButtonUp(Joycon.Button.SHOULDER_1))) // 変更 Sawada
-        {
-            
-        }
-
-
-
-            //------------------------------------------------------------
-            // ジャイロ値（角速度）を取得
-            //------------------------------------------------------------
-            // GetGyro() は「角速度(rad/s)」を返す。
-            // 角速度を時間で積分すると「角度(rad)」になるため、
-            // Time.deltaTime を掛けて角度に変換する。
-            Vector3 gyro = (IsNetworkControlled ? NetworkInput.m_gyro : m_joycon.GetGyro()); // 変更 Sawada
-
-        //------------------------------------------------------------
-        // Z軸の角速度を積分して回転角度を推定
-        //------------------------------------------------------------
-        // rad → degree に変換するため Mathf.Rad2Deg を掛ける。
-        float deltaAngleZ = gyro.z * Mathf.Rad2Deg * Time.deltaTime;
-
-        // 積算角度に加算
-        m_accumulatedRotationZ += Mathf.Abs(deltaAngleZ);
-
-        //オブジェクトの回転
-        transform.localEulerAngles = new Vector3(
-                transform.localEulerAngles.x,
-                m_accumulatedRotationZ * (360 / ROTATION_THRESHOLD),
-                transform.localEulerAngles.z
-            );
-
-        //------------------------------------------------------------
-        // 360°以上回転したら 1 回転と判定
-        //------------------------------------------------------------
-        if (m_accumulatedRotationZ >= ROTATION_THRESHOLD)
-        {
-            m_rotatedCount += 1;
-
-            // カウント後は積算角度をリセット
-            m_accumulatedRotationZ = 0f;
-        }
+        //MoveByAccelAndGyro();
+        //return;
+        //
+        //m_rotatedCount -= m_attenuationSpeed;
+        //if ((m_rotatedCount < 0))
+        //{
+        //    m_rotatedCount = 0;
+        //}
+        //
+        ////投げた際の処理
+        //if ((IsNetworkControlled ? NetworkInput.m_release : m_joycon.GetButtonUp(Joycon.Button.SHOULDER_1))) // 変更 Sawada
+        //{
+        //    
+        //}
+        //
+        //
+        //
+        //    //------------------------------------------------------------
+        //    // ジャイロ値（角速度）を取得
+        //    //------------------------------------------------------------
+        //    // GetGyro() は「角速度(rad/s)」を返す。
+        //    // 角速度を時間で積分すると「角度(rad)」になるため、
+        //    // Time.deltaTime を掛けて角度に変換する。
+        //    Vector3 gyro = (IsNetworkControlled ? NetworkInput.m_gyro : m_joycon.GetGyro()); // 変更 Sawada
+        //
+        ////------------------------------------------------------------
+        //// Z軸の角速度を積分して回転角度を推定
+        ////------------------------------------------------------------
+        //// rad → degree に変換するため Mathf.Rad2Deg を掛ける。
+        //float deltaAngleZ = gyro.z * Mathf.Rad2Deg * Time.deltaTime;
+        //
+        //// 積算角度に加算
+        //m_accumulatedRotationZ += Mathf.Abs(deltaAngleZ);
+        //
+        ////オブジェクトの回転
+        //transform.localEulerAngles = new Vector3(
+        //        transform.localEulerAngles.x,
+        //        m_accumulatedRotationZ * (360 / ROTATION_THRESHOLD),
+        //        transform.localEulerAngles.z
+        //    );
+        //
+        ////------------------------------------------------------------
+        //// 360°以上回転したら 1 回転と判定
+        ////------------------------------------------------------------
+        //if (m_accumulatedRotationZ >= ROTATION_THRESHOLD)
+        //{
+        //    m_rotatedCount += 1;
+        //
+        //    // カウント後は積算角度をリセット
+        //    m_accumulatedRotationZ = 0f;
+        //}
 
     }
 
