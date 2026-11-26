@@ -26,6 +26,7 @@
 - 編集対象の Scene は次のファイルのみとする。
   - `Assets/Member/Sawada/Scenes/CordexScene.unity`
   - `Assets/Member/Sawada/Scenes/testMapPlayerMove.unity`
+  - `Assets/Member/Sawada/Scenes/SawadaGame.unity`
 - 指定 Scene が見つからない場合は、別の Scene を代わりに変更せず、ユーザーに確認する。
 - 他の Scene は編集・削除・移動・名前変更しない。
 
@@ -35,6 +36,7 @@
 - スクリプト、マテリアル、画像、その他の新規アセットもこの配置先に従う。
 - 新規アセットに付随する `.meta` ファイルは、対応するアセットと同じ場所に配置する。
 - 上記の指定 Scene や指定 Prefab が存在しない場合も、無断で新規作成せずユーザーに確認する。
+- 例外として、ユーザー指定の Asset Store パッケージ `50 Free PBR Materials`（242760）は、パッケージ既定の配置先のままインポートしてよい。このインポートに必要なファイルと `.meta` の新規追加は、上記の Assets 内の編集範囲および新規追加先の制約の対象外とする。既存ファイルと衝突する場合は上書きせず確認する。
 
 ## Unity の参照と作業の安全性
 
