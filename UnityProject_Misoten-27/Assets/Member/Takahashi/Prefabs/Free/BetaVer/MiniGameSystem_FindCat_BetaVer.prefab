@@ -1246,7 +1246,6 @@ MonoBehaviour:
   m_searchedMoveSpeed: 6
   m_targetChangeInterval: 2
   m_searchedtargetChangeInterval: 1
-  m_escapeDirectionChangeRate: 0.2
   m_eye: {fileID: 4109749383230795370}
   m_eyeGlow: {fileID: 7864942733933300899}
   m_eyeGlowTime: 0
@@ -1889,13 +1888,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5209296356419150172}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0.7071068, y: 0, z: 0, w: 0.7071068}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 5415309104138225735}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: -90, y: 0, z: 0}
 --- !u!33 &7435225466377037011
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -1911,7 +1910,7 @@ MeshRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5209296356419150172}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
@@ -3725,7 +3724,6 @@ MonoBehaviour:
   m_searchedMoveSpeed: 6
   m_targetChangeInterval: 2
   m_searchedtargetChangeInterval: 1
-  m_escapeDirectionChangeRate: 0.2
   m_eye: {fileID: 3170479696656545670}
   m_eyeGlow: {fileID: 2023480167776868908}
   m_eyeGlowTime: 2
