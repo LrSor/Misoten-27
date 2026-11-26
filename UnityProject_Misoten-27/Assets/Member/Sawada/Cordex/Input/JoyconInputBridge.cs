@@ -101,7 +101,9 @@ public sealed class JoyconInputBridge : MonoBehaviour
         var raw = source.GetStick();
         var move = new Vector2(raw[0], raw[1]);
         if (horizontalGrip)
-            move = new Vector2(raw[1], source.isLeft ? raw[0] : -raw[0]);
+            move = source.isLeft
+                ? new Vector2(-raw[1], raw[0])
+                : new Vector2(raw[1], -raw[0]);
 
         var state = new GamepadState { leftStick = Vector2.ClampMagnitude(move, 1f) };
         state = state.WithButton(GamepadButton.LeftShoulder, source.GetButton(sprintButton));
