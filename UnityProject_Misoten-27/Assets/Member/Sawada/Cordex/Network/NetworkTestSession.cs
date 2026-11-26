@@ -111,12 +111,13 @@ namespace Sawada.Cordex
         TcpListener listener;
         INetworkTestPeer server;
         RelayTestTransport relay;
-        bool internetMode = true, relayStarting, relayConnecting, roomAnnounced;
+        bool internetMode, relayStarting, relayConnecting, roomAnnounced;
         int relayGeneration;
         float relayStarted;
         string joinCodeInput = "";
         string lanCodeInput = "", hostLanCode = "";
         bool Busy => hosting || connecting || server != null || relay != null;
+        bool showNetworkStatus = false;
         TcpClient connectingSocket;
         Task connectTask;
         Camera view;
@@ -166,6 +167,7 @@ namespace Sawada.Cordex
 
         void Awake()
         {
+            waitingForLobby = TitleLobbyFlow.WaitingForGame;
             string HierarchyKey(Transform item) => item.parent == null ? item.name
                 : HierarchyKey(item.parent) + "/" + item.GetSiblingIndex() + ":" + item.name;
             fieldArmors = FindObjectsByType<FieldArmorMachine>(FindObjectsInactive.Include, FindObjectsSortMode.None)
@@ -179,7 +181,8 @@ namespace Sawada.Cordex
                 .Where(a => a != null).Distinct().ToArray();
             Application.runInBackground = true;
             Application.targetFrameRate = 60;
-            if (!Application.isEditor) Screen.SetResolution(900, 650, FullScreenMode.Windowed);
+            // 一時無効化：ウィンドウサイズを900×650へ強制変更しない。
+            // if (!Application.isEditor) Screen.SetResolution(900, 650, FullScreenMode.Windowed);
             // The map's single-player cameras must not compete with the owned camera.
             foreach (var camera in FindObjectsByType<Camera>(FindObjectsSortMode.None)) camera.enabled = false;
             foreach (var audio in FindObjectsByType<AudioListener>(FindObjectsSortMode.None)) audio.enabled = false;
@@ -212,6 +215,7 @@ namespace Sawada.Cordex
 
         void Start()
         {
+            if (waitingForLobby || launchedFromLobby) return;
             string[] args = Environment.GetCommandLineArgs();
             string Arg(string key, string fallback = "")
             {
@@ -388,6 +392,11 @@ namespace Sawada.Cordex
 
         void Update()
         {
+            var keyboard = Keyboard.current;
+            if (Application.isFocused && keyboard != null &&
+                (keyboard.digit0Key.wasPressedThisFrame || keyboard.numpad0Key.wasPressedThisFrame))
+                showNetworkStatus = !showNetworkStatus;
+            if (waitingForLobby) return;
             float now = Time.realtimeSinceStartup;
             if (exitAfter > 0 && now - started >= exitAfter) { Application.Quit(); return; }
             if (relay != null)
@@ -438,9 +447,12 @@ namespace Sawada.Cordex
             if (hosting) world.TickHost();
             if (hosting) PollHost(now);
             else if (server != null) PollClient(now);
+            if (waitingForLobby) return;
             UpdateAvatars();
             UpdateNetworkMiniGames(now);
             UpdateRanking(now);
+            TickTimedMatch(now);
+            if (waitingForLobby) return;
             // PositionConstraint evaluates before LateUpdate. Feed it the current rendered pose.
             RenderClientAvatars(now);
         }
@@ -574,7 +586,7 @@ namespace Sawada.Cordex
                         if (listener == null || !listener.Pending()) break;
                         peer = new TcpPeer(listener.AcceptTcpClient());
                     }
-                    if (connections.Count >= 8) { peer.Dispose(); continue; }
+                    if (launchedFromLobby || connections.Count >= 8) { peer.Dispose(); continue; }
                     connections.Add(new Connection { peer = peer, lastReceive = now });
                 }
             }
@@ -740,6 +752,14 @@ namespace Sawada.Cordex
                 if (m.kind == "reject") { StopSession("Connection rejected: " + m.reason); return; }
                 if (m.kind == "welcome" && m.protocol == Protocol && m.id >= 2 && m.id <= 4 && localId == 0)
                 { localId = m.id; SetStatus("Client connected as P" + localId); }
+                else if (m.kind == "match-time" && localId > 0 && Finite(m.time) && m.time >= 0f)
+                {
+                    if (matchTimer == null) matchTimer = FindFirstObjectByType<GameTimeManager>();
+                    matchTimer?.SynchronizeTime(m.time);
+                }
+                else if (m.kind == "match-finish" && localId > 0) FreezeMatch();
+                else if (m.kind == "match-result" && matchEnding && ValidRanking(m.ranking))
+                { TransferToResults(m.ranking); return; }
                 else if (m.kind == "minigame" && localId > 0)
                 {
                     if (!ReceiveMiniGameState(m.m_miniGame)) { StopSession("Invalid minigame state"); return; }
@@ -816,6 +836,7 @@ namespace Sawada.Cordex
 
         void FixedUpdate()
         {
+            if (waitingForLobby) return;
             if (!hosting)
             {
                 if (localId == 0 || server == null) return;
@@ -1310,6 +1331,7 @@ namespace Sawada.Cordex
             ResetNetworkMiniGames();
             rankingSlow.Restore();
             ranking.Reset();
+            RestoreMatchClock();
             rankingId = completedRankingId = 0;
             rankingWaiting = rankingScoreSent = false;
             rankingStartedAt = rankingRequestAt = 0f;
@@ -1358,7 +1380,9 @@ namespace Sawada.Cordex
 
         void OnGUI()
         {
+            if (waitingForLobby) return;
             DrawNetworkMiniGame();
+            if (!showNetworkStatus) return;
             GUI.skin.label.wordWrap = true;
             GUILayout.BeginArea(new Rect(12, 12, 440, Screen.height - 24));
             GUILayout.BeginVertical(GUI.skin.box);

@@ -9,8 +9,9 @@
 
 ## Assets 内の編集範囲
 
-- `Assets` 内で編集・作成・削除・移動・名前変更できる範囲は、`Assets/Member/Sawada/` 配下のみとする。
-- `Assets/Member/Sawada/` の外にあるアセットと `.meta` ファイルは変更しない。参照・調査は可能とする。
+- `Assets` 内で編集・作成・削除・移動・名前変更できる範囲は、原則として `Assets/Member/Sawada/` 配下のみとする。
+- 例外として、後述の Scene 一覧に明記した `Assets/Main_KAri/Scene/` 内の3シーンは、既存 `.unity` ファイルの編集のみ許可する。
+- 上記の例外を除き、`Assets/Member/Sawada/` の外にあるアセットと `.meta` ファイルは変更しない。参照・調査は可能とする。例外の3シーンに付随する既存 `.meta` ファイルも変更しない。
 - 以下の Prefab、Scene、新規追加の制約を併せて守る。
 
 ## Prefab
@@ -27,6 +28,10 @@
   - `Assets/Member/Sawada/Scenes/CordexScene.unity`
   - `Assets/Member/Sawada/Scenes/testMapPlayerMove.unity`
   - `Assets/Member/Sawada/Scenes/SawadaGame.unity`
+  - `Assets/Main_KAri/Scene/Title_Kari.unity`
+  - `Assets/Main_KAri/Scene/PlayerLobby.unity`
+  - `Assets/Main_KAri/Scene/Game_11_26_02.unity`
+- 上記 Scene の許可は編集のみとし、削除・移動・名前変更は許可しない。
 - 指定 Scene が見つからない場合は、別の Scene を代わりに変更せず、ユーザーに確認する。
 - 他の Scene は編集・削除・移動・名前変更しない。
 

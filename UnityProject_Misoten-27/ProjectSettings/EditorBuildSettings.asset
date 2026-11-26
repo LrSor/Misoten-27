@@ -6,6 +6,12 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/Main_KAri/Scene/Title_Kari.unity
+    guid: 172b8f8ba12ce18418e320d944c695f0
+  - enabled: 1
+    path: Assets/Main_KAri/Scene/PlayerLobby.unity
+    guid: 9bd38b3f34cd23040841a7cde9fdfc5c
+  - enabled: 1
     path: Assets/Member/Sawada/Scenes/testTitle.unity
     guid: 99c9720ab356a0642a771bea13969a05
   - enabled: 1
@@ -15,7 +21,7 @@ EditorBuildSettings:
     path: Assets/Member/Sawada/Scenes/testGame.unity
     guid: d63ac35bc45e19b468c97025cd1b3739
   - enabled: 1
-    path: Assets/Main_Kari/Scene/Game_11_26_02.unity
+    path: Assets/Main_KAri/Scene/Game_11_26_02.unity
     guid: c61023f52fd1af24bb9778ed2fac3500
   - enabled: 1
     path: Assets/Member/Sawada/Scenes/testResult.unity
@@ -29,6 +35,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Member/Suzuki/Scene/SuzukiResult.unity
     guid: 2500ed2136cb74b4593090b9e25167db
+  - enabled: 1
+    path: Assets/Main_KAri/Scene/Result_Kari.unity
+    guid: 65d21e7df5fc4bf41a57911033510caa
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0
