@@ -94,6 +94,19 @@ public static class GAME_SCORE
         return s_playerScores[playerIndex];
     }
 
+    // スコアを直接決める（ロック中でも書ける）
+    // 通信の順位集計の結果をリザルトへ渡すときに使う（GAME_NETWORK_BRIDGE）
+    public static void SetPlayerScore(int playerIndex, int score)
+    {
+        if (playerIndex < 0 ||
+            playerIndex >= MAX_PLAYERS)
+        {
+            return;
+        }
+
+        s_playerScores[playerIndex] = score;
+    }
+
     // スコアを 0 に戻す（タイトル・ゲーム開始時に呼ぶ）
     public static void ResetScores()
     {
