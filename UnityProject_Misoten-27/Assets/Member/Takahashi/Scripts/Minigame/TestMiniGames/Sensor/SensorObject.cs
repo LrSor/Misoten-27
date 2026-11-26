@@ -25,8 +25,6 @@ public class SensorObject : MonoBehaviour
     [SerializeField] float m_rotateSmooth = 10f;   //角度補間の滑らかさ
     private Vector3 m_currentEuler;                //現在の角度キャッシュ
 
-    [SerializeField] int m_testNumber = 0;
-
 
     //オブジェクト初期化関数
     void Start()

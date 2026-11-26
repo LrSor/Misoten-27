@@ -29,8 +29,8 @@ public class BlackCat : MiniGameObject
     [Header("照射中目的地更新間隔")]
     [SerializeField] float m_searchedtargetChangeInterval = 1.0f;
 
-    [Header("照射時の急旋回確率")]
-    [SerializeField] float m_escapeDirectionChangeRate = 0.2f;
+    //[Header("照射時の急旋回確率")]
+    //[SerializeField] float m_escapeDirectionChangeRate = 0.2f;
 
     private bool m_isSearched = false;
 

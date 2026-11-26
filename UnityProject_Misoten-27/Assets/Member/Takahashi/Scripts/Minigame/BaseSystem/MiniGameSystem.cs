@@ -306,7 +306,7 @@ public class MiniGameSystem : MonoBehaviour
     public void Activate(GameObject playerObject)
     {
         if (Sawada.Cordex.NetworkTestSession.HasMiniGameNetworking(gameObject.scene)) return; // 変更 Sawada
-        //メンバ変数へプレイヤーオブジェクトをを紐付け
+        //メンバ変数へプレイヤーオブジェクトを紐付け
         m_playerObject = playerObject;
         //プレイヤー本体の動作を停止
         m_playerObject.SetActive(false);

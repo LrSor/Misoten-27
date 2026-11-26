@@ -23,6 +23,9 @@ public class PointerObject : MiniGameObject
     [Header("ミニゲーム本体")] //不要なら削除しても良し
     [SerializeField] MiniGame m_miniGame;
 
+    [Header("デバッグ用:キーボード操作時の移動速度")]
+    [SerializeField] float m_keyboardSpeed = 0.1f;
+
 
     //オブジェクト初期化関数
     public override void Activate()
@@ -70,24 +73,27 @@ public class PointerObject : MiniGameObject
         {
             //デバッグ用キーボード操作を以下に記載
 
-            //Quaternion qua = Quaternion.identity;
-            //
-            //if(Keyboard.current.wKey.isPressed)
-            //{
-            //    qua.x += 0.02f;
-            //}
-            //if (Keyboard.current.sKey.isPressed)
-            //{
-            //    qua.x -= 0.02f;
-            //}
-            //if (Keyboard.current.aKey.isPressed)
-            //{
-            //    qua.z += 0.02f;
-            //}
-            //if (Keyboard.current.dKey.isPressed)
-            //{
-            //    qua.z -= 0.02f;
-            //}
+            Vector3 pos = Vector3.zero;
+
+
+            if (Keyboard.current.wKey.isPressed)
+            {
+                pos.z -= m_keyboardSpeed;
+            }
+            if (Keyboard.current.sKey.isPressed)
+            {
+                pos.z += m_keyboardSpeed;
+            }
+            if (Keyboard.current.aKey.isPressed)
+            {
+                pos.x -= m_keyboardSpeed;
+            }
+            if (Keyboard.current.dKey.isPressed)
+            {
+                pos.x += m_keyboardSpeed;
+            }
+
+            gameObject.transform.position += pos;
 
             return;
         }
