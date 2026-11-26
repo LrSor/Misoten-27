@@ -25,6 +25,7 @@ namespace Sawada.Cordex
         readonly Dictionary<int, NetworkWorldObject> objects = new Dictionary<int, NetworkWorldObject>();
         readonly Dictionary<int, NetworkWorldObject> sceneObjects = new Dictionary<int, NetworkWorldObject>();
         readonly NetworkNpcSpawner[] spawners;
+        readonly FieldDataReceiverManager[] dataReceiverManagers;
         readonly Transform staging;
         readonly List<State> pending = new List<State>();
         int nextId, sendTick, pendingTick, pendingPart, pendingParts, receivedTick;
@@ -35,6 +36,13 @@ namespace Sawada.Cordex
         {
             session = owner; staging = inactive;
             var scene = owner.gameObject.scene;
+            dataReceiverManagers = FindInScene<FieldDataReceiverManager>(scene)
+                .OrderBy(m => HierarchyKey(m.transform), StringComparer.Ordinal).ToArray();
+            foreach (var manager in dataReceiverManagers)
+            {
+                manager.CollectReceivers();
+                manager.ConfigureNetwork();
+            }
             spawners = FindInScene<NPC_SPAWNER>(scene).OrderBy(o => HierarchyKey(o.transform), StringComparer.Ordinal)
                 .Select(o => new NetworkNpcSpawner(o)).ToArray();
             var catalog = new List<GameObject>(templates ?? Array.Empty<GameObject>());
@@ -63,7 +71,9 @@ namespace Sawada.Cordex
             }
             string signature = scene.path + "\n" + string.Join("\n", candidates.Select(o =>
                 HierarchyKey(o.transform) + ":" + o.GetType().FullName)) + "\n" +
-                string.Join("\n", prefabs.Select(p => p != null ? p.name : "<null>"));
+                string.Join("\n", prefabs.Select(p => p != null ? p.name : "<null>")) + "\n" +
+                string.Join("\n", dataReceiverManagers.Select(m => HierarchyKey(m.transform) + ":" +
+                    string.Join(",", m.DataCatalog.Select(d => d != null ? d.name : "<null>"))));
             using (var hash = SHA256.Create()) Catalog = Convert.ToBase64String(hash.ComputeHash(Encoding.UTF8.GetBytes(signature)));
         }
 
@@ -76,6 +86,7 @@ namespace Sawada.Cordex
         {
             IsHost = host;
             foreach (var item in objects.Values) if (item != null) item.SetAuthority(host);
+            foreach (var manager in dataReceiverManagers) manager.SetNetworkAuthority(host);
         }
 
         internal void TickHost()
@@ -209,6 +220,7 @@ namespace Sawada.Cordex
             nextId = sceneObjects.Count; sendTick = pendingTick = pendingPart = pendingParts = receivedTick = 0;
             pending.Clear();
             foreach (var spawner in spawners) spawner.Reset();
+            foreach (var manager in dataReceiverManagers) manager.ResetNetworkField();
         }
     }
 }

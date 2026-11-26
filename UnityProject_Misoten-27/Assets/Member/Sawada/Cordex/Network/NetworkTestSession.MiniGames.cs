@@ -53,7 +53,6 @@ namespace Sawada.Cordex
         readonly Dictionary<Collider, bool> m_miniGameColliders = new Dictionary<Collider, bool>();
         readonly Dictionary<Rigidbody, bool> m_miniGameBodies = new Dictionary<Rigidbody, bool>();
         readonly Dictionary<int, float> m_miniGameRequestTimes = new Dictionary<int, float>();
-        readonly Dictionary<MiniGame, int> m_appliedMiniGameResults = new Dictionary<MiniGame, int>();
         readonly Dictionary<int, bool> m_miniGameFrozenPlayers = new Dictionary<int, bool>();
         readonly Dictionary<StateMachine, bool> m_miniGameMovementStates = new Dictionary<StateMachine, bool>();
         readonly Dictionary<UnityEngine.UI.Text, bool> m_miniGameLegacyTimers = new Dictionary<UnityEngine.UI.Text, bool>();
@@ -304,9 +303,6 @@ namespace Sawada.Cordex
                     }
                 }
             }
-            // Retry when a result arrives before the avatar's first state snapshot.
-            foreach (var slot in m_miniGames.Where(s => s.m_state != null && s.m_state.m_phase == MiniGamePhase.Result))
-                ApplyMiniGameResult(slot);
         }
 
         void FinishNetworkMiniGame(MiniGameSlot slot, bool clear)
@@ -342,7 +338,6 @@ namespace Sawada.Cordex
             if (state.m_phase != MiniGamePhase.Result) state.m_poses = CaptureMiniGamePoses(slot);
             state.m_part = 0;
             state.m_parts = Math.Max(1, (state.m_poses.Length + 11) / 12);
-            ApplyMiniGameResult(slot);
             PresentMiniGame(slot);
             MiniGameStateChanged?.Invoke(JsonUtility.FromJson<MiniGamePacket>(JsonUtility.ToJson(state)));
             // TcpPeer/Relay have an 8 KB frame limit. Complete snapshots are reassembled before applying them.
@@ -397,7 +392,6 @@ namespace Sawada.Cordex
                 t.localPosition = pose.m_position; t.localRotation = pose.m_rotation; t.localScale = pose.m_scale;
                 t.gameObject.SetActive(pose.m_active);
             }
-            ApplyMiniGameResult(slot);
             PresentMiniGame(slot);
             MiniGameStateChanged?.Invoke(packet);
             return true;
@@ -409,20 +403,6 @@ namespace Sawada.Cordex
             var q = pose.m_rotation;
             float length = q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w;
             return Vector(pose.m_position) && Vector(pose.m_scale) && Finite(length) && length >= .9f && length <= 1.1f;
-        }
-
-        void ApplyMiniGameResult(MiniGameSlot slot)
-        {
-            var state = slot.m_state;
-            if (state.m_phase != MiniGamePhase.Result || !avatars.TryGetValue(state.m_player, out var avatar)) return;
-            // Host stores all participants; Client only mirrors its own Host-confirmed result.
-            if (!hosting && state.m_player != localId) return;
-            if (m_appliedMiniGameResults.TryGetValue(slot.m_game, out int previous) && previous >= state.m_session) return;
-            var reference = avatar.GetComponent<PlayerReferenceController>();
-            var source = reference != null ? reference.PlayerScore : avatar.GetComponentInChildren<PlayerScore>(true);
-            if (source == null) return;
-            source.SetMiniGameScore(slot.m_game, state.m_stars);
-            m_appliedMiniGameResults[slot.m_game] = state.m_session;
         }
 
         void PresentMiniGame(MiniGameSlot slot)
@@ -515,7 +495,7 @@ namespace Sawada.Cordex
             }
             foreach (var pair in m_miniGameColliders) if (pair.Key != null) pair.Key.enabled = pair.Value;
             foreach (var pair in m_miniGameBodies) if (pair.Key != null) pair.Key.isKinematic = pair.Value;
-            m_miniGameColliders.Clear(); m_miniGameBodies.Clear(); m_miniGameRequestTimes.Clear(); m_appliedMiniGameResults.Clear();
+            m_miniGameColliders.Clear(); m_miniGameBodies.Clear(); m_miniGameRequestTimes.Clear();
             m_nextMiniGameSession = m_localMiniGameSequence = 0;
             m_miniGameInputAt = m_miniGameRequestAt = m_keyboardSwing = 0f;
             m_previousMiniGameButton = false;
