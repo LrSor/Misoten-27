@@ -293157,7 +293157,7 @@ MonoBehaviour:
   cullOutsideLocalView: 1
   localViewCullingPadding: 8
   playerPrefab: {fileID: 4026893428455149443, guid: 7a1a6cbe747edea4d85d6f44d75fd96b, type: 3}
-  playerSpawnPosition: {x: 0, y: 6.02, z: -13}
+  playerSpawnPosition: {x: -33, y: 6, z: -26.5}
   initialArmorSlots: []
   worldPrefabs: []
 --- !u!1 &2101252124
