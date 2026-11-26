@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Sawada.Cordex;
 
 public class PlayerSwapController : MonoBehaviour
 {
@@ -20,6 +21,15 @@ public class PlayerSwapController : MonoBehaviour
 
     // swap可能一覧
     private List<FieldArmorMachine> m_canSwapArmor = new();
+    private readonly List<FieldDataReceiver> m_canAcquireData = new();
+
+    public void AddCanAcquireData(FieldDataReceiver receiver)
+    {
+        if (receiver != null && !m_canAcquireData.Contains(receiver)) m_canAcquireData.Add(receiver);
+    }
+
+    public void RemoveCanAcquireData(FieldDataReceiver receiver) => m_canAcquireData.Remove(receiver);
+    public bool OwnsPickupInventory(Inventory inventory) => m_inventory == inventory;
 
     // =========================================================
     // Public
@@ -64,8 +74,22 @@ public class PlayerSwapController : MonoBehaviour
     // =========================================================
     public bool Swap()
     {
+        if (!PressSwap) return false;
+        m_canAcquireData.RemoveAll(r => r == null || !r.CanAcquire || !r.IsInRange(this));
+        FieldDataReceiver nearest = null;
+        float nearestDistance = float.PositiveInfinity;
+        foreach (var receiver in m_canAcquireData)
+        {
+            float distance = (receiver.transform.position - transform.position).sqrMagnitude;
+            if (distance >= nearestDistance) continue;
+            nearest = receiver;
+            nearestDistance = distance;
+        }
+        if (nearest != null) return nearest.TryAcquire(this, m_inventory);
+
         // 交換ボタンを押したら
-        if (PressSwap && 0 < m_canSwapArmor.Count)
+        m_canSwapArmor.RemoveAll(armor => armor == null || !armor.gameObject.activeInHierarchy);
+        if (0 < m_canSwapArmor.Count)
         {
             // 交換
             BaseArmorSO releaseArmor = m_inventory.SwapArmor(m_canSwapArmor[0].GetArmorSO());
@@ -73,7 +97,7 @@ public class PlayerSwapController : MonoBehaviour
             RemoveCanSwapArmor(m_canSwapArmor[0]);
 
             return true;
-;       }
+        }
         return false;
     }
 

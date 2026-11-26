@@ -172,6 +172,10 @@ namespace Sawada.Cordex
                 .Where(f => f.gameObject.scene == gameObject.scene)
                 .OrderBy(f => HierarchyKey(f.transform), StringComparer.Ordinal).ToArray();
             armorCatalog = initialArmorSlots.Concat(fieldArmors.Select(f => f.GetArmorSO()))
+                .Concat(gameObject.scene.GetRootGameObjects()
+                    .SelectMany(root => root.GetComponentsInChildren<FieldDataReceiverManager>(true))
+                    .OrderBy(m => HierarchyKey(m.transform), StringComparer.Ordinal)
+                    .SelectMany(m => m.DataCatalog))
                 .Where(a => a != null).Distinct().ToArray();
             Application.runInBackground = true;
             Application.targetFrameRate = 60;
@@ -1302,6 +1306,7 @@ namespace Sawada.Cordex
 
         public void StopSession(string reason = "Disconnected by user")
         {
+            RestoreLocalViewRendering();
             ResetNetworkMiniGames();
             rankingSlow.Restore();
             ranking.Reset();
@@ -1440,11 +1445,13 @@ namespace Sawada.Cordex
 
         void OnDisable()
         {
+            StopLocalViewCulling();
             if (Busy || rankingWaiting || m_miniGameViewActive) StopSession("Session disabled");
         }
 
         void OnDestroy()
         {
+            StopLocalViewCulling();
             m_miniGameSessions.Remove(this);
             StopSession("Session closed");
             trace?.Dispose(); trace = null;

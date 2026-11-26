@@ -128,11 +128,18 @@ namespace Sawada.Cordex
                 owners[renderer] = this;
                 if (force || !source.applied || renderer.rootBone != source.mappedRoot || !renderer.updateWhenOffscreen)
                 {
-                    renderer.bones = source.mappedBones;
-                    renderer.rootBone = source.mappedRoot;
-                    renderer.updateWhenOffscreen = true;
+                    // The runtime cache is empty after a scene/domain reload, but the
+                    // serialized renderer may already contain the correct binding.
+                    // Do not dirty the scene just to reapply identical references.
+                    bool rendererChanged = false;
+                    if (!SameBones(renderer.bones, source.mappedBones))
+                    { renderer.bones = source.mappedBones; rendererChanged = true; }
+                    if (renderer.rootBone != source.mappedRoot)
+                    { renderer.rootBone = source.mappedRoot; rendererChanged = true; }
+                    if (!renderer.updateWhenOffscreen)
+                    { renderer.updateWhenOffscreen = true; rendererChanged = true; }
                     source.applied = true;
-                    Mark(renderer);
+                    if (rendererChanged) Mark(renderer);
                 }
             }
 
@@ -146,6 +153,15 @@ namespace Sawada.Cordex
                 if (animator.enabled) { animator.enabled = false; Mark(animator); }
             }
             if (changed) Mark(this);
+        }
+
+        static bool SameBones(Transform[] current, Transform[] mapped)
+        {
+            if (current == null || mapped == null) return current == mapped;
+            if (current.Length != mapped.Length) return false;
+            for (int i = 0; i < current.Length; i++)
+                if (current[i] != mapped[i]) return false;
+            return true;
         }
 
         SkinBinding FindSkin(SkinnedMeshRenderer renderer)
