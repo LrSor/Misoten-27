@@ -34,6 +34,15 @@ public class GAME_MANAGER : MonoBehaviour
     public static event Action GameStarted;
     public static event Action TimeUp;
 
+    // タイムアップ後、リザルトへ移るのを待ってほしいときに使う
+    // （GAME_NETWORK_BRIDGE が「通信の順位集計が終わるまで待って」と使う）
+    // true を返している間はリザルトへ移らない
+    public static Func<bool> ResultHold;
+
+    // カウントダウンを始めてよいか（false の間は始めない）
+    // （GAME_SYNC が「ロビーで Host が開始を押すまで待って」と使う）
+    public static Func<bool> StartGate;
+
     [Header("時間（秒）")]
     [Tooltip("制限時間")]
     [SerializeField]
@@ -59,6 +68,19 @@ public class GAME_MANAGER : MonoBehaviour
     [Tooltip("ロック中に止めるスクリプト。PlayerInput を使っていないプレイヤーや、ミニゲームの開始ゾーンなどを入れる")]
     [SerializeField]
     private Behaviour[] m_lockBehaviours;
+
+    [Header("通信（澤田さんのネットワークシーン用）")]
+    [Tooltip("プレイヤーが出てくる（Start Host / 接続が終わる）までカウントダウンを始めない")]
+    [SerializeField]
+    private bool m_waitForPlayer = false;
+
+    [Tooltip("ロックのとき PlayerInput ごと無効にする（通信シーン用）。\n澤田さんの通信は PlayerInput が有効かどうかを見て入力を読むので、こちらの方が確実に止まる")]
+    [SerializeField]
+    private bool m_disablePlayerInput = false;
+
+    [Tooltip("ResultHold で待つ最大の時間（通信が止まっても必ずリザルトへ進むように）")]
+    [SerializeField]
+    private float m_resultHoldMax = 10f;
 
     [Header("UI（任意。空欄でも動く）")]
     [Tooltip("残り時間（例 2:59）")]
@@ -99,6 +121,10 @@ public class GAME_MANAGER : MonoBehaviour
     private bool m_isInputLocked;
     private bool m_needApplyLock;
 
+    // プレイヤーが出てきたか（m_waitForPlayer 用）
+    private bool m_hasPlayer;
+    private float m_resultHoldTimer;
+
     public GAME_STATE State
     {
         get { return m_state; }
@@ -121,8 +147,21 @@ public class GAME_MANAGER : MonoBehaviour
         get
         {
             return m_state == GAME_STATE.READY &&
-                   (GAME_SCENE_LOADER.IsTransitioning || GAME_INTRO.IsPlaying);
+                   (GAME_SCENE_LOADER.IsTransitioning || GAME_INTRO.IsPlaying ||
+                    IsWaitingForPlayer || IsWaitingForStart);
         }
+    }
+
+    // プレイヤーの出現を待っているか（通信の Start Host / 接続前）
+    public bool IsWaitingForPlayer
+    {
+        get { return m_waitForPlayer && !m_hasPlayer; }
+    }
+
+    // ロビーで開始されるのを待っているか
+    public bool IsWaitingForStart
+    {
+        get { return StartGate != null && !StartGate(); }
     }
 
     // カウントダウンの残り（READY 中のみ。それ以外は 0）
@@ -138,6 +177,8 @@ public class GAME_MANAGER : MonoBehaviour
         Instance = null;
         GameStarted = null;
         TimeUp = null;
+        ResultHold = null;
+        StartGate = null;
     }
 
     void Awake()
@@ -221,6 +262,19 @@ public class GAME_MANAGER : MonoBehaviour
 
     void UpdateReady()
     {
+        // 通信のプレイヤーは Start Host / 接続の後で生成されるので、
+        // 出てきた瞬間にロックをかけ直す
+        if (m_waitForPlayer && !m_hasPlayer)
+        {
+            m_hasPlayer = FindAnyObjectByType<PlayerScore>() != null;
+        }
+
+        // カウントダウン中に出てきた（有効になった）プレイヤーも止める
+        if (m_waitForPlayer && m_lockDuringReady)
+        {
+            LockNewPlayerInputs();
+        }
+
         // トランジション中（画面がまだ見えていない間）や開始演出中は
         // カウントダウンを進めず、表示も出さない
         if (IsWaitingForCountdown)
@@ -361,10 +415,34 @@ public class GAME_MANAGER : MonoBehaviour
     {
         m_stateTimer -= Time.unscaledDeltaTime;
 
-        if (m_stateTimer <= 0f)
+        if (m_stateTimer > 0f)
         {
-            GAME_SCENE_LOADER.Load(m_resultSceneName);
+            return;
         }
+
+        // 順位の集計などを待つ（長すぎるときはあきらめて進む）
+        if (ResultHold != null &&
+            ResultHold() &&
+            m_resultHoldTimer < m_resultHoldMax)
+        {
+            m_resultHoldTimer += Time.unscaledDeltaTime;
+            return;
+        }
+
+        GAME_SCENE_LOADER.Load(m_resultSceneName);
+    }
+
+    // 他の理由（他のプレイヤーが先に終わった等）で、すぐにタイムアップにする
+    public void ForceTimeUp()
+    {
+        if (m_state != GAME_STATE.PLAYING)
+        {
+            return;
+        }
+
+        m_remainingTime = 0f;
+        UpdateTimerText();
+        StartTimeUp();
     }
 
     //==================================================
@@ -388,12 +466,7 @@ public class GAME_MANAGER : MonoBehaviour
 
         foreach (PlayerInput playerInput in playerInputs)
         {
-            if (playerInput.enabled &&
-                playerInput.inputIsActive)
-            {
-                playerInput.DeactivateInput();
-                m_lockedInputs.Add(playerInput);
-            }
+            TryLockInput(playerInput);
         }
 
         // Inspector で指定したスクリプトを止める
@@ -413,6 +486,53 @@ public class GAME_MANAGER : MonoBehaviour
         }
     }
 
+    // ロック中に新しく出てきたプレイヤーの入力も止める
+    void LockNewPlayerInputs()
+    {
+        if (!m_isInputLocked)
+        {
+            LockPlayerInputs();
+            return;
+        }
+
+        PlayerInput[] playerInputs =
+            FindObjectsByType<PlayerInput>(FindObjectsSortMode.None);
+
+        foreach (PlayerInput playerInput in playerInputs)
+        {
+            if (!m_lockedInputs.Contains(playerInput))
+            {
+                TryLockInput(playerInput);
+            }
+        }
+    }
+
+    // 1つの PlayerInput を止める（止めたら覚えておく）
+    void TryLockInput(PlayerInput playerInput)
+    {
+        if (!playerInput.enabled)
+        {
+            return;
+        }
+
+        if (m_disablePlayerInput)
+        {
+            playerInput.enabled = false;
+        }
+        else if (playerInput.inputIsActive)
+        {
+            playerInput.DeactivateInput();
+        }
+        else
+        {
+            return;
+        }
+
+        m_lockedInputs.Add(playerInput);
+
+        Debug.Log("GAME_MANAGER: 操作をロック → " + playerInput.name);
+    }
+
     void UnlockPlayerInputs()
     {
         if (!m_isInputLocked)
@@ -424,8 +544,16 @@ public class GAME_MANAGER : MonoBehaviour
 
         foreach (PlayerInput playerInput in m_lockedInputs)
         {
-            if (playerInput != null &&
-                playerInput.enabled)
+            if (playerInput == null)
+            {
+                continue;
+            }
+
+            if (m_disablePlayerInput)
+            {
+                playerInput.enabled = true;
+            }
+            else if (playerInput.enabled)
             {
                 playerInput.ActivateInput();
             }
@@ -484,5 +612,6 @@ public class GAME_MANAGER : MonoBehaviour
         m_timeLimit = Mathf.Max(1f, m_timeLimit);
         m_readyTime = Mathf.Max(0f, m_readyTime);
         m_timeUpWait = Mathf.Max(0f, m_timeUpWait);
+        m_resultHoldMax = Mathf.Max(0f, m_resultHoldMax);
     }
 }
