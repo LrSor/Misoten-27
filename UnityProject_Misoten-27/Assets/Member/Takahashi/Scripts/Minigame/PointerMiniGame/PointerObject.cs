@@ -26,6 +26,7 @@ public class PointerObject : MiniGameObject
     [Header("デバッグ用:キーボード操作時の移動速度")]
     [SerializeField] float m_keyboardSpeed = 0.1f;
 
+
     //オブジェクト初期化関数
     public override void Activate()
     {
@@ -88,7 +89,7 @@ public class PointerObject : MiniGameObject
                 pos.x -= m_keyboardSpeed;
             }
             if (Keyboard.current.dKey.isPressed)
-            {  
+            {
                 pos.x += m_keyboardSpeed;
             }
 
