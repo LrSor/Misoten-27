@@ -26,7 +26,6 @@ public class PointerObject : MiniGameObject
     [Header("デバッグ用:キーボード操作時の移動速度")]
     [SerializeField] float m_keyboardSpeed = 0.1f;
 
-
     //オブジェクト初期化関数
     public override void Activate()
     {
@@ -72,7 +71,6 @@ public class PointerObject : MiniGameObject
         if (!hasJoycon)
         {
             //デバッグ用キーボード操作を以下に記載
-
             Vector3 pos = Vector3.zero;
 
 
@@ -94,6 +92,7 @@ public class PointerObject : MiniGameObject
             }
 
             gameObject.transform.position += pos;
+
 
             return;
         }

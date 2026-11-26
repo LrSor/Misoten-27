@@ -89,7 +89,6 @@ public class FindLight : MiniGameObject
         var h = Vector3.Dot(n, x);
 
         var intersectPoint = x0 + ((h - Vector3.Dot(n, x0)) / (Vector3.Dot(n, m))) * m;
-
         //インスペクタービューにて移動範囲を設定する
         Vector3 pos = intersectPoint - m_miniGame.transform.position;
 

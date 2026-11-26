@@ -1912,7 +1912,6 @@ MonoBehaviour:
   m_searchedMoveSpeed: 0
   m_targetChangeInterval: 2
   m_searchedtargetChangeInterval: 1
-  m_escapeDirectionChangeRate: 0.2
   m_eye: {fileID: 0}
   m_eyeGlow: {fileID: 0}
   m_eyeGlowTime: 0
@@ -2333,7 +2332,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::JoyconManager
   EnableIMU: 1
   EnableLocalize: 1
-  m_isKeyboardPlay: 0
+  m_isKeyboardPlay: 1
 --- !u!4 &467145425
 Transform:
   m_ObjectHideFlags: 0
@@ -3925,7 +3924,7 @@ Transform:
   m_GameObject: {fileID: 892947962}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 10, y: 0, z: -5}
+  m_LocalPosition: {x: 10, y: -0.2, z: -5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -8673,6 +8672,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1283827632815124393, guid: b3f2353eeaa9d9540b4ee6c2bf44f6af, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 3578243393292595669, guid: b3f2353eeaa9d9540b4ee6c2bf44f6af, type: 3}
       propertyPath: m_Name
       value: MiniGameSystem_FindCat_BetaVer
@@ -8716,6 +8719,26 @@ PrefabInstance:
     - target: {fileID: 5415309104138225735, guid: b3f2353eeaa9d9540b4ee6c2bf44f6af, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5816878700803534786, guid: b3f2353eeaa9d9540b4ee6c2bf44f6af, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 5816878700803534786, guid: b3f2353eeaa9d9540b4ee6c2bf44f6af, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 5816878700803534786, guid: b3f2353eeaa9d9540b4ee6c2bf44f6af, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5816878700803534786, guid: b3f2353eeaa9d9540b4ee6c2bf44f6af, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5816878700803534786, guid: b3f2353eeaa9d9540b4ee6c2bf44f6af, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: -90
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
