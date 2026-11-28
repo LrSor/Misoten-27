@@ -200,6 +200,7 @@ GameObject:
   - component: {fileID: 3466563396565967500}
   - component: {fileID: 8644630198296399115}
   - component: {fileID: 6146319366887145217}
+  - component: {fileID: 8380221673819804152}
   m_Layer: 5
   m_Name: Stars
   m_TagString: Untagged
@@ -268,6 +269,19 @@ MonoBehaviour:
     m_VerticalOverflow: 0
     m_LineSpacing: 1
   m_Text: 3
+--- !u!114 &8380221673819804152
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1743332532260912180}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4cfa49f7b3a3c2b448300bdba41ff6ad, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LiuMatchaStarReveal
+  m_starInterval: 0.3
 --- !u!1 &1751886971996809881
 GameObject:
   m_ObjectHideFlags: 0
@@ -412,11 +426,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LiuMatchaSpeedJudge
   m_minGoodSpeed: 0.6
-  m_maxGoodSpeed: 1.5
+  m_maxGoodSpeed: 1.9
+  m_groupSpeedBonus: 0.5
+  m_exactSpeedBonus: 1
   m_keyboardTest: 1
   m_slowTestSpeed: 0.3
   m_normalTestSpeed: 1
   m_fastTestSpeed: 2
+  m_minCircleAcceleration: 0.025
+  m_invertJoyconDirection: 0
 --- !u!114 &7898701023242254066
 MonoBehaviour:
   m_ObjectHideFlags: 0
